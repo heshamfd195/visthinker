@@ -11,6 +11,7 @@ import type { CallHandler, Clock } from "../ports/index.ts";
 import type { SceneStore } from "../scene/store.ts";
 import type { StrokeStore } from "../scene/strokes.ts";
 import type { Story } from "../scene/story.ts";
+import { describeScene } from "../scene/relations.ts";
 import type { PackRegistry } from "../packs/loader.ts";
 import { createGames, type Games } from "../game/games.ts";
 import { createActor, type Actor } from "./act.ts";
@@ -110,8 +111,8 @@ export function createToolHandler({ clock, packs, story, scene, strokes }: ToolD
       return { name, version, loaded: true };
     },
 
-    /** The whole current scene (D77). */
-    get_scene: async () => ({ objects: scene.all() }),
+    /** The whole current scene, each object with its relations (D77 · T32). */
+    get_scene: async () => ({ objects: describeScene(scene.all()) }),
 
     /** A stroke's own points, or those of the strokes that made an object (D76). */
     get_strokes: async ({ target }) => {
