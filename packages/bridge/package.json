@@ -9,7 +9,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "start": "node src/server.ts",
+    "start": "node src/bin.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {

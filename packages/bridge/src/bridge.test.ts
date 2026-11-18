@@ -210,7 +210,7 @@ describe("pack tools (T24)", () => {
 
 describe("over stdio", () => {
   it("a real MCP client starts the server and lists its tools", async () => {
-    const server = fileURLToPath(new URL("./server.ts", import.meta.url));
+    const server = fileURLToPath(new URL("./bin.ts", import.meta.url));
     const client = new Client({ name: "stdio-test", version: "0" });
     await client.connect(
       new StdioClientTransport({

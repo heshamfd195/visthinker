@@ -1,4 +1,4 @@
-export { createBridge, type Bridge, type BridgeOptions } from "./server.ts";
+export { createBridge, main, type Bridge, type BridgeOptions, type MainOptions } from "./server.ts";
 export { NO_CANVAS, type CanvasLink } from "./canvas.ts";
 export {
   Session,
