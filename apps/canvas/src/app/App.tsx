@@ -1,4 +1,4 @@
-import type { Stroke } from "@visthinker/contract";
+import type { Box, Stroke } from "@visthinker/contract";
 import {
   colorsFromStory,
   moveObject,
@@ -9,9 +9,9 @@ import {
 import { useCallback, useEffect, useMemo } from "react";
 import { Layer, Stage, Text } from "react-konva";
 import { InkLayer } from "../features/ink/index.ts";
-import { ObjectsLayer } from "../features/objects/index.ts";
+import { markColors, ObjectsLayer } from "../features/objects/index.ts";
 import { Panel, PANEL_WIDTH, StoryPanel, usePanels } from "../features/panels/index.ts";
-import { MessageStrip } from "../features/talk/index.ts";
+import { MessageStrip, winningLine } from "../features/talk/index.ts";
 import { Toolbar, useToolbar } from "../features/toolbar/index.ts";
 import { bridgeUrlFromPage } from "../adapters/ws-transport/index.ts";
 import { createSession } from "./session.ts";
@@ -53,7 +53,11 @@ export function App() {
   // The core pushes the scene through the renderer port (T13); the story drives the rest.
   const objects = useFrame(session.renderer);
   const events = useMemo(() => session.story.all(), [session, version]);
-  const colors = useMemo(() => colorsFromStory(events), [events]);
+  const colors = useMemo(
+    () => new Map([...colorsFromStory(events), ...markColors(events)]),
+    [events],
+  );
+  const highlight = useMemo(() => winningLine(events), [events]);
 
   const now = useCallback(() => session.clock.now(), [session]);
   const nextId = useCallback(() => session.strokes.nextId(), [session]);
@@ -63,6 +67,17 @@ export function App() {
   );
   const onPlace = useCallback(
     (input: PlaceInput) => placeObject(session.story, session.scene, input),
+    [session],
+  );
+  const onTap = useCallback((at: [number, number]) => session.games.tap(at), [session]);
+  const onPlaceBoard = useCallback(
+    (box: Box) => {
+      try {
+        session.games.placeBoard("tic-tac-toe", box);
+      } catch (error) {
+        console.warn(error instanceof Error ? error.message : error); // e.g. a board is already there
+      }
+    },
     [session],
   );
   const onMove = useCallback(
@@ -81,6 +96,7 @@ export function App() {
             now={now}
             nextId={nextId}
             onStroke={onStroke}
+            onTap={onTap}
             color={color}
             enabled={tool === "pen"}
           />
@@ -91,7 +107,9 @@ export function App() {
             colors={colors}
             tool={tool}
             color={color}
+            highlight={highlight}
             onPlace={onPlace}
+            onPlaceBoard={onPlaceBoard}
             onMove={onMove}
           />
           <Layer listening={false}>

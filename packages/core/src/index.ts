@@ -4,3 +4,4 @@ export * from "./scene/index.ts";
 export * from "./tools/index.ts";
 export * from "./blocks/index.ts";
 export * from "./packs/index.ts";
+export * from "./game/index.ts";

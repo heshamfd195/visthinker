@@ -14,8 +14,8 @@ describe("toolbar state", () => {
     expect(useToolbar.getState()).toMatchObject({ tool: "arrow", color: "#2f9e44" });
   });
 
-  it("offers the pen, three shapes and move, and five colours", () => {
-    expect(TOOLS.map((t) => t.tool)).toEqual(["pen", "box", "circle", "arrow", "move"]);
+  it("offers the pen, three shapes, a board and move, and five colours", () => {
+    expect(TOOLS.map((t) => t.tool)).toEqual(["pen", "box", "circle", "arrow", "board", "move"]);
     expect(COLORS).toHaveLength(5);
   });
 });

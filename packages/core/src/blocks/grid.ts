@@ -173,6 +173,46 @@ export function planGrid(
   return { board: boxOf(R.flat()), cells };
 }
 
+/**
+ * Plans an upright board of `rows × cols` equal cells inside `box`: a ready-made board the user
+ * places from the toolbar, so there are no drawn crossings to follow.
+ */
+export function planUniformGrid(rules: GridRules, box: Box): GridPlan | { error: string } {
+  const { prefix, count } = parseIds(rules.ids);
+  if (count !== rules.rows * rules.cols) {
+    return {
+      error: `ids ${rules.ids} name ${count} cells, the grid has ${rules.rows * rules.cols}`,
+    };
+  }
+  const [x, y, w, h] = box;
+  if (w <= 0 || h <= 0) return { error: "the board needs a size" };
+  const cw = w / rules.cols;
+  const ch = h / rules.rows;
+  const cells: GridPlan["cells"] = [];
+  for (let r = 0; r < rules.rows; r++) {
+    for (let c = 0; c < rules.cols; c++) {
+      const [x0, y0, x1, y1] = [x + c * cw, y + r * ch, x + (c + 1) * cw, y + (r + 1) * ch].map(
+        round1,
+      ) as [number, number, number, number];
+      const poly: Point2[] = [
+        [x0, y0],
+        [x1, y0],
+        [x1, y1],
+        [x0, y1],
+      ];
+      const k = r * rules.cols + c + 1;
+      cells.push({
+        id: `${prefix}${k}`,
+        label: `cell ${k}`,
+        box: boxOf(poly),
+        poly,
+        outer: r === 0 || c === 0 || r === rules.rows - 1 || c === rules.cols - 1,
+      });
+    }
+  }
+  return { board: [round1(x), round1(y), round1(w), round1(h)], cells };
+}
+
 // ── polygon helpers ──────────────────────────────────────────────────────────
 
 export function boxOf(points: Point2[]): Box {
