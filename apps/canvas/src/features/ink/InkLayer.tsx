@@ -1,6 +1,6 @@
 import type { Stroke } from "@visthinker/contract";
 import Konva from "konva";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Layer, Rect } from "react-konva";
 import { createInkManager } from "./ink.manager.ts";
 import type { RawPoint } from "./ink.types.ts";
@@ -21,6 +21,8 @@ interface Props {
   onTap?: (at: [number, number]) => void;
   /** False while another tool is active: the layer then draws nothing. */
   enabled?: boolean;
+  /** Strokes whose ink gave way to something cleaner, e.g. a drawn X now shown as a mark. */
+  hidden?: ReadonlySet<string>;
 }
 
 /**
@@ -37,10 +39,26 @@ export function InkLayer({
   onTap,
   color = PEN.color,
   enabled = true,
+  hidden,
 }: Props) {
   const ink = useRef<Konva.Layer>(null);
   const shape = useRef<Konva.Line | null>(null);
   const manager = useMemo(() => createInkManager(nextId, { ...PEN, color }), [nextId, color]);
+  /** Each finished stroke's ink, by stroke id, so it can give way later. */
+  const shapes = useRef(new Map<string, Konva.Line>());
+
+  // Once gone, gone: the mark that replaced the ink stays.
+  useEffect(() => {
+    let changed = false;
+    for (const id of hidden ?? []) {
+      const line = shapes.current.get(id);
+      if (!line) continue;
+      line.destroy();
+      shapes.current.delete(id);
+      changed = true;
+    }
+    if (changed) ink.current?.batchDraw();
+  }, [hidden]);
 
   const sample = (e: Konva.KonvaEventObject<PointerEvent>): RawPoint | null => {
     const at = e.target.getStage()?.getPointerPosition();
@@ -82,6 +100,7 @@ export function InkLayer({
     if (result?.kind === "stroke") {
       // Redraw the finished stroke to its real end before handing it on.
       shape.current?.points(outline(finished, PEN.width, true));
+      if (shape.current) shapes.current.set(result.stroke.id, shape.current);
       onStroke(result.stroke);
     } else shape.current?.destroy();
     if (result?.kind === "tap") onTap?.([result.at.x, result.at.y]);

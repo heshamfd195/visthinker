@@ -59,6 +59,11 @@ export function App() {
   );
   const highlight = useMemo(() => winningLine(events), [events]);
   const tags = useMemo(() => symbolTags(events), [events]);
+  // Ink that gave way to a clean mark (a drawn X played as a move, T31).
+  const hidden = useMemo(
+    () => new Set(objects.filter((o) => o.kind === "mark").flatMap((o) => o.strokes ?? [])),
+    [objects],
+  );
 
   const now = useCallback(() => session.clock.now(), [session]);
   const nextId = useCallback(() => session.strokes.nextId(), [session]);
@@ -102,6 +107,7 @@ export function App() {
             nextId={nextId}
             onStroke={onStroke}
             onTap={onTap}
+            hidden={hidden}
             color={color}
             enabled={tool === "pen"}
           />
