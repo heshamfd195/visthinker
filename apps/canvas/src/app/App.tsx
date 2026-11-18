@@ -62,7 +62,11 @@ export function App() {
   const now = useCallback(() => session.clock.now(), [session]);
   const nextId = useCallback(() => session.strokes.nextId(), [session]);
   const onStroke = useCallback(
-    (stroke: Stroke) => recordStroke(session.story, session.strokes, stroke),
+    (stroke: Stroke) => {
+      // Record the stroke, then let the comparator read it (D64).
+      const event = recordStroke(session.story, session.strokes, stroke);
+      session.comparator.onStroke(stroke, event);
+    },
     [session],
   );
   const onPlace = useCallback(

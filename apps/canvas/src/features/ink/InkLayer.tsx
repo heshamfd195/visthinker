@@ -77,9 +77,13 @@ export function InkLayer({
   };
 
   const up = () => {
+    const finished = [...manager.live()];
     const result = manager.end();
-    if (result?.kind === "stroke") onStroke(result.stroke);
-    else shape.current?.destroy();
+    if (result?.kind === "stroke") {
+      // Redraw the finished stroke to its real end before handing it on.
+      shape.current?.points(outline(finished, PEN.width, true));
+      onStroke(result.stroke);
+    } else shape.current?.destroy();
     if (result?.kind === "tap") onTap?.([result.at.x, result.at.y]);
     shape.current = null;
     ink.current?.batchDraw();
