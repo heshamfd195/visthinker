@@ -39,6 +39,8 @@ export function buildBoard(opts: {
     relations: [],
     box: plan.board,
     confidence,
+    // Built from the user's own lines: the canvas draws no lines of its own over them.
+    geom: { from: "crossings" },
   };
   scene.add(board, "fastbrain");
   const cells = plan.cells.map((c): SceneObject => {

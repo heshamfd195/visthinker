@@ -4,6 +4,8 @@ import type { VisEvent } from "@visthinker/contract";
 export interface Message {
   seq: number;
   kind: "say" | "ask" | "propose" | "end";
+  /** Who is speaking: Claude, or the Fast Brain. */
+  from?: "claude" | "fastbrain";
   text: string;
   /** Empty once answered, and for a `say`. */
   choices: string[];
@@ -38,15 +40,19 @@ export function messageFromStory(
       message = { seq: e.seq, kind: "end", text, choices: [] };
       continue;
     }
-    if (e.who !== "claude") continue;
+    // Claude speaks, and so does the Fast Brain when it asks about a drawing (D68).
+    if (e.who !== "claude" && e.who !== "fastbrain") continue;
+    if (e.who === "fastbrain" && e.type !== "ask" && e.type !== "say") continue;
     const text = typeof e.detail?.["text"] === "string" ? (e.detail["text"] as string) : "";
-    if (e.type === "say" && text) message = { seq: e.seq, kind: "say", text, choices: [] };
+    const from = e.who as "claude" | "fastbrain";
+    if (e.type === "say" && text) message = { seq: e.seq, kind: "say", text, choices: [], from };
     else if (e.type === "ask" && text) {
       message = {
         seq: e.seq,
         kind: "ask",
         text,
         choices: answered.has(e.seq) ? [] : strings(e.detail?.["choices"]),
+        from,
       };
     } else if (e.type === "propose") {
       message = {

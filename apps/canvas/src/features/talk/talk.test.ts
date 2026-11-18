@@ -23,6 +23,7 @@ describe("the message strip", () => {
       kind: "say",
       text: "your move",
       choices: [],
+      from: "claude",
     });
   });
 
@@ -69,5 +70,22 @@ describe("the message strip", () => {
     expect([...winningLine([end])]).toEqual(["c3", "c5", "c7"]);
     const draw = e({ seq: 9, who: "fastbrain", type: "end", detail: { winner: null, line: [] } });
     expect(messageFromStory([draw])?.text).toBe("It's a draw.");
+  });
+
+  it("the Fast Brain's question about a drawing shows too, with its choices (D68)", () => {
+    const ask = e({
+      seq: 5,
+      who: "fastbrain",
+      type: "ask",
+      detail: { text: "Tic-tac-toe? Shall I build it and continue?", choices: ["yes", "no"] },
+    });
+    expect(messageFromStory([ask])).toMatchObject({
+      kind: "ask",
+      from: "fastbrain",
+      choices: ["yes", "no"],
+    });
+    expect(
+      messageFromStory([e({ seq: 6, who: "fastbrain", type: "recognized", target: "l1" })]),
+    ).toBeNull();
   });
 });
