@@ -8,6 +8,7 @@ import { z } from "zod";
 import { openInBrowser } from "./browser.ts";
 import { NO_CANVAS, type CanvasLink } from "./canvas.ts";
 import { log } from "./log.ts";
+import { createPackApi, type PackApi } from "./packs/api.ts";
 import { PackStore, visthinkerHome } from "./packs/store.ts";
 import { Session } from "./session/session.ts";
 import { ALL_TOOLS } from "./tools/index.ts";
@@ -22,6 +23,8 @@ export interface BridgeOptions {
   openBrowser?: (url: string) => void | Promise<void>;
   /** Packs on disk. Default: ~/.visthinker/packs (or VISTHINKER_HOME) and the repo's starter packs. */
   packs?: PackStore;
+  /** The Visthinker API for install_pack and more packs in list_packs and read_pack. */
+  api?: PackApi;
 }
 
 export interface Bridge {
@@ -69,6 +72,7 @@ export function createBridge(options: BridgeOptions = {}): Bridge {
   const ctx: BridgeContext = {
     canvas: options.canvas ?? NO_CANVAS,
     packs: options.packs ?? new PackStore(visthinkerHome()),
+    ...(options.api ? { api: options.api } : {}),
     ...(options.opener ? { opener: options.opener } : {}),
     openBrowser: options.openBrowser ?? openInBrowser,
   };
@@ -96,6 +100,8 @@ export async function main(options: MainOptions = {}): Promise<void> {
     canvas: session,
     opener: session,
     packs: new PackStore(visthinkerHome(), options.starterDir),
+    // VISTHINKER_API, e.g. http://127.0.0.1:8787 locally, or the Railway URL once it's deployed.
+    ...(process.env.VISTHINKER_API ? { api: createPackApi(process.env.VISTHINKER_API) } : {}),
     // VISTHINKER_NO_OPEN logs the link instead of opening a browser (tests, headless use).
     ...(process.env.VISTHINKER_NO_OPEN ? { openBrowser: (url: string) => log(`open ${url}`) } : {}),
   });

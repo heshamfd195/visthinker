@@ -11,3 +11,4 @@ export {
 export { openInBrowser } from "./browser.ts";
 export { serveCanvas, DEFAULT_CANVAS_DIR } from "./session/static.ts";
 export { PackStore, STARTER_DIR, visthinkerHome, type PackEntry } from "./packs/store.ts";
+export { createPackApi, API_TIMEOUT_MS, type PackApi, type ApiPack } from "./packs/api.ts";

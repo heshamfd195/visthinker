@@ -5,6 +5,7 @@ import {
   type ToolResult,
 } from "@visthinker/contract";
 import type { CanvasLink } from "../canvas.ts";
+import type { PackApi } from "../packs/api.ts";
 import type { PackStore } from "../packs/store.ts";
 
 /** Where the canvas is served, and whether a browser tab should open now (the session). */
@@ -16,6 +17,8 @@ export interface CanvasOpener {
 export interface BridgeContext {
   canvas: CanvasLink;
   packs: PackStore;
+  /** The Visthinker API, when VISTHINKER_API is set. */
+  api?: PackApi;
   opener?: CanvasOpener;
   openBrowser: (url: string) => void | Promise<void>;
 }
