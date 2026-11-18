@@ -33,6 +33,18 @@ group("story lines", () => {
     ).toBe("move · b1 · (10, 20) → (10, 220)");
   });
 
+  it("a recognized symbol shows what was read and its score (D97)", () => {
+    expect(
+      describe(
+        event({
+          type: "recognized",
+          target: "y1",
+          detail: { kind: "symbol", label: "X", score: 0.87 },
+        }),
+      ),
+    ).toBe("recognized · y1 · symbol “X” 87%");
+  });
+
   it("an event with nothing extra is just its type", () => {
     expect(describe(event({ type: "undo" }))).toBe("undo");
   });
