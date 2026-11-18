@@ -10,6 +10,7 @@ import {
   type Who,
 } from "@visthinker/contract";
 import {
+  buildBoard,
   checkLines,
   createTurns,
   inPolygon,
@@ -34,6 +35,8 @@ export interface Game {
 export interface Games {
   /** Places a ready-made board for a pack, owned by the user, with its cells built by the pack. */
   placeBoard(packName: string, box: Box): Game;
+  /** Builds a pack's board from the lines and crossings the user drew, and starts its game (D68). */
+  buildFromDrawing(packName: string, cause: number): Game;
   /** The game a cell belongs to. */
   gameOf(cellId: string): Game | undefined;
   /** The mark in a cell, if any. */
@@ -109,7 +112,42 @@ export function createGames({
     return place;
   };
 
+  const rulesOf = (packName: string) => {
+    const rules = packs.get(packName)?.pack["rules.json"];
+    if (!rules?.grid) throw new ContractError("not_allowed", `pack ${packName} has no grid`);
+    return { ...rules, grid: rules.grid };
+  };
+
+  const startGame = (packName: string, board: string, order: string[]): Game => {
+    const rules = rulesOf(packName);
+    const game: Game = {
+      pack: packName,
+      board,
+      order,
+      turns: rules.turns && createTurns(rules.turns),
+      lineOf: rules["line-of"],
+    };
+    games.push(game);
+    return game;
+  };
+
   return {
+    buildFromDrawing(packName, cause) {
+      const built = buildBoard({
+        scene,
+        story,
+        pack: packName,
+        rules: rulesOf(packName).grid,
+        cause,
+      });
+      if ("error" in built) throw new ContractError("not_allowed", built.error);
+      return startGame(
+        packName,
+        built.board.id,
+        built.cells.map((c) => c.id),
+      );
+    },
+
     placeBoard(packName, box) {
       const loaded = packs.get(packName);
       const rules = loaded?.pack["rules.json"];
@@ -156,15 +194,11 @@ export function createGames({
         target: board.id,
         detail: { kind: "board", pack: packName, box: board.box },
       });
-      const game: Game = {
-        pack: packName,
-        board: board.id,
-        order: plan.cells.map((c) => c.id),
-        turns: rules.turns && createTurns(rules.turns),
-        lineOf: rules["line-of"],
-      };
-      games.push(game);
-      return game;
+      return startGame(
+        packName,
+        board.id,
+        plan.cells.map((c) => c.id),
+      );
     },
 
     gameOf,
