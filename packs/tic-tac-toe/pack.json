@@ -1,0 +1,7 @@
+{
+  "name": "tic-tac-toe",
+  "version": "0.1.0",
+  "contract": "0",
+  "match": { "lines": 4, "crossings": 4, "layout": "two-by-two" },
+  "blocks": ["grid", "turns", "line-of"]
+}
