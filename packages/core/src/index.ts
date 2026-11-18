@@ -2,3 +2,4 @@
 export * from "./ports/index.ts";
 export * from "./scene/index.ts";
 export * from "./tools/index.ts";
+export * from "./blocks/index.ts";

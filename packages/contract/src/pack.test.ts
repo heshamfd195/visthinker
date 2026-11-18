@@ -56,8 +56,8 @@ describe("Pack (D92)", () => {
 
   it("lets a pack wire a block the core may add later", () => {
     const pack = {
-      "pack.json": { ...manifest, blocks: ["grid", "counter"] },
-      "rules.json": { counter: { start: 0 } },
+      "pack.json": { ...manifest, blocks: ["grid", "timer"] },
+      "rules.json": { timer: { seconds: 30 } },
     };
     expect(Pack.safeParse(pack).success).toBe(true);
   });

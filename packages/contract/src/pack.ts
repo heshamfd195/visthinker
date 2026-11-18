@@ -37,11 +37,19 @@ export const LineOfRules = z.object({
   win: z.array(z.array(z.number().int().positive()).min(2)),
 });
 
+/** `counter`: counts objects of a kind (and one label, if given) against an optional limit. */
+export const CounterRules = z.object({
+  of: z.string().min(1).max(32),
+  label: z.string().max(200).optional(),
+  limit: z.number().int().positive().optional(),
+});
+
 /** rules.json: block wiring + data tables (D80 · D92). Unknown blocks pass through. */
 export const PackRules = z.looseObject({
   grid: GridRules.optional(),
   turns: TurnsRules.optional(),
   "line-of": LineOfRules.optional(),
+  counter: CounterRules.optional(),
 });
 
 /** A whole pack as it travels in `read_pack` / `write_pack`: the folder's files (D92). */
@@ -68,5 +76,6 @@ export type PackManifest = z.infer<typeof PackManifest>;
 export type GridRules = z.infer<typeof GridRules>;
 export type TurnsRules = z.infer<typeof TurnsRules>;
 export type LineOfRules = z.infer<typeof LineOfRules>;
+export type CounterRules = z.infer<typeof CounterRules>;
 export type PackRules = z.infer<typeof PackRules>;
 export type Pack = z.infer<typeof Pack>;
