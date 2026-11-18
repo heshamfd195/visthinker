@@ -4,3 +4,6 @@ coverage
 pnpm-lock.yaml
 playwright-report
 test-results
+packages/visthinker/canvas
+packages/visthinker/packs
+packages/visthinker/LICENSE
