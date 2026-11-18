@@ -45,12 +45,14 @@ describe("transport (T18)", () => {
     expect(session.transport.status()).toBe("connecting");
   });
 
-  it("until the tools exist, a call is answered with which task brings it", async () => {
+  it("Claude's calls are answered by the core: get_scene sees what was placed (T19)", async () => {
     const session = createSession({ clock: createManualClock() });
+    placeObject(session.story, session.scene, { kind: "box", box: [0, 0, 10, 10], color: "#222" });
     const memory = session.transport as unknown as {
       call(c: string, a: unknown): Promise<unknown>;
     };
-    await expect(memory.call("get_scene", {})).rejects.toMatchObject({ code: "unknown_call" });
+    const result = (await memory.call("get_scene", {})) as { objects: { id: string }[] };
+    expect(result.objects.map((o) => o.id)).toEqual(["b1"]);
   });
 });
 

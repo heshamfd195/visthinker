@@ -1,14 +1,13 @@
 // The composition root (D83): the one place that picks an adapter for each core port.
 // The clock and renderer are real. Opened from the bridge's link, the transport is the real
 // WebSocket (T18); opened on its own, it stays a fake. The bridge's packs replace the last fake.
-import { ContractError, type BrowserCall } from "@visthinker/contract";
 import {
   createMemoryPackSource,
   createMemoryTransport,
   createSceneStore,
   createStory,
   createStrokeStore,
-  type CallHandler,
+  createToolHandler,
   type Clock,
   type PackSource,
   type SceneStore,
@@ -40,11 +39,6 @@ export interface SessionOptions {
   bridgeUrl?: string | null;
 }
 
-/** Until the tools are built (T19–T21), the canvas tells Claude which call it can't answer yet. */
-const notYet: CallHandler = async (call: BrowserCall) => {
-  throw new ContractError("unknown_call", `the canvas doesn't answer ${call} yet (T19–T21)`);
-};
-
 export function createSession(options: SessionOptions = {}): Session {
   const clock = options.clock ?? createSystemClock();
   const story = createStory(clock);
@@ -52,14 +46,16 @@ export function createSession(options: SessionOptions = {}): Session {
   const renderer = createReactRenderer();
   // Until the Fast Brain drives it, the scene is pushed to the screen after every event.
   story.subscribe(() => renderer.render(scene.all()));
+  const strokes = createStrokeStore();
   const bridge = options.bridgeUrl ? createWsTransport({ url: options.bridgeUrl }) : undefined;
   const transport = bridge ?? createMemoryTransport();
-  transport.serve(notYet);
+  // Claude's calls are answered by the core (D90).
+  transport.serve(createToolHandler({ story, scene, strokes }));
   return {
     clock,
     story,
     scene,
-    strokes: createStrokeStore(),
+    strokes,
     renderer,
     transport,
     bridge,
