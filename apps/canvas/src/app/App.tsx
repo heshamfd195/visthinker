@@ -6,19 +6,41 @@ import {
   recordStroke,
   type PlaceInput,
 } from "@visthinker/core";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { Layer, Stage, Text } from "react-konva";
 import { InkLayer } from "../features/ink/index.ts";
 import { ObjectsLayer } from "../features/objects/index.ts";
 import { Panel, PANEL_WIDTH, StoryPanel, usePanels } from "../features/panels/index.ts";
 import { Toolbar, useToolbar } from "../features/toolbar/index.ts";
+import { bridgeUrlFromPage } from "../adapters/ws-transport/index.ts";
 import { createSession } from "./session.ts";
 import { useFrame } from "./useFrame.ts";
+import { useLinkStatus } from "./useLinkStatus.ts";
 import { useStoryVersion } from "./useStoryVersion.ts";
 import { useWindowSize } from "./useWindowSize.ts";
 
 export function App() {
-  const session = useMemo(() => createSession(), []);
+  const session = useMemo(
+    () => createSession({ bridgeUrl: bridgeUrlFromPage(window.location.search) }),
+    [],
+  );
+  const link = useLinkStatus(session.transport);
+
+  // Connect one tick after mount: React's dev mode mounts twice, and a socket from the throwaway
+  // first mount would take the bridge's one tab slot (D82 ④). Cleanup cancels it before it opens.
+  useEffect(() => {
+    const bridge = session.bridge;
+    if (!bridge) return;
+    let opened = false;
+    const timer = setTimeout(() => {
+      opened = true;
+      bridge.start();
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      if (opened) bridge.close();
+    };
+  }, [session]);
   const screen = useWindowSize();
   const storyOpen = usePanels((s) => s.open["story"] ?? false);
   // The canvas takes what the open panels leave.
@@ -75,7 +97,7 @@ export function App() {
             <Text
               x={16}
               y={height - 28}
-              text={`events: ${version} · fakes: ${session.fakes.join(", ")}`}
+              text={`events: ${version} · bridge: ${session.bridge ? link : "not opened from Claude"} · fakes: ${session.fakes.join(", ")}`}
               fontSize={12}
               fill="#999"
             />
