@@ -390,6 +390,7 @@ describe("grouping (D96 · D97)", () => {
     );
     clock.advance(600);
     expect(scene.all().filter((o) => o.kind === "symbol")).toHaveLength(2);
+    // Past D110's 2 s, a stroke never rejoins: it's a new symbol.
     const later = setup();
     later.draw(
       along([
@@ -397,7 +398,7 @@ describe("grouping (D96 · D97)", () => {
         [60, 60],
       ]),
     );
-    later.clock.advance(650); // the first group is read before the next stroke
+    later.clock.advance(2_100);
     later.draw(
       along([
         [60, 0],
@@ -469,5 +470,51 @@ describe("grouping (D96 · D97)", () => {
     );
     comparator.flush();
     expect(scene.all()).toHaveLength(1);
+  });
+
+  it("D110: an X whose second stroke comes 0.9 s late is re-read as one X, same symbol (the first real game)", () => {
+    const { clock, scene, story, draw } = setup();
+    draw(
+      along([
+        [0, 0],
+        [60, 60],
+      ]),
+    );
+    clock.advance(600); // read alone: "?"
+    const first = scene.all().find((o) => o.kind === "symbol")!;
+    expect(first.label).not.toBe("X");
+    clock.advance(220); // the second stroke starts about 0.9 s after the first ended
+    draw(
+      along([
+        [60, 0],
+        [0, 60],
+      ]),
+    );
+    clock.advance(600);
+    const symbols = scene.all().filter((o) => o.kind === "symbol");
+    expect(symbols).toHaveLength(1);
+    expect(symbols[0]).toMatchObject({ id: first.id, label: "X" });
+    expect(symbols[0]!.strokes).toHaveLength(2);
+    const readings = story.all().filter((e) => e.type === "recognized" && e.target === first.id);
+    expect(readings.map((e) => e.detail?.["label"])).toEqual([first.label, "X"]);
+  });
+
+  it("D110: a late stroke far away doesn't rejoin", () => {
+    const { clock, scene, draw } = setup();
+    draw(
+      along([
+        [0, 0],
+        [60, 60],
+      ]),
+    );
+    clock.advance(800);
+    draw(
+      along([
+        [600, 600],
+        [540, 660],
+      ]),
+    );
+    clock.advance(600);
+    expect(scene.all().filter((o) => o.kind === "symbol")).toHaveLength(2);
   });
 });

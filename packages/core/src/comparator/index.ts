@@ -29,6 +29,11 @@ export const GROUP_MS = 600;
 export const GROUP_GAP_MS = 700;
 /** …and its box is closer to the group's than this share of the larger of the two. */
 export const GROUP_NEAR = 0.5;
+/**
+ * D110: a stroke that lands in the same cell, or close by, within this long of the last symbol's
+ * last stroke rejoins it, and both are read again together (an X's second stroke can come late).
+ */
+export const REJOIN_MS = 2_000;
 /** A stroke this share of its cell's size or bigger isn't drawn in the cell. */
 export const CELL_SYMBOL_MAX = 0.9;
 
@@ -52,6 +57,8 @@ export interface ComparatorDeps {
 
 interface Group {
   cell?: string;
+  /** The symbol this group reads again, when a late stroke rejoined it (D110). */
+  symbol?: string;
   strokes: string[];
   box: Box;
   lastEnd: number;
@@ -82,6 +89,8 @@ export function createComparator({
   packs,
 }: ComparatorDeps): Comparator {
   let group: Group | undefined;
+  /** The last symbol read, which a late stroke may still rejoin (D110). */
+  let lastRead: Omit<Group, "cancel"> | undefined;
   const isLine = (o: SceneObject) => o.kind === "line" && o.pack === SHAPES_PACK;
   const ends = (o: SceneObject) => o.geom as { a: Point2; b: Point2 };
   const strokeEnd = (s: Stroke) => s.t0 + (s.points.at(-1)?.[3] ?? 0);
@@ -121,6 +130,15 @@ export function createComparator({
       stroke.t0 - g.lastEnd <= GROUP_GAP_MS &&
       gap(g.box, box) < GROUP_NEAR * Math.max(size(g.box), size(box))
     );
+  };
+
+  /** D110: a late stroke in the same cell (or close by, outside cells) reopens the last symbol. */
+  const rejoins = (last: Omit<Group, "cancel">, stroke: Stroke, cell: string | undefined) => {
+    if (!last.symbol || !scene.has(last.symbol) || stroke.t0 - last.lastEnd > REJOIN_MS)
+      return false;
+    if (cell || last.cell) return last.cell === cell;
+    const box = strokeBox(stroke);
+    return gap(last.box, box) < GROUP_NEAR * Math.max(size(last.box), size(box));
   };
 
   const addLine = (
@@ -199,8 +217,7 @@ export function createComparator({
     const result = sets.length
       ? createRecognizer(sets).recognize(points)
       : { label: "?", score: 0, alternatives: [], pack: undefined };
-    const symbol = add({
-      id: scene.nextId("y"),
+    const fields = {
       kind: "symbol",
       label: result.label,
       pack: result.pack ?? SHAPES_PACK,
@@ -208,7 +225,12 @@ export function createComparator({
       box: boxOf(points.flat()),
       confidence: result.score,
       strokes: drawn.map((s) => s.id),
-    });
+    };
+    // A late stroke re-reads the same symbol, so its id stays and the earlier reading is replaced.
+    const again = g.symbol && scene.has(g.symbol) ? g.symbol : undefined;
+    if (again) scene.update(again, (o) => ({ ...o, ...fields }));
+    const symbol = again ? scene.get(again)! : add({ id: scene.nextId("y"), ...fields });
+    lastRead = { ...g, symbol: symbol.id, strokes: drawn.map((s) => s.id), box: symbol.box };
     recognized(
       symbol.id,
       {
@@ -238,6 +260,9 @@ export function createComparator({
       }
       const cell = cellOf(stroke);
       if (group && !joins(group, stroke, cell)) close();
+      if (!group && lastRead && rejoins(lastRead, stroke, cell)) {
+        group = { ...lastRead, strokes: [...lastRead.strokes], cancel: () => {} };
+      }
       const box = strokeBox(stroke);
       if (group) {
         group.cancel();
