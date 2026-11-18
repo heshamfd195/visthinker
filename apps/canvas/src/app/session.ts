@@ -2,6 +2,7 @@
 // The clock and renderer are real. Opened from the bridge's link, the transport is the real
 // WebSocket (T18); opened on its own, it stays a fake. The bridge's packs replace the last fake.
 import {
+  createComparator,
   createMemoryPackSource,
   createMemoryTransport,
   createPackRegistry,
@@ -13,6 +14,7 @@ import {
   type Actor,
   type Games,
   type Clock,
+  type Comparator,
   type PackRegistry,
   type PackSource,
   type SceneStore,
@@ -35,6 +37,8 @@ export interface Session {
   actor: Actor;
   /** Boards placed from the toolbar, and the user's taps on them. */
   games: Games;
+  /** Reads each finished stroke: lines, crossings, and one-stroke shapes (T27). */
+  comparator: Comparator;
   /** Set when the page was opened from the bridge's link. */
   bridge: WsTransport | undefined;
   packs: PackSource;
@@ -73,6 +77,7 @@ export function createSession(options: SessionOptions = {}): Session {
     transport,
     actor: handler.actor,
     games: handler.games,
+    comparator: createComparator({ scene, story }),
     bridge,
     packs: createMemoryPackSource(),
     registry,

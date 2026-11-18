@@ -79,4 +79,13 @@ describe("outline", () => {
     expect(shape.length).toBeGreaterThan(4);
     expect(shape.length % 2).toBe(0);
   });
+
+  it("a finished stroke's outline reaches its last point", () => {
+    const pts = [at(0, 0, 0), at(100, 0, 16), at(200, 0, 32)];
+    const xs = (o: number[]) => o.filter((_, i) => i % 2 === 0);
+    expect(Math.max(...xs(outline(pts, 4, true)))).toBeGreaterThan(
+      Math.max(...xs(outline(pts, 4, false))),
+    );
+    expect(Math.max(...xs(outline(pts, 4, true)))).toBeGreaterThanOrEqual(199);
+  });
 });

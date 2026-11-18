@@ -84,7 +84,7 @@ export function ObjectsLayer({
             key={o.id}
             object={o}
             color={colors.get(o.id) ?? "#222222"}
-            draggable={tool === "move" && BUILT_IN.has(o.kind)}
+            draggable={tool === "move" && BUILT_IN.has(o.kind) && o.pack !== SHAPES}
             highlighted={highlight?.has(o.id) ?? false}
             onMove={onMove}
           />
@@ -120,6 +120,8 @@ function ObjectShape(props: {
   const { object, color, draggable, highlighted, onMove } = props;
   const [x, y, w, h] = object.box;
   const style = { stroke: color, strokeWidth: 3, hitStrokeWidth: 14 };
+  // What the comparator read from your ink: a light outline over it, so you see what it saw.
+  if (object.pack === SHAPES) return <RecognizedShape object={object} />;
   return (
     <Group
       x={x}
@@ -203,6 +205,38 @@ function ObjectShape(props: {
 
 const BUILT_IN = new Set(["box", "circle", "arrow"]);
 const GAME_KINDS = new Set(["mark", "board", "cell"]);
+/** Objects the comparator recognized from strokes (D89). */
+const SHAPES = "shapes";
+const SEEN = "#339af0";
+
+function RecognizedShape({ object }: { object: SceneObject }) {
+  const [x, y, w, h] = object.box;
+  const style = { stroke: SEEN, strokeWidth: 1.5, dash: [5, 4], opacity: 0.9, listening: false };
+  const ends =
+    object.geom && "a" in object.geom ? (object.geom as { a: Point2; b: Point2 }) : undefined;
+  switch (object.kind) {
+    case "line":
+      return ends ? <Line points={[...ends.a, ...ends.b]} {...style} /> : null;
+    case "crossing":
+      return <Ellipse x={x} y={y} radiusX={5} radiusY={5} fill={SEEN} listening={false} />;
+    case "box":
+      return <Rect x={x} y={y} width={w} height={h} {...style} />;
+    case "circle":
+      return <Ellipse x={x + w / 2} y={y + h / 2} radiusX={w / 2} radiusY={h / 2} {...style} />;
+    case "arrow":
+      return ends ? (
+        <Arrow
+          points={[...ends.a, ...ends.b]}
+          pointerLength={10}
+          pointerWidth={10}
+          fill={SEEN}
+          {...style}
+        />
+      ) : null;
+    default:
+      return null;
+  }
+}
 
 /** The inner lines of an n × n board. */
 function BoardLines({ w, h, n }: { w: number; h: number; n: number }) {

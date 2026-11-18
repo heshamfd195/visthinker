@@ -32,14 +32,18 @@ export function toStroke(id: string, raw: RawPoint[], pen: PenStyle = PEN): Stro
   };
 }
 
-/** The filled outline perfect-freehand draws for these points, flat for a closed Konva.Line. */
-export function outline(raw: RawPoint[], width: number = PEN.width): number[] {
+/**
+ * The filled outline perfect-freehand draws for these points, flat for a closed Konva.Line.
+ * `last` marks a finished stroke, so the outline reaches its final point instead of lagging behind.
+ */
+export function outline(raw: RawPoint[], width: number = PEN.width, last = false): number[] {
   const input = raw.map((p) => [p.x, p.y, p.pressure]);
   return getStroke(input, {
     size: width * 1.6,
     thinning: 0.5,
     smoothing: 0.5,
     streamline: 0.4,
+    last,
   }).flat();
 }
 
