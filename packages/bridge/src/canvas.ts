@@ -1,5 +1,5 @@
-// How the bridge reaches the canvas tab. The WebSocket session (T16) implements it;
-// until a tab connects, every canvas call answers no_canvas (D90).
+// How the bridge reaches the canvas tab. The WebSocket session implements it; NO_CANVAS
+// stands in where no tab can ever connect, and every canvas call answers no_canvas (D90).
 import { ContractError, type BrowserCall } from "@visthinker/contract";
 
 export interface CanvasLink {
