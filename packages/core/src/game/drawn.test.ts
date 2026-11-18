@@ -55,12 +55,21 @@ function setup() {
     await settle();
     return [a.id, b.id];
   };
+  /** An X whose second stroke comes 0.9 s after the first (D110). */
+  const drawSlowX = async (cx: number, cy: number) => {
+    draw(line([cx - 30, cy - 30], [cx + 30, cy + 30]));
+    clock.advance(800);
+    await settle();
+    draw(line([cx + 30, cy - 30], [cx - 30, cy + 30]));
+    clock.advance(600);
+    await settle();
+  };
   const drawO = async (cx: number, cy: number) => {
     draw(ring(cx, cy, 30));
     clock.advance(600);
     await settle();
   };
-  return { story, scene, games, actor, drawX, drawO };
+  return { story, scene, games, actor, drawX, drawSlowX, drawO };
 }
 
 describe("playing by drawing (T31)", () => {
@@ -118,5 +127,18 @@ describe("playing by drawing (T31)", () => {
       winner: "user",
       line: ["c1", "c2", "c3"],
     });
+  });
+
+  it("D110: a slow X in a cell still plays your move once its second stroke arrives", async () => {
+    const t = setup();
+    // drawX's strokes are 100 ms apart; this one waits 0.9 s between them, like a real hand.
+    const { story } = t;
+    const before = story.all().length;
+    await t.drawSlowX(150, 150);
+    const move = story
+      .all()
+      .slice(before)
+      .find((e) => e.type === "mark");
+    expect(move).toMatchObject({ who: "user", target: "c5", detail: { shape: "X", via: "drawn" } });
   });
 });
