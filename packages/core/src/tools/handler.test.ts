@@ -23,11 +23,12 @@ const stroke = (id: string) => ({
 });
 
 function setup() {
-  const story = createStory(createManualClock());
+  const clock = createManualClock();
+  const story = createStory(clock);
   const scene = createSceneStore();
   const strokes = createStrokeStore();
-  const handle = createToolHandler({ story, scene, strokes });
-  return { story, scene, strokes, handle };
+  const handle = createToolHandler({ clock, story, scene, strokes });
+  return { clock, story, scene, strokes, handle };
 }
 
 describe("get_events (D77)", () => {
@@ -40,6 +41,83 @@ describe("get_events (D77)", () => {
     recordStroke(story, strokes, stroke("s2"));
     const next = TOOLS.get_events.result.parse(await handle("get_events", {}));
     expect(next.events.map((e) => e.target)).toEqual(["s2"]);
+  });
+});
+
+describe("wait_for_event (D25)", () => {
+  const wait = (h: ReturnType<typeof setup>["handle"], args: Record<string, unknown> = {}) =>
+    h("wait_for_event", args) as Promise<{
+      events: { seq: number; type: string }[];
+      timedOut: boolean;
+    }>;
+  // Let queued microtasks (the story waking its waiters) run; the core has no setTimeout.
+  const tick = async () => {
+    for (let i = 0; i < 5; i++) await new Promise<void>((r) => queueMicrotask(r));
+  };
+
+  it("answers at once when a matching event is already unread", async () => {
+    const { story, strokes, handle } = setup();
+    recordStroke(story, strokes, stroke("s1"));
+    const result = await wait(handle);
+    expect(result.timedOut).toBe(false);
+    expect(result.events.map((e) => e.seq)).toEqual([1]);
+  });
+
+  it("waits, then answers as soon as the user acts", async () => {
+    const { story, strokes, handle } = setup();
+    let answered = false;
+    const pending = wait(handle).then((r) => ((answered = true), r));
+    await tick();
+    expect(answered).toBe(false);
+    recordStroke(story, strokes, stroke("s1"));
+    const result = await pending;
+    expect(result).toMatchObject({ timedOut: false, events: [{ seq: 1, type: "stroke" }] });
+  });
+
+  it("ignores events that don't match the filter, and returns them with the match", async () => {
+    const { story, scene, strokes, handle } = setup();
+    let answered = false;
+    const pending = wait(handle, { types: ["place"], who: ["user"] }).then(
+      (r) => ((answered = true), r),
+    );
+    recordStroke(story, strokes, stroke("s1"));
+    story.append({ who: "claude", type: "place", target: "x" });
+    await tick();
+    expect(answered).toBe(false);
+    placeObject(story, scene, { kind: "box", box: [0, 0, 1, 1], color: "#222" });
+    const result = await pending;
+    expect(result.events.map((e) => e.type)).toEqual(["stroke", "place", "place"]);
+  });
+
+  it("times out on the session clock with whatever is unread", async () => {
+    const { clock, handle } = setup();
+    const pending = wait(handle, { timeoutMs: 5_000 });
+    clock.advance(4_999);
+    await tick();
+    clock.advance(1);
+    expect(await pending).toEqual({ events: [], timedOut: true });
+  });
+
+  it("moves the read cursor, so get_events after it is empty", async () => {
+    const { story, strokes, handle } = setup();
+    recordStroke(story, strokes, stroke("s1"));
+    await wait(handle);
+    expect(await handle("get_events", {})).toEqual({ events: [] });
+  });
+
+  it("one change wakes the waiter once, with every event it made", async () => {
+    const { story, handle } = setup();
+    const pending = wait(handle, { types: ["stroke"] });
+    story.append({ who: "user", type: "stroke", target: "s1" });
+    story.append({ who: "fastbrain", type: "recognized", target: "l1", cause: 1 });
+    const result = await pending;
+    expect(result.events.map((e) => e.type)).toEqual(["stroke", "recognized"]);
+  });
+
+  it("refuses a timeout under 1 s or over 5 min (D90)", async () => {
+    await expect(setup().handle("wait_for_event", { timeoutMs: 10 })).rejects.toMatchObject({
+      code: "bad_args",
+    });
   });
 });
 

@@ -50,7 +50,7 @@ export function createSession(options: SessionOptions = {}): Session {
   const bridge = options.bridgeUrl ? createWsTransport({ url: options.bridgeUrl }) : undefined;
   const transport = bridge ?? createMemoryTransport();
   // Claude's calls are answered by the core (D90).
-  transport.serve(createToolHandler({ story, scene, strokes }));
+  transport.serve(createToolHandler({ clock, story, scene, strokes }));
   return {
     clock,
     story,

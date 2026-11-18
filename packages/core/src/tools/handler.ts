@@ -7,12 +7,13 @@ import {
   type ParsedToolArgs,
   type ToolResult,
 } from "@visthinker/contract";
-import type { CallHandler } from "../ports/index.ts";
+import type { CallHandler, Clock } from "../ports/index.ts";
 import type { SceneStore } from "../scene/store.ts";
 import type { StrokeStore } from "../scene/strokes.ts";
 import type { Story } from "../scene/story.ts";
 
 export interface ToolDeps {
+  clock: Clock;
   story: Story;
   scene: SceneStore;
   strokes: StrokeStore;
@@ -21,17 +22,54 @@ export interface ToolDeps {
 type Handlers = { [C in BrowserCall]?: (args: ParsedToolArgs<C>) => Promise<ToolResult<C>> };
 
 const COMING: Partial<Record<BrowserCall, string>> = {
-  wait_for_event: "T20",
   act: "T21",
   say: "T21",
   ask: "T21",
   write_pack: "T24",
 };
 
-export function createToolHandler({ story, scene, strokes }: ToolDeps): CallHandler {
+export function createToolHandler({ clock, story, scene, strokes }: ToolDeps): CallHandler {
+  // Waiters wake once the whole change is in the story, not halfway through it: a stroke and
+  // what the Fast Brain makes of it arrive in the same read.
+  const waiters = new Set<() => void>();
+  let wakeQueued = false;
+  story.subscribe(() => {
+    if (wakeQueued) return;
+    wakeQueued = true;
+    queueMicrotask(() => {
+      wakeQueued = false;
+      for (const wake of [...waiters]) wake();
+    });
+  });
+
   const handlers: Handlers = {
     /** Only the events since the last read; the read moves the cursor (D77). */
     get_events: async () => ({ events: story.read() }),
+
+    /**
+     * Answers when something happens (D25): at once if a matching unread event exists, else when
+     * one arrives, else with timedOut. Returns every unread event and moves the cursor, like
+     * get_events, so nothing that happened while waiting is lost.
+     */
+    wait_for_event: ({ types, who, timeoutMs }) =>
+      new Promise((resolve) => {
+        const matches = () =>
+          story
+            .unread()
+            .some((e) => (!types || types.includes(e.type)) && (!who || who.includes(e.who)));
+        if (matches()) return resolve({ events: story.read(), timedOut: false });
+        const wake = () => {
+          if (!matches()) return;
+          cancel();
+          waiters.delete(wake);
+          resolve({ events: story.read(), timedOut: false });
+        };
+        const cancel = clock.after(timeoutMs, () => {
+          waiters.delete(wake);
+          resolve({ events: story.read(), timedOut: true });
+        });
+        waiters.add(wake);
+      }),
 
     /** The whole current scene (D77). */
     get_scene: async () => ({ objects: scene.all() }),

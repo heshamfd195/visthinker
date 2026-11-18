@@ -30,6 +30,23 @@ describe("Clock", () => {
     expect(clock.now()).toBe(150);
     expect(() => clock.advance(-1)).toThrow();
   });
+
+  it("fires timers in time order, each at its own moment, and a cancelled one never", () => {
+    const clock = createManualClock();
+    const fired: [string, number][] = [];
+    clock.after(300, () => fired.push(["late", clock.now()]));
+    clock.after(100, () => fired.push(["early", clock.now()]));
+    const cancel = clock.after(200, () => fired.push(["cancelled", clock.now()]));
+    cancel();
+    clock.advance(250);
+    expect(fired).toEqual([["early", 100]]);
+    clock.advance(100);
+    expect(fired).toEqual([
+      ["early", 100],
+      ["late", 300],
+    ]);
+    expect(clock.now()).toBe(350);
+  });
 });
 
 describe("Renderer", () => {
