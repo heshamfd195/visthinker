@@ -56,6 +56,13 @@ describe("transport (T18)", () => {
   });
 });
 
+describe("packs (T24)", () => {
+  it("the starter packs are built in (D74)", () => {
+    const session = createSession({ clock: createManualClock() });
+    expect(session.registry.names()).toEqual(["shapes", "tic-tac-toe"]);
+  });
+});
+
 describe("renderer (T13)", () => {
   it("each new event pushes the current scene to the screen", () => {
     const session = createSession({ clock: createManualClock() });

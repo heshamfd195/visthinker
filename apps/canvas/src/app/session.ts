@@ -4,12 +4,15 @@
 import {
   createMemoryPackSource,
   createMemoryTransport,
+  createPackRegistry,
   createSceneStore,
   createStory,
   createStrokeStore,
   createToolHandler,
+  STARTER_PACKS,
   type Actor,
   type Clock,
+  type PackRegistry,
   type PackSource,
   type SceneStore,
   type Story,
@@ -32,6 +35,8 @@ export interface Session {
   /** Set when the page was opened from the bridge's link. */
   bridge: WsTransport | undefined;
   packs: PackSource;
+  /** The packs loaded now: the starter packs (D74), and any Claude writes. */
+  registry: PackRegistry;
   /** Which ports still run on fakes, shown on the canvas until they're real. */
   fakes: string[];
 }
@@ -53,7 +58,8 @@ export function createSession(options: SessionOptions = {}): Session {
   const bridge = options.bridgeUrl ? createWsTransport({ url: options.bridgeUrl }) : undefined;
   const transport = bridge ?? createMemoryTransport();
   // Claude's calls are answered by the core (D90).
-  const handler = createToolHandler({ clock, story, scene, strokes });
+  const registry = createPackRegistry(STARTER_PACKS);
+  const handler = createToolHandler({ clock, packs: registry, story, scene, strokes });
   transport.serve(handler);
   return {
     clock,
@@ -65,6 +71,7 @@ export function createSession(options: SessionOptions = {}): Session {
     actor: handler.actor,
     bridge,
     packs: createMemoryPackSource(),
+    registry,
     fakes: bridge ? ["packs"] : ["transport", "packs"],
   };
 }
