@@ -179,9 +179,12 @@ describe("every call", () => {
   });
 
   it("a call not built yet names the task that brings it", async () => {
-    await expect(setup().handle("act", { actions: [] })).rejects.toMatchObject({
+    const pack = {
+      "pack.json": { name: "p", version: "0.1.0", contract: "0", match: {}, blocks: ["grid"] },
+    };
+    await expect(setup().handle("write_pack", { pack })).rejects.toMatchObject({
       code: "unknown_call",
-      message: expect.stringContaining("T21"),
+      message: expect.stringContaining("T24"),
     });
   });
 });

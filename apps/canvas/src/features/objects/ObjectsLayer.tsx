@@ -2,7 +2,7 @@ import type { Point2, SceneObject } from "@visthinker/contract";
 import type { PlaceInput } from "@visthinker/core";
 import type Konva from "konva";
 import { useRef, useState } from "react";
-import { Arrow, Ellipse, Group, Layer, Rect } from "react-konva";
+import { Arrow, Ellipse, Group, Layer, Rect, Text } from "react-konva";
 import type { Tool } from "../toolbar/index.ts";
 import { dragBox, isRealDrag } from "./objects.utils.ts";
 
@@ -139,9 +139,48 @@ function ObjectShape(props: {
           {...style}
         />
       )}
+      {/* A mark (X, O…) fills its cell; anything else Claude adds is a labelled, dashed note. */}
+      {object.kind === "mark" && (
+        <Text
+          width={w}
+          height={h}
+          text={object.label}
+          align="center"
+          verticalAlign="middle"
+          fontSize={Math.max(14, Math.min(w, h) * 0.7)}
+          fill={CLAUDE_COLOR}
+          listening={false}
+        />
+      )}
+      {!BUILT_IN.has(object.kind) && object.kind !== "mark" && (
+        <>
+          <Rect
+            width={w}
+            height={h}
+            cornerRadius={6}
+            dash={[6, 4]}
+            stroke={CLAUDE_COLOR}
+            strokeWidth={2}
+            fill="transparent"
+          />
+          <Text
+            width={w}
+            height={h}
+            padding={6}
+            text={object.label}
+            fontSize={13}
+            fill={CLAUDE_COLOR}
+            listening={false}
+          />
+        </>
+      )}
     </Group>
   );
 }
+
+/** Claude's ink: marks and notes it adds through act. */
+const CLAUDE_COLOR = "#7048e8";
+const BUILT_IN = new Set(["box", "circle", "arrow"]);
 
 function DraftShape({
   kind,

@@ -11,6 +11,7 @@ import type { CallHandler, Clock } from "../ports/index.ts";
 import type { SceneStore } from "../scene/store.ts";
 import type { StrokeStore } from "../scene/strokes.ts";
 import type { Story } from "../scene/story.ts";
+import { createActor, type Actor } from "./act.ts";
 
 export interface ToolDeps {
   clock: Clock;
@@ -22,13 +23,16 @@ export interface ToolDeps {
 type Handlers = { [C in BrowserCall]?: (args: ParsedToolArgs<C>) => Promise<ToolResult<C>> };
 
 const COMING: Partial<Record<BrowserCall, string>> = {
-  act: "T21",
-  say: "T21",
-  ask: "T21",
   write_pack: "T24",
 };
 
-export function createToolHandler({ clock, story, scene, strokes }: ToolDeps): CallHandler {
+export interface ToolHandler extends CallHandler {
+  /** The same actor the act tool uses, for the canvas to send the user's answers to. */
+  actor: Actor;
+}
+
+export function createToolHandler({ clock, story, scene, strokes }: ToolDeps): ToolHandler {
+  const actor = createActor({ story, scene });
   // Waiters wake once the whole change is in the story, not halfway through it: a stroke and
   // what the Fast Brain makes of it arrive in the same read.
   const waiters = new Set<() => void>();
@@ -71,6 +75,29 @@ export function createToolHandler({ clock, story, scene, strokes }: ToolDeps): C
         waiters.add(wake);
       }),
 
+    /** Change the canvas by id: 1 to 10 actions, all or nothing (D91). */
+    act: async (args) => actor.act(args),
+
+    /** A short message on the canvas, optionally next to an object. */
+    say: async ({ text, target }) => ({
+      seq: story.append({
+        who: "claude",
+        type: "say",
+        ...(target ? { target: mustExist(target) } : {}),
+        detail: { text },
+      }).seq,
+    }),
+
+    /** A question, maybe with choices. The answer comes later as an answer event whose cause is this seq. */
+    ask: async ({ text, choices, target }) => ({
+      seq: story.append({
+        who: "claude",
+        type: "ask",
+        ...(target ? { target: mustExist(target) } : {}),
+        detail: { text, ...(choices ? { choices } : {}) },
+      }).seq,
+    }),
+
     /** The whole current scene (D77). */
     get_scene: async () => ({ objects: scene.all() }),
 
@@ -84,7 +111,13 @@ export function createToolHandler({ clock, story, scene, strokes }: ToolDeps): C
     },
   };
 
-  return async (call, args) => {
+  function mustExist(id: string): string {
+    if (!scene.has(id) && !strokes.has(id))
+      throw new ContractError("unknown_target", `no object ${id}`);
+    return id;
+  }
+
+  const handle = async (call: BrowserCall, args: unknown) => {
     const handler = handlers[call] as ((a: unknown) => Promise<unknown>) | undefined;
     if (!handler) {
       const task = COMING[call];
@@ -97,4 +130,5 @@ export function createToolHandler({ clock, story, scene, strokes }: ToolDeps): C
     if (!parsed.success) throw new ContractError("bad_args", parsed.error.message.slice(0, 900));
     return handler(parsed.data);
   };
+  return Object.assign(handle, { actor });
 }
