@@ -43,7 +43,13 @@ export interface Games {
   markIn(cellId: string): SceneObject | undefined;
   movesMade(game: Game): number;
   /** Puts a mark in a cell, then ends the game if the mark wins or fills the board. */
-  placeMark(cell: SceneObject, shape: string, by: Who, cause: number | undefined): VisEvent;
+  placeMark(
+    cell: SceneObject,
+    shape: string,
+    by: Who,
+    cause: number | undefined,
+    drawn?: string[],
+  ): VisEvent;
   /** The user taps the canvas: on an empty cell, on their turn, it's their move. */
   tap(at: Point2): VisEvent | undefined;
 }
@@ -85,7 +91,7 @@ export function createGames({
     }).seq;
   };
 
-  const placeMark: Games["placeMark"] = (cell, shape, by, cause) => {
+  const placeMark: Games["placeMark"] = (cell, shape, by, cause, drawn) => {
     const id = scene.nextId("m");
     scene.add(
       {
@@ -97,6 +103,8 @@ export function createGames({
         relations: [{ type: "inside", to: cell.id }],
         box: [...cell.box],
         confidence: 1,
+        // The strokes it replaces, when it was drawn: the canvas hides that ink under the mark.
+        ...(drawn?.length ? { strokes: drawn } : {}),
       },
       by,
     );
@@ -111,6 +119,37 @@ export function createGames({
     if (game) checkEnd(game, place);
     return place;
   };
+
+  /**
+   * A symbol read inside a cell (T31): the user's mark, on their turn, in an empty cell, is their
+   * move. The symbol gives way to a clean mark. Anything else stays a symbol: never corrected.
+   */
+  const playDrawn = (recognized: VisEvent) => {
+    const symbol = recognized.target ? scene.get(recognized.target) : undefined;
+    const inside = symbol?.relations.find((r) => r.type === "inside")?.to;
+    const cell = inside ? scene.get(inside) : undefined;
+    if (!symbol || symbol.kind !== "symbol" || !cell || cell.kind !== "cell") return;
+    const game = gameOf(cell.id);
+    if (!game || game.ended !== undefined || markIn(cell.id)) return;
+    const shape = game.turns?.markFor("user") ?? "X";
+    const usersTurn = !game.turns || game.turns.whoseTurn(movesMade(game)) === "user";
+    if (symbol.label !== shape || !usersTurn) return;
+    scene.remove(symbol.id);
+    const move = story.append({
+      who: "user",
+      type: "mark",
+      target: cell.id,
+      detail: { shape, via: "drawn" },
+      cause: recognized.seq,
+    });
+    placeMark(cell, shape, "user", move.seq, symbol.strokes ?? []);
+  };
+
+  // Once the whole change is in the story, not halfway through it.
+  story.subscribe((event) => {
+    if (event.type === "recognized" && event.detail?.["kind"] === "symbol")
+      queueMicrotask(() => playDrawn(event));
+  });
 
   const rulesOf = (packName: string) => {
     const rules = packs.get(packName)?.pack["rules.json"];
