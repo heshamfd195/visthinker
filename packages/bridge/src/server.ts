@@ -9,11 +9,12 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { NO_CANVAS, type CanvasLink } from "./canvas.ts";
 import { log } from "./log.ts";
+import { Session } from "./session/session.ts";
 import { ALL_TOOLS } from "./tools/index.ts";
 import type { BridgeContext, ToolDef } from "./tools/types.ts";
 
 export interface BridgeOptions {
-  /** How calls reach the canvas. Default: no canvas, until the session (T16) connects one. */
+  /** How calls reach the canvas: the session (T16), or no canvas in tests that don't need one. */
   canvas?: CanvasLink;
 }
 
@@ -66,13 +67,18 @@ export function createBridge(options: BridgeOptions = {}): Bridge {
 }
 
 async function main(): Promise<void> {
-  const bridge = createBridge();
-  const shutdown = () => void bridge.close().finally(() => process.exit(0));
+  const session = await Session.start({
+    port: process.env.VISTHINKER_PORT ? Number(process.env.VISTHINKER_PORT) : undefined,
+    extraOrigins: process.env.VISTHINKER_EXTRA_ORIGINS?.split(",").filter(Boolean),
+  });
+  const bridge = createBridge({ canvas: session });
+  const shutdown = () =>
+    void Promise.all([bridge.close(), session.close()]).finally(() => process.exit(0));
   process.stdin.on("close", shutdown);
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
   await bridge.mcp.connect(new StdioServerTransport());
-  log("MCP ready on stdio");
+  log(`MCP ready on stdio; canvas link ${session.url}`);
 }
 
 const isMain =
