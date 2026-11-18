@@ -7,11 +7,16 @@ import type { Duplex } from "node:stream";
 import { WebSocketServer } from "ws";
 import type { CanvasLink } from "../canvas.ts";
 import { log } from "../log.ts";
+import { DEFAULT_CANVAS_DIR, serveCanvas } from "./static.ts";
 import { Tab } from "./tab.ts";
 
 export interface SessionOptions {
   /** 0 picks a free port. */
   port?: number;
+  /** The built canvas to serve. Default: apps/canvas/dist in the repo. */
+  canvasDir?: string;
+  /** After open_canvas opens a tab, how long to wait for it before opening another. */
+  openGraceMs?: number;
   /** Extra Origins allowed besides the bridge's own, e.g. a Vite dev server. */
   extraOrigins?: string[];
   callTimeoutMs?: number;
@@ -23,6 +28,8 @@ export const HOST = "127.0.0.1";
 /** WebSocket close codes the canvas can show, since a browser can't read an HTTP status. */
 export const CLOSE_BAD_TOKEN = 4401;
 export const CLOSE_TAB_TAKEN = 4409;
+/** open_canvas doesn't open another tab while the last one may still be loading. */
+export const OPEN_GRACE_MS = 20_000;
 export const BAD_TOKEN_REASON = "this canvas link is not valid for this session";
 export const TAB_TAKEN_REASON = "another canvas tab is connected";
 
@@ -40,14 +47,25 @@ export class Session implements CanvasLink {
   #tab: Tab | undefined;
   #extraOrigins: string[];
   #port = 0;
+  #openGraceMs: number;
+  #openedAt: number | undefined;
 
   private constructor(options: SessionOptions) {
     this.callTimeoutMs = options.callTimeoutMs ?? CALL_TIMEOUT_MS;
     this.#extraOrigins = options.extraOrigins ?? [];
-    // Serving the built canvas comes with open_canvas (T17); until then HTTP only upgrades.
-    this.#http = createServer((_req, res) => {
-      res.writeHead(404, { "Content-Type": "text/plain" });
-      res.end("The Visthinker canvas is served from here once open_canvas exists (T17).\n");
+    this.#openGraceMs = options.openGraceMs ?? OPEN_GRACE_MS;
+    const serve = serveCanvas(options.canvasDir ?? DEFAULT_CANVAS_DIR);
+    this.#http = createServer((req, res) => {
+      // Only this computer's own names: a page that rebinds its DNS to 127.0.0.1 is refused.
+      if (!this.#hostAllowed(req.headers.host)) {
+        res.writeHead(421, { "Content-Type": "text/plain" }).end("Misdirected request\n");
+        return;
+      }
+      serve(req, res).catch((error) => {
+        log("http error:", String(error));
+        if (!res.headersSent) res.writeHead(500);
+        res.end();
+      });
     });
     this.#http.on("upgrade", (req, socket, head) => this.#onUpgrade(req, socket, head));
   }
@@ -84,6 +102,17 @@ export class Session implements CanvasLink {
     return this.#tab?.ready ?? false;
   }
 
+  /**
+   * Whether open_canvas should open a browser tab now: not while a tab is connected, nor while
+   * one opened in the last OPEN_GRACE_MS hasn't connected yet. Records the opening when true.
+   */
+  claimOpen(now = Date.now()): boolean {
+    if (this.#tab) return false;
+    if (this.#openedAt !== undefined && now - this.#openedAt < this.#openGraceMs) return false;
+    this.#openedAt = now;
+    return true;
+  }
+
   /** Passes one call to the canvas and waits for its answer (D90). */
   call(call: BrowserCall, args: unknown, timeoutMs = this.callTimeoutMs): Promise<unknown> {
     if (!this.#tab?.ready) {
@@ -102,6 +131,10 @@ export class Session implements CanvasLink {
     await new Promise<void>((resolve) => this.#http.close(() => resolve()));
   }
 
+  #hostAllowed(host: string | undefined): boolean {
+    return host === `${HOST}:${this.#port}` || host === `localhost:${this.#port}`;
+  }
+
   #tokenMatches(given: string | null): boolean {
     if (!given) return false;
     const a = Buffer.from(given);
@@ -110,6 +143,7 @@ export class Session implements CanvasLink {
   }
 
   #onUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer): void {
+    if (!this.#hostAllowed(req.headers.host)) return refuse(socket, 421, "Misdirected Request");
     // D82 ③: Origin first, so another website gets a bare 403 and learns nothing else.
     const origin = req.headers.origin;
     if (!origin || (origin !== this.origin && !this.#extraOrigins.includes(origin))) {
@@ -131,6 +165,7 @@ export class Session implements CanvasLink {
         if (this.#tab === tab) this.#tab = undefined;
       });
       this.#tab = tab;
+      this.#openedAt = undefined;
     });
   }
 }

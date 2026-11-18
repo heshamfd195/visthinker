@@ -1,5 +1,4 @@
 import { CONTRACT_VERSION, ContractError, Request as BridgeRequest } from "@visthinker/contract";
-import { request } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 import { WebSocket } from "ws";
 import { CLOSE_BAD_TOKEN, CLOSE_TAB_TAKEN, HOST, Session, type SessionOptions } from "./session.ts";
@@ -169,15 +168,18 @@ describe("handshake and calls (D90)", () => {
   });
 });
 
-describe("plain HTTP", () => {
-  it("answers 404 until the canvas is served (T17)", async () => {
+describe("open_canvas guard", () => {
+  it("opens once, then waits out the grace period before opening again", async () => {
+    const session = await start({ openGraceMs: 20_000 });
+    expect(session.claimOpen(1_000)).toBe(true);
+    expect(session.claimOpen(1_001)).toBe(false);
+    expect(session.claimOpen(20_999)).toBe(false);
+    expect(session.claimOpen(21_000)).toBe(true);
+  });
+
+  it("never opens while a tab is connected", async () => {
     const session = await start();
-    const status = await new Promise<number | undefined>((resolve) => {
-      request({ host: HOST, port: session.port, path: "/" }, (res) => {
-        res.resume();
-        resolve(res.statusCode);
-      }).end();
-    });
-    expect(status).toBe(404);
+    expect((await knock(session)).open).toBe(true);
+    expect(session.claimOpen()).toBe(false);
   });
 });

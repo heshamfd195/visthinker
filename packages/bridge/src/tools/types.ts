@@ -7,8 +7,16 @@ import {
 } from "@visthinker/contract";
 import type { CanvasLink } from "../canvas.ts";
 
+/** Where the canvas is served, and whether a browser tab should open now (the session). */
+export interface CanvasOpener {
+  readonly url: string;
+  claimOpen(): boolean;
+}
+
 export interface BridgeContext {
   canvas: CanvasLink;
+  opener?: CanvasOpener;
+  openBrowser: (url: string) => void | Promise<void>;
 }
 
 /** One MCP tool. Its args and result are the contract's TOOLS[name] schemas. */
