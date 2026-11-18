@@ -2,11 +2,12 @@
 // per session, an Origin check, and at most one tab at a time. Implements CanvasLink (D90).
 import { CALL_TIMEOUT_MS, ContractError, type BrowserCall } from "@visthinker/contract";
 import { randomBytes, timingSafeEqual } from "node:crypto";
-import { createServer, type IncomingMessage, type Server } from "node:http";
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
 import { WebSocketServer } from "ws";
 import type { CanvasLink } from "../canvas.ts";
 import { log } from "../log.ts";
+import type { ApiHandler } from "./http-api.ts";
 import { DEFAULT_CANVAS_DIR, serveCanvas } from "./static.ts";
 import { Tab } from "./tab.ts";
 
@@ -49,6 +50,7 @@ export class Session implements CanvasLink {
   #port = 0;
   #openGraceMs: number;
   #openedAt: number | undefined;
+  #api: ApiHandler | undefined;
 
   private constructor(options: SessionOptions) {
     this.callTimeoutMs = options.callTimeoutMs ?? CALL_TIMEOUT_MS;
@@ -59,6 +61,14 @@ export class Session implements CanvasLink {
       // Only this computer's own names: a page that rebinds its DNS to 127.0.0.1 is refused.
       if (!this.#hostAllowed(req.headers.host)) {
         res.writeHead(421, { "Content-Type": "text/plain" }).end("Misdirected request\n");
+        return;
+      }
+      if (req.url?.startsWith("/api/")) {
+        this.#serveApi(req, res).catch((error) => {
+          log("api error:", String(error));
+          if (!res.headersSent) res.writeHead(500);
+          res.end();
+        });
         return;
       }
       serve(req, res).catch((error) => {
@@ -113,6 +123,11 @@ export class Session implements CanvasLink {
     return true;
   }
 
+  /** The canvas's own API: projects, settings and packs (D142 · D143). */
+  useApi(handler: ApiHandler): void {
+    this.#api = handler;
+  }
+
   /** Passes one call to the canvas and waits for its answer (D90). */
   call(call: BrowserCall, args: unknown, timeoutMs = this.callTimeoutMs): Promise<unknown> {
     if (!this.#tab?.ready) {
@@ -129,6 +144,38 @@ export class Session implements CanvasLink {
     this.#wss.close();
     this.#http.closeAllConnections();
     await new Promise<void>((resolve) => this.#http.close(() => resolve()));
+  }
+
+  /** Same rules as the WebSocket (D82): an allowed Origin and this session's token. */
+  async #serveApi(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const origin = req.headers.origin;
+    if (origin !== undefined && origin !== this.origin && !this.#extraOrigins.includes(origin)) {
+      res.writeHead(403).end();
+      return;
+    }
+    if (origin !== undefined) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Vary", "Origin");
+      res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+      res.setHeader("Access-Control-Allow-Methods", "GET, PUT, POST");
+    }
+    res.setHeader("Cache-Control", "no-store");
+    if (req.method === "OPTIONS") {
+      res.writeHead(204).end();
+      return;
+    }
+    const auth = req.headers.authorization;
+    const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+    if (!this.#tokenMatches(token)) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: { code: "not_allowed", message: BAD_TOKEN_REASON } }));
+      return;
+    }
+    if (!this.#api) {
+      res.writeHead(503).end();
+      return;
+    }
+    await this.#api(req, res);
   }
 
   #hostAllowed(host: string | undefined): boolean {

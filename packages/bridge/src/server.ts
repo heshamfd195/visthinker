@@ -10,6 +10,7 @@ import { NO_CANVAS, type CanvasLink } from "./canvas.ts";
 import { log } from "./log.ts";
 import { createPackApi, type PackApi } from "./packs/api.ts";
 import { PackStore, visthinkerHome } from "./packs/store.ts";
+import { createHttpApi } from "./session/http-api.ts";
 import { Session } from "./session/session.ts";
 import { ALL_TOOLS } from "./tools/index.ts";
 import type { BridgeContext, CanvasOpener, ToolDef } from "./tools/types.ts";
@@ -29,6 +30,8 @@ export interface BridgeOptions {
 
 export interface Bridge {
   mcp: McpServer;
+  /** What every tool runs with; the canvas's HTTP API shares it. */
+  ctx: BridgeContext;
   close: () => Promise<void>;
 }
 
@@ -78,7 +81,7 @@ export function createBridge(options: BridgeOptions = {}): Bridge {
   };
   const mcp = new McpServer({ name: "visthinker", version: "0.0.0" });
   for (const name of TOOL_NAMES) register(mcp, ALL_TOOLS[name], ctx);
-  return { mcp, close: () => mcp.close() };
+  return { mcp, ctx, close: () => mcp.close() };
 }
 
 export interface MainOptions {
@@ -105,6 +108,7 @@ export async function main(options: MainOptions = {}): Promise<void> {
     // VISTHINKER_NO_OPEN logs the link instead of opening a browser (tests, headless use).
     ...(process.env.VISTHINKER_NO_OPEN ? { openBrowser: (url: string) => log(`open ${url}`) } : {}),
   });
+  session.useApi(createHttpApi(bridge.ctx, visthinkerHome()));
   const shutdown = () =>
     void Promise.all([bridge.close(), session.close()]).finally(() => process.exit(0));
   process.stdin.on("close", shutdown);
