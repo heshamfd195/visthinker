@@ -11,6 +11,7 @@ import { Layer, Stage, Text } from "react-konva";
 import { InkLayer } from "../features/ink/index.ts";
 import { ObjectsLayer } from "../features/objects/index.ts";
 import { Panel, PANEL_WIDTH, StoryPanel, usePanels } from "../features/panels/index.ts";
+import { MessageStrip } from "../features/talk/index.ts";
 import { Toolbar, useToolbar } from "../features/toolbar/index.ts";
 import { bridgeUrlFromPage } from "../adapters/ws-transport/index.ts";
 import { createSession } from "./session.ts";
@@ -104,6 +105,10 @@ export function App() {
           </Layer>
         </Stage>
         <Toolbar />
+        <MessageStrip
+          events={events}
+          onAnswer={(seq, choice) => session.actor.answer(seq, choice)}
+        />
       </main>
       <Panel id="story" side="right" title={`Story · ${events.length}`}>
         <StoryPanel events={events} />

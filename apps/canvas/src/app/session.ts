@@ -8,6 +8,7 @@ import {
   createStory,
   createStrokeStore,
   createToolHandler,
+  type Actor,
   type Clock,
   type PackSource,
   type SceneStore,
@@ -26,6 +27,8 @@ export interface Session {
   strokes: StrokeStore;
   renderer: ReactRenderer;
   transport: Transport;
+  /** Applies the user's answers to Claude's asks and proposals. */
+  actor: Actor;
   /** Set when the page was opened from the bridge's link. */
   bridge: WsTransport | undefined;
   packs: PackSource;
@@ -50,7 +53,8 @@ export function createSession(options: SessionOptions = {}): Session {
   const bridge = options.bridgeUrl ? createWsTransport({ url: options.bridgeUrl }) : undefined;
   const transport = bridge ?? createMemoryTransport();
   // Claude's calls are answered by the core (D90).
-  transport.serve(createToolHandler({ clock, story, scene, strokes }));
+  const handler = createToolHandler({ clock, story, scene, strokes });
+  transport.serve(handler);
   return {
     clock,
     story,
@@ -58,6 +62,7 @@ export function createSession(options: SessionOptions = {}): Session {
     strokes,
     renderer,
     transport,
+    actor: handler.actor,
     bridge,
     packs: createMemoryPackSource(),
     fakes: bridge ? ["packs"] : ["transport", "packs"],
