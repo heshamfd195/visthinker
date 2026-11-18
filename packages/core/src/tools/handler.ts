@@ -12,6 +12,7 @@ import type { SceneStore } from "../scene/store.ts";
 import type { StrokeStore } from "../scene/strokes.ts";
 import type { Story } from "../scene/story.ts";
 import type { PackRegistry } from "../packs/loader.ts";
+import { createGames, type Games } from "../game/games.ts";
 import { createActor, type Actor } from "./act.ts";
 
 export interface ToolDeps {
@@ -29,10 +30,13 @@ const COMING: Partial<Record<BrowserCall, string>> = {};
 export interface ToolHandler extends CallHandler {
   /** The same actor the act tool uses, for the canvas to send the user's answers to. */
   actor: Actor;
+  /** The games on the canvas: the canvas places boards and sends the user's taps here. */
+  games: Games;
 }
 
 export function createToolHandler({ clock, packs, story, scene, strokes }: ToolDeps): ToolHandler {
-  const actor = createActor({ story, scene });
+  const games = createGames({ story, scene, packs });
+  const actor = createActor({ story, scene, games });
   // Waiters wake once the whole change is in the story, not halfway through it: a stroke and
   // what the Fast Brain makes of it arrive in the same read.
   const waiters = new Set<() => void>();
@@ -138,5 +142,5 @@ export function createToolHandler({ clock, packs, story, scene, strokes }: ToolD
     if (!parsed.success) throw new ContractError("bad_args", parsed.error.message.slice(0, 900));
     return handler(parsed.data);
   };
-  return Object.assign(handle, { actor });
+  return Object.assign(handle, { actor, games });
 }

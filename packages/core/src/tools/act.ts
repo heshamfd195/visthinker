@@ -1,7 +1,7 @@
 // act (D91): Claude names targets by id, never pixels, and the Fast Brain decides where things go
 // (D24). Every action is checked first and only then applied, so a batch is all or nothing.
 // Moving or removing the user's own drawing becomes a proposal the user accepts (Policy ✅ 9).
-// Pack rules (whose turn, which mark) arrive with the blocks in T22.
+// A mark follows the pack's turns, and a winning or last mark ends the game (T25).
 import {
   ContractError,
   type ActArgs,
@@ -12,12 +12,13 @@ import {
   type VisEvent,
   type Who,
 } from "@visthinker/contract";
+import type { Game, Games } from "../game/games.ts";
 import type { SceneStore } from "../scene/store.ts";
 import type { Story } from "../scene/story.ts";
 
 type Applied = ActResult["applied"][number];
 type Step = (cause: number | undefined) => Applied;
-type Batch = { marked: Set<string> };
+type Batch = { marked: Set<string>; moves: Map<Game, number> };
 
 /** Kinds only the Fast Brain or a pack makes: Claude marks a cell, it doesn't add one. */
 const RESERVED_KINDS = new Set(["mark", "cell", "board"]);
@@ -28,15 +29,20 @@ export interface Actor {
   answer(askSeq: number, choice: string): VisEvent | undefined;
 }
 
-export function createActor({ story, scene }: { story: Story; scene: SceneStore }): Actor {
+export function createActor({
+  story,
+  scene,
+  games,
+}: {
+  story: Story;
+  scene: SceneStore;
+  games: Games;
+}): Actor {
   const mustExist = (id: string): SceneObject => {
     const object = scene.get(id);
     if (!object) throw new ContractError("unknown_target", `no object ${id}`);
     return object;
   };
-
-  const markIn = (cellId: string) =>
-    scene.all().find((o) => o.kind === "mark" && o.relations.some((r) => r.to === cellId));
 
   const lastUserSeq = () => [...story.all()].reverse().find((e) => e.who === "user")?.seq;
 
@@ -89,32 +95,30 @@ export function createActor({ story, scene }: { story: Story; scene: SceneStore 
         if (target.kind !== "cell") {
           throw new ContractError("not_allowed", `${target.id} is a ${target.kind}, not a cell`);
         }
-        if (markIn(target.id) || batch.marked.has(target.id)) {
+        if (games.markIn(target.id) || batch.marked.has(target.id)) {
           throw new ContractError("not_allowed", `${target.id} is already marked`);
+        }
+        // The pack's turns decide whose move it is and which mark Claude makes (D80).
+        const game = games.gameOf(target.id);
+        if (game?.ended !== undefined) throw new ContractError("not_allowed", "the game is over");
+        if (game?.turns) {
+          const moves = batch.moves.get(game) ?? games.movesMade(game);
+          const turn = game.turns.whoseTurn(moves);
+          if (turn !== "claude") {
+            throw new ContractError("not_allowed", `it's the ${turn}'s turn, not claude's`);
+          }
+          const shape = game.turns.markFor("claude");
+          if (shape && shape !== action.detail.shape) {
+            throw new ContractError(
+              "not_allowed",
+              `claude plays ${shape}, not ${action.detail.shape}`,
+            );
+          }
+          batch.moves.set(game, moves + 1);
         }
         batch.marked.add(target.id);
         return (cause) => {
-          const id = scene.nextId("m");
-          scene.add(
-            {
-              id,
-              kind: "mark",
-              label: action.detail.shape,
-              pack: target.pack,
-              parts: [],
-              relations: [{ type: "inside", to: target.id }],
-              box: [...target.box],
-              confidence: 1,
-            },
-            "claude",
-          );
-          const e = emit({
-            who: "fastbrain",
-            type: "place",
-            target: target.id,
-            detail: { shape: action.detail.shape, by: "claude", mark: id },
-            cause,
-          });
+          const e = games.placeMark(target, action.detail.shape, "claude", cause);
           return { seq: e.seq, type: "place", target: target.id };
         };
       }
@@ -194,7 +198,7 @@ export function createActor({ story, scene }: { story: Story; scene: SceneStore 
   return {
     act({ actions }) {
       // Check every action first, then apply them in order: all or nothing (D91).
-      const batch: Batch = { marked: new Set() };
+      const batch: Batch = { marked: new Set(), moves: new Map() };
       const steps = actions.map((action) => plan(action, batch));
       const cause = lastUserSeq();
       return { applied: steps.map((step) => step(cause)) };
