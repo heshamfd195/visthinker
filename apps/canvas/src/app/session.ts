@@ -7,11 +7,13 @@ import {
   createMemoryTransport,
   createSceneStore,
   createStory,
+  createStrokeStore,
   type Clock,
   type PackSource,
   type Renderer,
   type SceneStore,
   type Story,
+  type StrokeStore,
   type Transport,
 } from "@visthinker/core";
 import { createSystemClock } from "../adapters/system-clock/index.ts";
@@ -20,6 +22,7 @@ export interface Session {
   clock: Clock;
   story: Story;
   scene: SceneStore;
+  strokes: StrokeStore;
   renderer: Renderer;
   transport: Transport;
   packs: PackSource;
@@ -32,6 +35,7 @@ export function createSession(clock: Clock = createSystemClock()): Session {
     clock,
     story: createStory(clock),
     scene: createSceneStore(),
+    strokes: createStrokeStore(),
     renderer: createMemoryRenderer(),
     transport: createMemoryTransport(),
     packs: createMemoryPackSource(),
