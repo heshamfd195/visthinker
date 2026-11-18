@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+
+# builds and caches
+dist/
+build/
+.vite/
+.turbo/
+*.tsbuildinfo
+
+# tests
+coverage/
+playwright-report/
+test-results/
+
+# secrets: never commit keys
+.env
+.env.*
+!.env.example
+
+# logs and OS files
+*.log
+.DS_Store
