@@ -1,7 +1,7 @@
 import type { Point2, SceneObject } from "@visthinker/contract";
 import type { PlaceInput } from "@visthinker/core";
 import type Konva from "konva";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Arrow, Ellipse, Group, Layer, Rect } from "react-konva";
 import type { Tool } from "../toolbar/index.ts";
 import { dragBox, isRealDrag } from "./objects.utils.ts";
@@ -19,6 +19,8 @@ interface Props {
 
 const SHAPE_TOOLS: Tool[] = ["box", "circle", "arrow"];
 
+type Draft = { from: Point2; to: Point2 };
+
 /** Draws pre-built objects from the scene, places new ones, and moves them with the move tool. */
 export function ObjectsLayer({
   width,
@@ -30,7 +32,11 @@ export function ObjectsLayer({
   onPlace,
   onMove,
 }: Props) {
-  const [draft, setDraft] = useState<{ from: Point2; to: Point2 } | null>(null);
+  // The drag lives in a ref: pointer events can arrive faster than React re-renders, and a
+  // handler reading state would see the drag as it was at the last render (a fast drag got lost).
+  // The state copy only drives the dashed preview.
+  const drag = useRef<Draft | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
   const placing = SHAPE_TOOLS.includes(tool);
 
   const at = (e: Konva.KonvaEventObject<PointerEvent>): Point2 | null => {
@@ -38,17 +44,23 @@ export function ObjectsLayer({
     return p ? [p.x, p.y] : null;
   };
 
+  const update = (next: Draft | null) => {
+    drag.current = next;
+    setDraft(next);
+  };
+
   const finish = () => {
-    if (draft && isRealDrag(draft.from, draft.to) && placing) {
+    const done = drag.current;
+    if (done && isRealDrag(done.from, done.to) && placing) {
       const kind = tool as PlaceInput["kind"];
       onPlace({
         kind,
-        box: dragBox(draft.from, draft.to),
+        box: dragBox(done.from, done.to),
         color,
-        ...(kind === "arrow" ? { ends: { a: draft.from, b: draft.to } } : {}),
+        ...(kind === "arrow" ? { ends: { a: done.from, b: done.to } } : {}),
       });
     }
-    setDraft(null);
+    update(null);
   };
 
   return (
@@ -69,11 +81,11 @@ export function ObjectsLayer({
           height={height}
           onPointerDown={(e) => {
             const p = at(e);
-            if (p) setDraft({ from: p, to: p });
+            if (p) update({ from: p, to: p });
           }}
           onPointerMove={(e) => {
             const p = at(e);
-            if (p && draft) setDraft({ ...draft, to: p });
+            if (p && drag.current) update({ ...drag.current, to: p });
           }}
           onPointerUp={finish}
           onPointerLeave={finish}

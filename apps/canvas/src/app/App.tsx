@@ -10,6 +10,7 @@ import { useCallback, useMemo } from "react";
 import { Layer, Stage, Text } from "react-konva";
 import { InkLayer } from "../features/ink/index.ts";
 import { ObjectsLayer } from "../features/objects/index.ts";
+import { Panel, PANEL_WIDTH, StoryPanel, usePanels } from "../features/panels/index.ts";
 import { Toolbar, useToolbar } from "../features/toolbar/index.ts";
 import { createSession } from "./session.ts";
 import { useStoryVersion } from "./useStoryVersion.ts";
@@ -17,13 +18,18 @@ import { useWindowSize } from "./useWindowSize.ts";
 
 export function App() {
   const session = useMemo(() => createSession(), []);
-  const { width, height } = useWindowSize();
+  const screen = useWindowSize();
+  const storyOpen = usePanels((s) => s.open["story"] ?? false);
+  // The canvas takes what the open panels leave.
+  const width = screen.width - (storyOpen ? PANEL_WIDTH : 0);
+  const height = screen.height;
   const { tool, color } = useToolbar();
   const version = useStoryVersion(session.story);
 
   // The view re-reads the scene and colours from the core each time the story grows.
   const objects = useMemo(() => session.scene.all(), [session, version]);
-  const colors = useMemo(() => colorsFromStory(session.story.all()), [session, version]);
+  const events = useMemo(() => session.story.all(), [session, version]);
+  const colors = useMemo(() => colorsFromStory(events), [events]);
 
   const now = useCallback(() => session.clock.now(), [session]);
   const nextId = useCallback(() => session.strokes.nextId(), [session]);
@@ -42,38 +48,43 @@ export function App() {
   );
 
   return (
-    <>
-      <Stage width={width} height={height} style={{ touchAction: "none" }}>
-        <InkLayer
-          width={width}
-          height={height}
-          now={now}
-          nextId={nextId}
-          onStroke={onStroke}
-          color={color}
-          enabled={tool === "pen"}
-        />
-        <ObjectsLayer
-          width={width}
-          height={height}
-          objects={objects}
-          colors={colors}
-          tool={tool}
-          color={color}
-          onPlace={onPlace}
-          onMove={onMove}
-        />
-        <Layer listening={false}>
-          <Text
-            x={16}
-            y={height - 28}
-            text={`events: ${version} · fakes: ${session.fakes.join(", ")}`}
-            fontSize={12}
-            fill="#999"
+    <div style={{ position: "relative", display: "flex", height: "100%" }}>
+      <main style={{ position: "relative", flex: 1, minWidth: 0 }}>
+        <Stage width={width} height={height} style={{ touchAction: "none" }}>
+          <InkLayer
+            width={width}
+            height={height}
+            now={now}
+            nextId={nextId}
+            onStroke={onStroke}
+            color={color}
+            enabled={tool === "pen"}
           />
-        </Layer>
-      </Stage>
-      <Toolbar />
-    </>
+          <ObjectsLayer
+            width={width}
+            height={height}
+            objects={objects}
+            colors={colors}
+            tool={tool}
+            color={color}
+            onPlace={onPlace}
+            onMove={onMove}
+          />
+          <Layer listening={false}>
+            <Text
+              x={16}
+              y={height - 28}
+              text={`events: ${version} · fakes: ${session.fakes.join(", ")}`}
+              fontSize={12}
+              fill="#999"
+            />
+          </Layer>
+        </Stage>
+        <Toolbar />
+      </main>
+      <Panel id="story" side="right" title={`Story · ${events.length}`}>
+        <StoryPanel events={events} />
+      </Panel>
+    </div>
   );
 }
