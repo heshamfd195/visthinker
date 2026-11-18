@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import type { CanvasLink } from "./canvas.ts";
+import type { PackApi } from "./packs/api.ts";
 import { PackStore } from "./packs/store.ts";
 import { createBridge, type Bridge } from "./server.ts";
 
@@ -19,10 +20,11 @@ const open: Array<{ bridge: Bridge; client: Client }> = [];
 /** Packs in a temp home, so tests never touch ~/.visthinker. */
 const tempPacks = async () => new PackStore(await mkdtemp(join(tmpdir(), "visthinker-home-")));
 
-async function connect(canvas?: CanvasLink, packs?: PackStore): Promise<Client> {
+async function connect(canvas?: CanvasLink, packs?: PackStore, api?: PackApi): Promise<Client> {
   const bridge = createBridge({
     ...(canvas ? { canvas } : {}),
     packs: packs ?? (await tempPacks()),
+    ...(api ? { api } : {}),
   });
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test", version: "0" });
@@ -205,6 +207,89 @@ describe("pack tools (T24)", () => {
     expect(text(await call(await connect(), "install_pack", { name: "chess" }))).toMatch(
       /write_pack/,
     );
+  });
+});
+
+describe("pack tools with the API (T34)", () => {
+  const chess = {
+    "pack.json": { name: "chess", version: "0.3.0", contract: "0", match: {}, blocks: ["grid"] },
+    "README.md": "# Chess",
+  };
+  const api = (packs: Record<string, unknown> = { chess }, down = false): PackApi => ({
+    url: "http://api.test",
+    list: async () => {
+      if (down) throw new Error("down");
+      return Object.keys(packs).map((name) => ({ name, version: "0.3.0" }));
+    },
+    read: async (name) => {
+      if (!(name in packs))
+        throw new (await import("@visthinker/contract")).ContractError(
+          "unknown_target",
+          `no ${name}`,
+        );
+      return packs[name];
+    },
+  });
+
+  it("list_packs adds the API's catalog as source api", async () => {
+    const result = await call(await connect(undefined, undefined, api()), "list_packs");
+    expect(
+      (result.structuredContent as { packs: { name: string; source: string }[] }).packs.at(-1),
+    ).toEqual({
+      name: "chess",
+      version: "0.3.0",
+      source: "api",
+    });
+  });
+
+  it("an API that's down never hides the packs on this machine", async () => {
+    const result = await call(await connect(undefined, undefined, api({}, true)), "list_packs");
+    expect(result.isError).toBeFalsy();
+    expect((result.structuredContent as { packs: unknown[] }).packs).toHaveLength(2);
+  });
+
+  it("read_pack falls back to the API for a pack this machine doesn't have", async () => {
+    const result = await call(await connect(undefined, undefined, api()), "read_pack", {
+      name: "chess",
+    });
+    expect((result.structuredContent as { pack: typeof chess }).pack["pack.json"].name).toBe(
+      "chess",
+    );
+  });
+
+  it("install_pack checks the pack, saves it, and loads it into the canvas", async () => {
+    const packs = await tempPacks();
+    const loads: string[] = [];
+    const client = await connect(
+      { call: async (name, args) => (loads.push(name), { ...(args as object), loaded: true }) },
+      packs,
+      api(),
+    );
+    const result = await call(client, "install_pack", { name: "chess" });
+    expect(result.structuredContent).toEqual({ name: "chess", version: "0.3.0" });
+    expect((await packs.read("chess"))["pack.json"].version).toBe("0.3.0");
+    expect(loads).toEqual(["write_pack"]);
+  });
+
+  it("with no canvas open, install_pack still saves the pack", async () => {
+    const packs = await tempPacks();
+    expect(
+      (await call(await connect(undefined, packs, api()), "install_pack", { name: "chess" }))
+        .isError,
+    ).toBeFalsy();
+    expect((await packs.list()).map((p) => p.name)).toContain("chess");
+  });
+
+  it("refuses a broken pack from the API, and saves nothing", async () => {
+    const packs = await tempPacks();
+    const broken = { "pack.json": { name: "chess", version: "3" } };
+    const result = await call(
+      await connect(undefined, packs, api({ chess: broken })),
+      "install_pack",
+      { name: "chess" },
+    );
+    expect(text(result)).toMatch(/^bad_contract:/);
+    expect(await packs.list()).toHaveLength(2);
   });
 });
 
