@@ -5,5 +5,8 @@ export {
   HOST,
   CLOSE_BAD_TOKEN,
   CLOSE_TAB_TAKEN,
+  OPEN_GRACE_MS,
   type SessionOptions,
 } from "./session/session.ts";
+export { openInBrowser } from "./browser.ts";
+export { serveCanvas, DEFAULT_CANVAS_DIR } from "./session/static.ts";

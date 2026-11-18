@@ -89,10 +89,45 @@ describe("relaying to the canvas (D90)", () => {
     expect(timeout).toBe(5_000 + WAIT_GRACE_MS);
   });
 
-  it("the tools the bridge answers itself say which task builds them", async () => {
-    const result = await call(await connect(), "open_canvas");
+  it("the pack tools the bridge answers itself say which task builds them", async () => {
+    const result = await call(await connect(), "list_packs");
     expect(result.isError).toBe(true);
-    expect(text(result)).toMatch(/T17/);
+    expect(text(result)).toMatch(/T24/);
+  });
+});
+
+describe("open_canvas (T17)", () => {
+  async function withOpener(claims: boolean[]) {
+    const opened: string[] = [];
+    const url = "http://127.0.0.1:9999/?ws=9999&token=secret";
+    const bridge = createBridge({
+      opener: { url, claimOpen: () => claims.shift() ?? false },
+      openBrowser: (u) => void opened.push(u),
+    });
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test", version: "0" });
+    await Promise.all([bridge.mcp.connect(serverSide), client.connect(clientSide)]);
+    open.push({ bridge, client });
+    return { client, opened, url };
+  }
+
+  it("opens the browser at the token link and returns it", async () => {
+    const { client, opened, url } = await withOpener([true]);
+    const result = await call(client, "open_canvas");
+    expect(result.structuredContent).toEqual({ url });
+    expect(opened).toEqual([url]);
+  });
+
+  it("returns the link without opening another tab when the session says no", async () => {
+    const { client, opened, url } = await withOpener([true, false]);
+    await call(client, "open_canvas");
+    const again = await call(client, "open_canvas");
+    expect(again.structuredContent).toEqual({ url });
+    expect(opened).toHaveLength(1);
+  });
+
+  it("without a canvas server, answers no_canvas", async () => {
+    expect(text(await call(await connect(), "open_canvas"))).toMatch(/^no_canvas:/);
   });
 });
 
