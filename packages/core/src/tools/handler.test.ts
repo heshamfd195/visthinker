@@ -8,6 +8,7 @@ import {
   placeObject,
   recordStroke,
 } from "../scene/index.ts";
+import { createPackRegistry } from "../packs/index.ts";
 import { createToolHandler } from "./index.ts";
 
 const stroke = (id: string) => ({
@@ -27,7 +28,7 @@ function setup() {
   const story = createStory(clock);
   const scene = createSceneStore();
   const strokes = createStrokeStore();
-  const handle = createToolHandler({ clock, story, scene, strokes });
+  const handle = createToolHandler({ clock, packs: createPackRegistry(), story, scene, strokes });
   return { clock, story, scene, strokes, handle };
 }
 
@@ -178,13 +179,26 @@ describe("every call", () => {
     await expect(setup().handle("get_strokes", {})).rejects.toMatchObject({ code: "bad_args" });
   });
 
-  it("a call not built yet names the task that brings it", async () => {
+  it("write_pack loads a pack Claude wrote and says so in the story", async () => {
+    const { story, handle } = setup();
     const pack = {
-      "pack.json": { name: "p", version: "0.1.0", contract: "0", match: {}, blocks: ["grid"] },
+      "pack.json": {
+        name: "noughts",
+        version: "0.2.0",
+        contract: "0",
+        match: {},
+        blocks: ["grid"],
+      },
     };
-    await expect(setup().handle("write_pack", { pack })).rejects.toMatchObject({
-      code: "unknown_call",
-      message: expect.stringContaining("T24"),
+    expect(await handle("write_pack", { pack })).toEqual({
+      name: "noughts",
+      version: "0.2.0",
+      loaded: true,
+    });
+    expect(story.all().at(-1)).toMatchObject({
+      who: "fastbrain",
+      type: "pack",
+      detail: { name: "noughts", by: "claude" },
     });
   });
 });
