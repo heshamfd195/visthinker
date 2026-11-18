@@ -13,6 +13,7 @@ import { ObjectsLayer } from "../features/objects/index.ts";
 import { Panel, PANEL_WIDTH, StoryPanel, usePanels } from "../features/panels/index.ts";
 import { Toolbar, useToolbar } from "../features/toolbar/index.ts";
 import { createSession } from "./session.ts";
+import { useFrame } from "./useFrame.ts";
 import { useStoryVersion } from "./useStoryVersion.ts";
 import { useWindowSize } from "./useWindowSize.ts";
 
@@ -26,8 +27,8 @@ export function App() {
   const { tool, color } = useToolbar();
   const version = useStoryVersion(session.story);
 
-  // The view re-reads the scene and colours from the core each time the story grows.
-  const objects = useMemo(() => session.scene.all(), [session, version]);
+  // The core pushes the scene through the renderer port (T13); the story drives the rest.
+  const objects = useFrame(session.renderer);
   const events = useMemo(() => session.story.all(), [session, version]);
   const colors = useMemo(() => colorsFromStory(events), [events]);
 

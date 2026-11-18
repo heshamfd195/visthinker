@@ -1,21 +1,20 @@
 // The composition root (D83): the one place that picks an adapter for each core port.
-// For now every port but the clock is an in-memory fake; the real Konva renderer (T13),
-// WebSocket transport (T18) and bridge packs replace them one by one, without touching the core.
+// The clock and the renderer are real; the WebSocket transport (T18) and the bridge's packs
+// replace the last two fakes later, without touching the core.
 import {
   createMemoryPackSource,
-  createMemoryRenderer,
   createMemoryTransport,
   createSceneStore,
   createStory,
   createStrokeStore,
   type Clock,
   type PackSource,
-  type Renderer,
   type SceneStore,
   type Story,
   type StrokeStore,
   type Transport,
 } from "@visthinker/core";
+import { createReactRenderer, type ReactRenderer } from "../adapters/react-renderer/index.ts";
 import { createSystemClock } from "../adapters/system-clock/index.ts";
 
 export interface Session {
@@ -23,7 +22,7 @@ export interface Session {
   story: Story;
   scene: SceneStore;
   strokes: StrokeStore;
-  renderer: Renderer;
+  renderer: ReactRenderer;
   transport: Transport;
   packs: PackSource;
   /** Which ports still run on fakes, shown on the canvas until they're real. */
@@ -31,14 +30,19 @@ export interface Session {
 }
 
 export function createSession(clock: Clock = createSystemClock()): Session {
+  const story = createStory(clock);
+  const scene = createSceneStore();
+  const renderer = createReactRenderer();
+  // Until the Fast Brain drives it, the scene is pushed to the screen after every event.
+  story.subscribe(() => renderer.render(scene.all()));
   return {
     clock,
-    story: createStory(clock),
-    scene: createSceneStore(),
+    story,
+    scene,
     strokes: createStrokeStore(),
-    renderer: createMemoryRenderer(),
+    renderer,
     transport: createMemoryTransport(),
     packs: createMemoryPackSource(),
-    fakes: ["renderer", "transport", "packs"],
+    fakes: ["transport", "packs"],
   };
 }

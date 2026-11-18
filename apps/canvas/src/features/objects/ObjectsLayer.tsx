@@ -9,7 +9,7 @@ import { dragBox, isRealDrag } from "./objects.utils.ts";
 interface Props {
   width: number;
   height: number;
-  objects: SceneObject[];
+  objects: readonly SceneObject[];
   colors: Map<string, string>;
   tool: Tool;
   color: string;

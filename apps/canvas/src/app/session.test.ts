@@ -1,12 +1,12 @@
-import { createManualClock } from "@visthinker/core";
+import { createManualClock, placeObject } from "@visthinker/core";
 import { describe, expect, it } from "vitest";
 import { createSystemClock } from "../adapters/system-clock/index.ts";
 import { createSession } from "./session.ts";
 
 describe("composition root (D83)", () => {
-  it("wires the core to a port for each need, with fakes first", () => {
+  it("wires the core to a port for each need; transport and packs are still fakes", () => {
     const session = createSession(createManualClock());
-    expect(session.fakes).toEqual(["renderer", "transport", "packs"]);
+    expect(session.fakes).toEqual(["transport", "packs"]);
     expect(session.transport.status()).toBe("ready");
     expect(session.packs.names()).toEqual([]);
   });
@@ -25,6 +25,15 @@ describe("composition root (D83)", () => {
     a.scene.nextId("l");
     expect(b.story.all()).toHaveLength(0);
     expect(b.scene.nextId("l")).toBe("l1");
+  });
+});
+
+describe("renderer (T13)", () => {
+  it("each new event pushes the current scene to the screen", () => {
+    const session = createSession(createManualClock());
+    expect(session.renderer.frame()).toEqual([]);
+    placeObject(session.story, session.scene, { kind: "box", box: [0, 0, 10, 10], color: "#222" });
+    expect(session.renderer.frame().map((o) => o.id)).toEqual(["b1"]);
   });
 });
 
