@@ -164,7 +164,7 @@ function ObjectShape(props: {
         />
       )}
       {/* A board draws its inner lines; its cells stay invisible, unless part of a winning line. */}
-      {object.kind === "board" && (
+      {object.kind === "board" && !drawnBoard(object) && (
         <BoardLines w={w} h={h} n={Math.round(Math.sqrt(object.parts.length)) || 3} />
       )}
       {object.kind === "cell" && highlighted && (
@@ -257,6 +257,10 @@ function RecognizedShape({ object, tag }: { object: SceneObject; tag?: string | 
       return null;
   }
 }
+
+/** A board the grid block built from the user's own lines: their ink already shows it. */
+const drawnBoard = (o: SceneObject) =>
+  (o.geom as { from?: string } | undefined)?.from === "crossings";
 
 /** The inner lines of an n × n board. */
 function BoardLines({ w, h, n }: { w: number; h: number; n: number }) {

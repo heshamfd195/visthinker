@@ -39,7 +39,7 @@ export function MessageStrip({
   if (!message) return null;
   return (
     <div role="status" aria-live="polite" style={strip}>
-      <span aria-hidden>🤖</span>
+      <span aria-hidden>{message.from === "fastbrain" ? "⚡" : "🤖"}</span>
       <span>{message.text}</span>
       {message.choices.map((c) => (
         <button

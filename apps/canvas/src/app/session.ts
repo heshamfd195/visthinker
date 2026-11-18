@@ -6,6 +6,7 @@ import {
   createMemoryPackSource,
   createMemoryTransport,
   createPackRegistry,
+  createPackSearch,
   createSceneStore,
   createStory,
   createStrokeStore,
@@ -68,6 +69,8 @@ export function createSession(options: SessionOptions = {}): Session {
   const registry = createPackRegistry(STARTER_PACKS);
   const handler = createToolHandler({ clock, packs: registry, story, scene, strokes });
   transport.serve(handler);
+  // The fast search over packs: a drawing that matches one asks "Tic-tac-toe?" (D68).
+  createPackSearch({ story, scene, packs: registry, games: handler.games });
   return {
     clock,
     story,
