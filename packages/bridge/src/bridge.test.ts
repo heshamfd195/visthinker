@@ -3,17 +3,27 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { TOOL_NAMES, WAIT_GRACE_MS, type BrowserCall } from "@visthinker/contract";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import type { CanvasLink } from "./canvas.ts";
+import { PackStore } from "./packs/store.ts";
 import { createBridge, type Bridge } from "./server.ts";
 
 type Result = CallToolResult & { structuredContent?: Record<string, unknown> };
 
 const open: Array<{ bridge: Bridge; client: Client }> = [];
 
-async function connect(canvas?: CanvasLink): Promise<Client> {
-  const bridge = createBridge(canvas ? { canvas } : {});
+/** Packs in a temp home, so tests never touch ~/.visthinker. */
+const tempPacks = async () => new PackStore(await mkdtemp(join(tmpdir(), "visthinker-home-")));
+
+async function connect(canvas?: CanvasLink, packs?: PackStore): Promise<Client> {
+  const bridge = createBridge({
+    ...(canvas ? { canvas } : {}),
+    packs: packs ?? (await tempPacks()),
+  });
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test", version: "0" });
   await Promise.all([bridge.mcp.connect(serverSide), client.connect(clientSide)]);
@@ -88,12 +98,6 @@ describe("relaying to the canvas (D90)", () => {
     await call(client, "wait_for_event", { timeoutMs: 5_000 });
     expect(timeout).toBe(5_000 + WAIT_GRACE_MS);
   });
-
-  it("the pack tools the bridge answers itself say which task builds them", async () => {
-    const result = await call(await connect(), "list_packs");
-    expect(result.isError).toBe(true);
-    expect(text(result)).toMatch(/T24/);
-  });
 });
 
 describe("open_canvas (T17)", () => {
@@ -101,6 +105,7 @@ describe("open_canvas (T17)", () => {
     const opened: string[] = [];
     const url = "http://127.0.0.1:9999/?ws=9999&token=secret";
     const bridge = createBridge({
+      packs: await tempPacks(),
       opener: { url, claimOpen: () => claims.shift() ?? false },
       openBrowser: (u) => void opened.push(u),
     });
@@ -131,12 +136,93 @@ describe("open_canvas (T17)", () => {
   });
 });
 
+describe("pack tools (T24)", () => {
+  const pack = (name: string, version = "0.1.0") => ({
+    "pack.json": { name, version, contract: "0", match: {}, blocks: ["grid"] },
+    "README.md": "# A pack",
+  });
+
+  it("list_packs shows the starter packs, then the local ones", async () => {
+    const packs = await tempPacks();
+    await packs.save(pack("noughts") as never);
+    const result = await call(await connect(undefined, packs), "list_packs");
+    expect(result.structuredContent).toEqual({
+      packs: [
+        { name: "shapes", version: "0.1.0", source: "starter" },
+        { name: "tic-tac-toe", version: "0.1.0", source: "starter" },
+        { name: "noughts", version: "0.1.0", source: "local" },
+      ],
+    });
+  });
+
+  it("read_pack reads a starter pack, and an unknown name says so", async () => {
+    const client = await connect();
+    const result = await call(client, "read_pack", { name: "tic-tac-toe" });
+    expect(
+      (result.structuredContent as { pack: { "pack.json": { name: string } } }).pack["pack.json"]
+        .name,
+    ).toBe("tic-tac-toe");
+    expect(text(await call(client, "read_pack", { name: "chess" }))).toMatch(/^unknown_target:/);
+  });
+
+  it("write_pack saves the pack, then loads it into the canvas", async () => {
+    const packs = await tempPacks();
+    const client = await connect(
+      {
+        call: async (name, args) => ({
+          name: "noughts",
+          version: "0.2.0",
+          loaded: name === "write_pack" && !!args,
+        }),
+      },
+      packs,
+    );
+    const result = await call(client, "write_pack", { pack: pack("noughts", "0.2.0") });
+    expect(result.structuredContent).toEqual({ name: "noughts", version: "0.2.0", loaded: true });
+    expect((await packs.read("noughts"))["pack.json"].version).toBe("0.2.0");
+  });
+
+  it("with no canvas open, write_pack still saves and says loaded: false", async () => {
+    const packs = await tempPacks();
+    const result = await call(await connect(undefined, packs), "write_pack", {
+      pack: pack("noughts"),
+    });
+    expect(result.structuredContent).toEqual({ name: "noughts", version: "0.1.0", loaded: false });
+    expect((await packs.list()).map((p) => p.name)).toContain("noughts");
+  });
+
+  it("refuses a pack that breaks the contract, and saves nothing", async () => {
+    const packs = await tempPacks();
+    const bad = {
+      "pack.json": { name: "noughts", version: "1", contract: "0", match: {}, blocks: ["grid"] },
+    };
+    const result = await call(await connect(undefined, packs), "write_pack", { pack: bad });
+    expect(result.isError).toBe(true);
+    expect(await packs.list()).toHaveLength(2);
+  });
+
+  it("install_pack needs the API, and says to write the pack instead", async () => {
+    expect(text(await call(await connect(), "install_pack", { name: "chess" }))).toMatch(
+      /write_pack/,
+    );
+  });
+});
+
 describe("over stdio", () => {
   it("a real MCP client starts the server and lists its tools", async () => {
     const server = fileURLToPath(new URL("./server.ts", import.meta.url));
     const client = new Client({ name: "stdio-test", version: "0" });
     await client.connect(
-      new StdioClientTransport({ command: process.execPath, args: [server], stderr: "ignore" }),
+      new StdioClientTransport({
+        command: process.execPath,
+        args: [server],
+        env: {
+          ...(process.env as Record<string, string>),
+          VISTHINKER_HOME: await mkdtemp(join(tmpdir(), "visthinker-home-")),
+          VISTHINKER_NO_OPEN: "1",
+        },
+        stderr: "ignore",
+      }),
     );
     try {
       const { tools } = await client.listTools();

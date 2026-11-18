@@ -10,3 +10,4 @@ export {
 } from "./session/session.ts";
 export { openInBrowser } from "./browser.ts";
 export { serveCanvas, DEFAULT_CANVAS_DIR } from "./session/static.ts";
+export { PackStore, STARTER_DIR, visthinkerHome, type PackEntry } from "./packs/store.ts";

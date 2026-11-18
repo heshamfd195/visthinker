@@ -10,6 +10,7 @@ import { z } from "zod";
 import { openInBrowser } from "./browser.ts";
 import { NO_CANVAS, type CanvasLink } from "./canvas.ts";
 import { log } from "./log.ts";
+import { PackStore, visthinkerHome } from "./packs/store.ts";
 import { Session } from "./session/session.ts";
 import { ALL_TOOLS } from "./tools/index.ts";
 import type { BridgeContext, CanvasOpener, ToolDef } from "./tools/types.ts";
@@ -21,6 +22,8 @@ export interface BridgeOptions {
   opener?: CanvasOpener;
   /** Default: the system's browser. */
   openBrowser?: (url: string) => void | Promise<void>;
+  /** Packs on disk. Default: ~/.visthinker/packs (or VISTHINKER_HOME) and the repo's starter packs. */
+  packs?: PackStore;
 }
 
 export interface Bridge {
@@ -67,6 +70,7 @@ function register<N extends ToolName>(mcp: McpServer, tool: ToolDef<N>, ctx: Bri
 export function createBridge(options: BridgeOptions = {}): Bridge {
   const ctx: BridgeContext = {
     canvas: options.canvas ?? NO_CANVAS,
+    packs: options.packs ?? new PackStore(visthinkerHome()),
     ...(options.opener ? { opener: options.opener } : {}),
     openBrowser: options.openBrowser ?? openInBrowser,
   };
