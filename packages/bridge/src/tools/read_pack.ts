@@ -1,7 +1,8 @@
-import { comingTool } from "./types.ts";
+import { defineTool } from "./types.ts";
 
-export const readPack = comingTool(
-  "read_pack",
-  "Read an installed pack by name: its pack.json, rules.json and README.md.",
-  "T24",
-);
+export const readPack = defineTool({
+  name: "read_pack",
+  description:
+    "Read a pack by name: its pack.json, rules.json and README.md. A local pack is read before a starter pack of the same name.",
+  run: async ({ name }, ctx) => ({ pack: await ctx.packs.read(name) }),
+});

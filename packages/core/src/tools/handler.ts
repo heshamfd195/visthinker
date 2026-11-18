@@ -11,10 +11,12 @@ import type { CallHandler, Clock } from "../ports/index.ts";
 import type { SceneStore } from "../scene/store.ts";
 import type { StrokeStore } from "../scene/strokes.ts";
 import type { Story } from "../scene/story.ts";
+import type { PackRegistry } from "../packs/loader.ts";
 import { createActor, type Actor } from "./act.ts";
 
 export interface ToolDeps {
   clock: Clock;
+  packs: PackRegistry;
   story: Story;
   scene: SceneStore;
   strokes: StrokeStore;
@@ -22,16 +24,14 @@ export interface ToolDeps {
 
 type Handlers = { [C in BrowserCall]?: (args: ParsedToolArgs<C>) => Promise<ToolResult<C>> };
 
-const COMING: Partial<Record<BrowserCall, string>> = {
-  write_pack: "T24",
-};
+const COMING: Partial<Record<BrowserCall, string>> = {};
 
 export interface ToolHandler extends CallHandler {
   /** The same actor the act tool uses, for the canvas to send the user's answers to. */
   actor: Actor;
 }
 
-export function createToolHandler({ clock, story, scene, strokes }: ToolDeps): ToolHandler {
+export function createToolHandler({ clock, packs, story, scene, strokes }: ToolDeps): ToolHandler {
   const actor = createActor({ story, scene });
   // Waiters wake once the whole change is in the story, not halfway through it: a stroke and
   // what the Fast Brain makes of it arrive in the same read.
@@ -97,6 +97,14 @@ export function createToolHandler({ clock, story, scene, strokes }: ToolDeps): T
         detail: { text, ...(choices ? { choices } : {}) },
       }).seq,
     }),
+
+    /** Loads a pack Claude wrote (the bridge has saved it first, D93). Local only (D62). */
+    write_pack: async ({ pack }) => {
+      const { pack: loaded } = packs.load(pack);
+      const { name, version } = loaded["pack.json"];
+      story.append({ who: "fastbrain", type: "pack", detail: { name, version, by: "claude" } });
+      return { name, version, loaded: true };
+    },
 
     /** The whole current scene (D77). */
     get_scene: async () => ({ objects: scene.all() }),

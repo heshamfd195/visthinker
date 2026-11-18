@@ -1,11 +1,11 @@
 import {
-  ContractError,
   type BrowserCall,
   type ParsedToolArgs,
   type ToolName,
   type ToolResult,
 } from "@visthinker/contract";
 import type { CanvasLink } from "../canvas.ts";
+import type { PackStore } from "../packs/store.ts";
 
 /** Where the canvas is served, and whether a browser tab should open now (the session). */
 export interface CanvasOpener {
@@ -15,6 +15,7 @@ export interface CanvasOpener {
 
 export interface BridgeContext {
   canvas: CanvasLink;
+  packs: PackStore;
   opener?: CanvasOpener;
   openBrowser: (url: string) => void | Promise<void>;
 }
@@ -39,18 +40,4 @@ export const relayTool = <N extends BrowserCall>(
     description,
     run: async (args, ctx) =>
       (await ctx.canvas.call(name, args, timeoutMs?.(args))) as ToolResult<N>,
-  });
-
-/** A tool the bridge answers itself, registered now and built in a later task. */
-export const comingTool = <N extends ToolName>(
-  name: N,
-  description: string,
-  task: string,
-): ToolDef<N> =>
-  defineTool({
-    name,
-    description,
-    run: async () => {
-      throw new ContractError("internal", `${name} isn't built yet (${task}).`);
-    },
   });

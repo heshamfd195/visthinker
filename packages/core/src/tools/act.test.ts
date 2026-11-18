@@ -2,6 +2,7 @@ import { TOOLS, type SceneObject } from "@visthinker/contract";
 import { describe, expect, it } from "vitest";
 import { createManualClock } from "../ports/index.ts";
 import { createSceneStore, createStory, createStrokeStore, placeObject } from "../scene/index.ts";
+import { createPackRegistry } from "../packs/index.ts";
 import { createToolHandler } from "./index.ts";
 
 const object = (id: string, kind: string, box: SceneObject["box"]): SceneObject => ({
@@ -20,7 +21,7 @@ function setup() {
   const story = createStory(clock);
   const scene = createSceneStore();
   const strokes = createStrokeStore();
-  const handle = createToolHandler({ clock, story, scene, strokes });
+  const handle = createToolHandler({ clock, packs: createPackRegistry(), story, scene, strokes });
   // A cell built by a pack, and a box the user placed.
   scene.add(object("c5", "cell", [200, 200, 100, 100]), "fastbrain");
   placeObject(story, scene, { kind: "box", box: [0, 0, 50, 50], color: "#222" });
