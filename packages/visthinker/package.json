@@ -1,0 +1,40 @@
+{
+  "name": "visthinker",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A shared canvas where Claude sees your drawing as data, not pixels. Add it to Claude Code: claude mcp add visthinker -- npx visthinker",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "visthinker": "dist/visthinker.js"
+  },
+  "files": [
+    "dist",
+    "canvas",
+    "packs",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/heshamfd195/visthinker.git"
+  },
+  "keywords": [
+    "mcp",
+    "claude",
+    "canvas",
+    "visual-thinking"
+  ],
+  "scripts": {
+    "build": "node build.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@visthinker/bridge": "workspace:*",
+    "@visthinker/canvas": "workspace:*",
+    "esbuild": "0.28.2"
+  }
+}

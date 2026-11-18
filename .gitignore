@@ -21,3 +21,8 @@ test-results/
 # logs and OS files
 *.log
 .DS_Store
+
+# the publishable package's copies, made by its build
+packages/visthinker/canvas/
+packages/visthinker/packs/
+packages/visthinker/LICENSE

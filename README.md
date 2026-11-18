@@ -28,30 +28,45 @@ pnpm dev
 
 Then open the address it prints. Draw with the pen, or place boxes, circles and arrows from the toolbar, and watch each one arrive as an event in the story panel.
 
-Playing with Claude comes with the bridge. The install will be one line, and **it doesn't work yet**:
+## Play with Claude
+
+Once the `visthinker` package is on npm, adding it to Claude Code is one line:
 
 ```bash
 claude mcp add visthinker -- npx visthinker
 ```
 
+It isn't published yet. Until then, build it from this repo and point Claude Code at the built file:
+
+```bash
+pnpm install && pnpm build
+```
+
+```bash
+claude mcp add visthinker -- node "$PWD/packages/visthinker/dist/visthinker.js"
+```
+
+Then ask Claude to open the canvas, place a tic-tac-toe board from the toolbar, and tap a cell to play X.
+
 ## How it works
 
-| part        | what it does                                                                                                 | status         |
-| ----------- | ------------------------------------------------------------------------------------------------------------ | -------------- |
-| 🖼️ Canvas   | React + Konva in your browser: ink, shapes, arrows, the live story                                           | ✅ working     |
-| 📜 Contract | the shared shapes: events, scene objects, strokes, MCP tools, packs                                          | ✅ working     |
-| 🧠 Core     | pure TypeScript: the event story, the scene, and soon the recognizer that turns strokes into lines and cells | 🚧 in progress |
-| 🔌 Bridge   | a local MCP server that connects the canvas to Claude Code                                                   | ⬜ next        |
-| 📦 Packs    | games and knowledge as small data packs, not code changes                                                    | ⬜ next        |
+| part        | what it does                                                                                                                           | status         |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| 🖼️ Canvas   | React + Konva in your browser: ink, shapes, arrows, the live story                                                                     | ✅ working     |
+| 📜 Contract | the shared shapes: events, scene objects, strokes, MCP tools, packs                                                                    | ✅ working     |
+| 🧠 Core     | pure TypeScript: the event story, the scene, the game blocks and packs; the recognizer that turns strokes into lines and cells is next | 🚧 in progress |
+| 🔌 Bridge   | a local MCP server that connects the canvas to Claude Code                                                                             | ✅ working     |
+| 📦 Packs    | games and knowledge as small data packs, not code changes                                                                              | ✅ working     |
 
 ## Layout
 
 ```
 packages/contract   the shared shapes, as Zod schemas
 packages/core       the Fast Brain: no React, no Konva, no Node
-packages/bridge     the MCP server (coming)
+packages/bridge     the MCP server
+packages/visthinker the npm package: the bridge bundled with the canvas and packs
 apps/canvas         the React + Konva app
-packs/              starter packs (coming)
+packs/              the starter packs: shapes, tic-tac-toe
 ```
 
 Imports go one way: the canvas uses the core, and the core uses only the contract. Lint enforces it.

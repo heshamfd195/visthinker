@@ -36,9 +36,9 @@ export class PackStore {
   readonly dir: string;
   readonly starterDir: string;
 
-  constructor(home: string, starterDir: string = STARTER_DIR) {
+  constructor(home: string, starterDir: string | undefined = STARTER_DIR) {
     this.dir = join(home, "packs");
-    this.starterDir = starterDir;
+    this.starterDir = starterDir ?? STARTER_DIR;
   }
 
   /** The folder for a pack name. The name rule (lowercase, digits, dashes) keeps it inside `dir`. */

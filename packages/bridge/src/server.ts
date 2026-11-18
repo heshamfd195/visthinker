@@ -1,11 +1,9 @@
 // The Visthinker bridge: an MCP server over stdio that relays Claude's calls to the canvas (D90).
-// Run: node packages/bridge/src/server.ts
+// Run from the repo: node packages/bridge/src/bin.ts
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { ContractError, TOOL_NAMES, TOOLS, type ToolName } from "@visthinker/contract";
-import { realpathSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { openInBrowser } from "./browser.ts";
 import { NO_CANVAS, type CanvasLink } from "./canvas.ts";
@@ -79,15 +77,25 @@ export function createBridge(options: BridgeOptions = {}): Bridge {
   return { mcp, close: () => mcp.close() };
 }
 
-async function main(): Promise<void> {
+export interface MainOptions {
+  /** The built canvas to serve. Default: VISTHINKER_CANVAS_DIR, else apps/canvas/dist in the repo. */
+  canvasDir?: string;
+  /** The starter packs. Default: the repo's packs/ folder. */
+  starterDir?: string;
+}
+
+/** Starts the session and the MCP server on stdio: what `visthinker` runs. */
+export async function main(options: MainOptions = {}): Promise<void> {
+  const canvasDir = options.canvasDir ?? process.env.VISTHINKER_CANVAS_DIR;
   const session = await Session.start({
     port: process.env.VISTHINKER_PORT ? Number(process.env.VISTHINKER_PORT) : undefined,
     extraOrigins: process.env.VISTHINKER_EXTRA_ORIGINS?.split(",").filter(Boolean),
-    ...(process.env.VISTHINKER_CANVAS_DIR ? { canvasDir: process.env.VISTHINKER_CANVAS_DIR } : {}),
+    ...(canvasDir ? { canvasDir } : {}),
   });
   const bridge = createBridge({
     canvas: session,
     opener: session,
+    packs: new PackStore(visthinkerHome(), options.starterDir),
     // VISTHINKER_NO_OPEN logs the link instead of opening a browser (tests, headless use).
     ...(process.env.VISTHINKER_NO_OPEN ? { openBrowser: (url: string) => log(`open ${url}`) } : {}),
   });
@@ -98,13 +106,4 @@ async function main(): Promise<void> {
   process.on("SIGTERM", shutdown);
   await bridge.mcp.connect(new StdioServerTransport());
   log(`MCP ready on stdio; canvas on ${session.origin}`);
-}
-
-const isMain =
-  process.argv[1] !== undefined && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  main().catch((error) => {
-    log("failed to start:", String(error));
-    process.exit(1);
-  });
 }
