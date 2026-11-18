@@ -1,0 +1,17 @@
+{
+  "name": "@visthinker/contract",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Contract v0: the shapes every part of Visthinker shares (D79).",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  }
+}
