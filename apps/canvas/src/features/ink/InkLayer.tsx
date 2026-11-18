@@ -15,6 +15,10 @@ interface Props {
   nextId: () => string;
   /** A finished stroke, ready to record in the story. */
   onStroke: (stroke: Stroke) => void;
+  /** The pen colour. */
+  color?: string;
+  /** False while another tool is active: the layer then draws nothing. */
+  enabled?: boolean;
 }
 
 /**
@@ -22,10 +26,18 @@ interface Props {
  * doesn't re-render per point (semi-declarative, D83). World units = stage pixels for now.
  * A tap leaves no ink; what a tap does comes with the cells (later tasks).
  */
-export function InkLayer({ width, height, now, nextId, onStroke }: Props) {
+export function InkLayer({
+  width,
+  height,
+  now,
+  nextId,
+  onStroke,
+  color = PEN.color,
+  enabled = true,
+}: Props) {
   const ink = useRef<Konva.Layer>(null);
   const shape = useRef<Konva.Line | null>(null);
-  const manager = useMemo(() => createInkManager(nextId), [nextId]);
+  const manager = useMemo(() => createInkManager(nextId, { ...PEN, color }), [nextId, color]);
 
   const sample = (e: Konva.KonvaEventObject<PointerEvent>): RawPoint | null => {
     const at = e.target.getStage()?.getPointerPosition();
@@ -40,12 +52,12 @@ export function InkLayer({ width, height, now, nextId, onStroke }: Props) {
 
   const down = (e: Konva.KonvaEventObject<PointerEvent>) => {
     const point = sample(e);
-    if (!point || !ink.current) return;
+    if (!enabled || !point || !ink.current) return;
     manager.begin(point);
     shape.current = new Konva.Line({
       points: outline([point]),
       closed: true,
-      fill: PEN.color,
+      fill: color,
       listening: false,
     });
     ink.current.add(shape.current);
