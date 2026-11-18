@@ -17,6 +17,8 @@ interface Props {
   onStroke: (stroke: Stroke) => void;
   /** The pen colour. */
   color?: string;
+  /** A short press that barely moved: a tap at this world point, e.g. on a cell. */
+  onTap?: (at: [number, number]) => void;
   /** False while another tool is active: the layer then draws nothing. */
   enabled?: boolean;
 }
@@ -24,7 +26,7 @@ interface Props {
 /**
  * The drawing surface. Ink is drawn on an imperative Konva layer, outside React, so a stroke
  * doesn't re-render per point (semi-declarative, D83). World units = stage pixels for now.
- * A tap leaves no ink; what a tap does comes with the cells (later tasks).
+ * A tap leaves no ink and goes to `onTap`, e.g. to play in a cell.
  */
 export function InkLayer({
   width,
@@ -32,6 +34,7 @@ export function InkLayer({
   now,
   nextId,
   onStroke,
+  onTap,
   color = PEN.color,
   enabled = true,
 }: Props) {
@@ -77,6 +80,7 @@ export function InkLayer({
     const result = manager.end();
     if (result?.kind === "stroke") onStroke(result.stroke);
     else shape.current?.destroy();
+    if (result?.kind === "tap") onTap?.([result.at.x, result.at.y]);
     shape.current = null;
     ink.current?.batchDraw();
   };

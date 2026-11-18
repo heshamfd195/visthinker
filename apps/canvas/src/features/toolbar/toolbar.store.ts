@@ -7,6 +7,7 @@ export const TOOLS: { tool: Tool; label: string; icon: string }[] = [
   { tool: "box", label: "Box", icon: "▭" },
   { tool: "circle", label: "Circle", icon: "◯" },
   { tool: "arrow", label: "Arrow", icon: "→" },
+  { tool: "board", label: "Tic-tac-toe board", icon: "#" },
   { tool: "move", label: "Move", icon: "✥" },
 ];
 

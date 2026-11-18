@@ -1,6 +1,6 @@
 import type { VisEvent } from "@visthinker/contract";
 import { describe, expect, it } from "vitest";
-import { messageFromStory } from "./talk.utils.ts";
+import { messageFromStory, winningLine } from "./talk.utils.ts";
 
 const e = (x: Partial<VisEvent> & Pick<VisEvent, "seq" | "type">): VisEvent => ({
   t: 0,
@@ -51,5 +51,23 @@ describe("the message strip", () => {
       text: "Claude suggests: move b1 near c5",
       choices: ["accept", "decline"],
     });
+  });
+
+  it("the end of a game says who won, and highlights the line", () => {
+    const end = e({
+      seq: 9,
+      who: "fastbrain",
+      type: "end",
+      detail: { winner: "claude", mark: "O", line: ["c3", "c5", "c7"] },
+    });
+    expect(messageFromStory([end])).toEqual({
+      seq: 9,
+      kind: "end",
+      text: "Claude wins.",
+      choices: [],
+    });
+    expect([...winningLine([end])]).toEqual(["c3", "c5", "c7"]);
+    const draw = e({ seq: 9, who: "fastbrain", type: "end", detail: { winner: null, line: [] } });
+    expect(messageFromStory([draw])?.text).toBe("It's a draw.");
   });
 });

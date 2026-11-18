@@ -11,6 +11,7 @@ import {
   createToolHandler,
   STARTER_PACKS,
   type Actor,
+  type Games,
   type Clock,
   type PackRegistry,
   type PackSource,
@@ -32,6 +33,8 @@ export interface Session {
   transport: Transport;
   /** Applies the user's answers to Claude's asks and proposals. */
   actor: Actor;
+  /** Boards placed from the toolbar, and the user's taps on them. */
+  games: Games;
   /** Set when the page was opened from the bridge's link. */
   bridge: WsTransport | undefined;
   packs: PackSource;
@@ -69,6 +72,7 @@ export function createSession(options: SessionOptions = {}): Session {
     renderer,
     transport,
     actor: handler.actor,
+    games: handler.games,
     bridge,
     packs: createMemoryPackSource(),
     registry,

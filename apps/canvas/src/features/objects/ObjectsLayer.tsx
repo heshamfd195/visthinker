@@ -1,10 +1,10 @@
-import type { Point2, SceneObject } from "@visthinker/contract";
+import type { Box, Point2, SceneObject } from "@visthinker/contract";
 import type { PlaceInput } from "@visthinker/core";
 import type Konva from "konva";
 import { useRef, useState } from "react";
-import { Arrow, Ellipse, Group, Layer, Rect, Text } from "react-konva";
+import { Arrow, Ellipse, Group, Layer, Line, Rect, Text } from "react-konva";
 import type { Tool } from "../toolbar/index.ts";
-import { dragBox, isRealDrag } from "./objects.utils.ts";
+import { CLAUDE_COLOR, dragBox, isRealDrag } from "./objects.utils.ts";
 
 interface Props {
   width: number;
@@ -13,11 +13,15 @@ interface Props {
   colors: Map<string, string>;
   tool: Tool;
   color: string;
+  /** Cells in a winning line, shown highlighted. */
+  highlight?: ReadonlySet<string>;
   onPlace(input: PlaceInput): void;
+  /** A ready-made board dragged out with the board tool. */
+  onPlaceBoard(box: Box): void;
   onMove(id: string, dx: number, dy: number): void;
 }
 
-const SHAPE_TOOLS: Tool[] = ["box", "circle", "arrow"];
+const SHAPE_TOOLS: Tool[] = ["box", "circle", "arrow", "board"];
 
 type Draft = { from: Point2; to: Point2 };
 
@@ -29,7 +33,9 @@ export function ObjectsLayer({
   colors,
   tool,
   color,
+  highlight,
   onPlace,
+  onPlaceBoard,
   onMove,
 }: Props) {
   // The drag lives in a ref: pointer events can arrive faster than React re-renders, and a
@@ -51,7 +57,12 @@ export function ObjectsLayer({
 
   const finish = () => {
     const done = drag.current;
-    if (done && isRealDrag(done.from, done.to) && placing) {
+    if (done && isRealDrag(done.from, done.to) && tool === "board") {
+      // A square board, as wide as the drag's longer side, from where the drag started.
+      const [x, y, w, h] = dragBox(done.from, done.to);
+      const side = Math.max(w, h);
+      onPlaceBoard([x, y, side, side]);
+    } else if (done && isRealDrag(done.from, done.to) && placing) {
       const kind = tool as PlaceInput["kind"];
       onPlace({
         kind,
@@ -65,15 +76,19 @@ export function ObjectsLayer({
 
   return (
     <Layer listening={tool !== "pen"}>
-      {objects.map((o) => (
-        <ObjectShape
-          key={o.id}
-          object={o}
-          color={colors.get(o.id) ?? "#222222"}
-          draggable={tool === "move"}
-          onMove={onMove}
-        />
-      ))}
+      {/* Cells first, so a winning line's highlight sits under the board's lines. */}
+      {[...objects]
+        .sort((a, b) => Number(b.kind === "cell") - Number(a.kind === "cell"))
+        .map((o) => (
+          <ObjectShape
+            key={o.id}
+            object={o}
+            color={colors.get(o.id) ?? "#222222"}
+            draggable={tool === "move" && BUILT_IN.has(o.kind)}
+            highlighted={highlight?.has(o.id) ?? false}
+            onMove={onMove}
+          />
+        ))}
       {draft && placing && <DraftShape kind={tool} from={draft.from} to={draft.to} color={color} />}
       {placing && (
         <Rect
@@ -99,9 +114,10 @@ function ObjectShape(props: {
   object: SceneObject;
   color: string;
   draggable: boolean;
+  highlighted: boolean;
   onMove(id: string, dx: number, dy: number): void;
 }) {
-  const { object, color, draggable, onMove } = props;
+  const { object, color, draggable, highlighted, onMove } = props;
   const [x, y, w, h] = object.box;
   const style = { stroke: color, strokeWidth: 3, hitStrokeWidth: 14 };
   return (
@@ -139,6 +155,13 @@ function ObjectShape(props: {
           {...style}
         />
       )}
+      {/* A board draws its inner lines; its cells stay invisible, unless part of a winning line. */}
+      {object.kind === "board" && (
+        <BoardLines w={w} h={h} n={Math.round(Math.sqrt(object.parts.length)) || 3} />
+      )}
+      {object.kind === "cell" && highlighted && (
+        <Rect width={w} height={h} fill="#fff3bf" listening={false} />
+      )}
       {/* A mark (X, O…) fills its cell; anything else Claude adds is a labelled, dashed note. */}
       {object.kind === "mark" && (
         <Text
@@ -148,11 +171,11 @@ function ObjectShape(props: {
           align="center"
           verticalAlign="middle"
           fontSize={Math.max(14, Math.min(w, h) * 0.7)}
-          fill={CLAUDE_COLOR}
+          fill={color}
           listening={false}
         />
       )}
-      {!BUILT_IN.has(object.kind) && object.kind !== "mark" && (
+      {!BUILT_IN.has(object.kind) && !GAME_KINDS.has(object.kind) && (
         <>
           <Rect
             width={w}
@@ -178,9 +201,30 @@ function ObjectShape(props: {
   );
 }
 
-/** Claude's ink: marks and notes it adds through act. */
-const CLAUDE_COLOR = "#7048e8";
 const BUILT_IN = new Set(["box", "circle", "arrow"]);
+const GAME_KINDS = new Set(["mark", "board", "cell"]);
+
+/** The inner lines of an n × n board. */
+function BoardLines({ w, h, n }: { w: number; h: number; n: number }) {
+  const lines: number[][] = [];
+  for (let k = 1; k < n; k++) {
+    lines.push([(w * k) / n, 0, (w * k) / n, h], [0, (h * k) / n, w, (h * k) / n]);
+  }
+  return (
+    <>
+      {lines.map((points, i) => (
+        <Line
+          key={i}
+          points={points}
+          stroke="#222222"
+          strokeWidth={4}
+          lineCap="round"
+          listening={false}
+        />
+      ))}
+    </>
+  );
+}
 
 function DraftShape({
   kind,
@@ -196,6 +240,10 @@ function DraftShape({
   const [x, y, w, h] = dragBox(from, to);
   const style = { stroke: color, strokeWidth: 3, dash: [6, 4], opacity: 0.7, listening: false };
   if (kind === "box") return <Rect x={x} y={y} width={w} height={h} cornerRadius={4} {...style} />;
+  if (kind === "board") {
+    const side = Math.max(w, h);
+    return <Rect x={x} y={y} width={side} height={side} {...style} />;
+  }
   if (kind === "circle")
     return <Ellipse x={x + w / 2} y={y + h / 2} radiusX={w / 2} radiusY={h / 2} {...style} />;
   return (
