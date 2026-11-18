@@ -1,5 +1,5 @@
 // The Clock port: the core never reads the wall clock itself, so tests control time.
-// The real clock is an adapter in the app; the other ports come with T07.
+// The real clock is an adapter in the app.
 
 /** The session clock: milliseconds since the session started. */
 export interface Clock {
