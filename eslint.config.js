@@ -19,13 +19,13 @@ export default tseslint.config(
     settings: {
       "import/resolver": { typescript: { alwaysTryTypes: true, noWarnOnMultipleProjects: true } },
       "boundaries/elements": [
-        { type: "contract", pattern: "packages/contract", mode: "folder" },
-        { type: "core", pattern: "packages/core", mode: "folder" },
-        { type: "bridge", pattern: "packages/bridge", mode: "folder" },
-        { type: "canvas-app", pattern: "apps/canvas/src/app", mode: "folder" },
-        { type: "canvas-adapter", pattern: "apps/canvas/src/adapters/*", mode: "folder" },
-        { type: "canvas-feature", pattern: "apps/canvas/src/features/*", mode: "folder" },
-        { type: "canvas-shared", pattern: "apps/canvas/src/shared", mode: "folder" },
+        { type: "contract", pattern: "packages/contract" },
+        { type: "core", pattern: "packages/core" },
+        { type: "bridge", pattern: "packages/bridge" },
+        { type: "canvas-app", pattern: "apps/canvas/src/app" },
+        { type: "canvas-adapter", pattern: "apps/canvas/src/adapters/*" },
+        { type: "canvas-feature", pattern: "apps/canvas/src/features/*" },
+        { type: "canvas-shared", pattern: "apps/canvas/src/shared" },
       ],
     },
     rules: {
