@@ -9,7 +9,7 @@ import {
 import { useCallback, useEffect, useMemo } from "react";
 import { Layer, Stage, Text } from "react-konva";
 import { InkLayer } from "../features/ink/index.ts";
-import { markColors, ObjectsLayer } from "../features/objects/index.ts";
+import { markColors, ObjectsLayer, symbolTags } from "../features/objects/index.ts";
 import { Panel, PANEL_WIDTH, StoryPanel, usePanels } from "../features/panels/index.ts";
 import { MessageStrip, winningLine } from "../features/talk/index.ts";
 import { Toolbar, useToolbar } from "../features/toolbar/index.ts";
@@ -58,6 +58,7 @@ export function App() {
     [events],
   );
   const highlight = useMemo(() => winningLine(events), [events]);
+  const tags = useMemo(() => symbolTags(events), [events]);
 
   const now = useCallback(() => session.clock.now(), [session]);
   const nextId = useCallback(() => session.strokes.nextId(), [session]);
@@ -112,6 +113,7 @@ export function App() {
             tool={tool}
             color={color}
             highlight={highlight}
+            tags={tags}
             onPlace={onPlace}
             onPlaceBoard={onPlaceBoard}
             onMove={onMove}

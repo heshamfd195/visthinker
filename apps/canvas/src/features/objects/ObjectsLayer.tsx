@@ -15,6 +15,8 @@ interface Props {
   color: string;
   /** Cells in a winning line, shown highlighted. */
   highlight?: ReadonlySet<string>;
+  /** What each symbol was read as, e.g. "X 87%" (D97). */
+  tags?: ReadonlyMap<string, string>;
   onPlace(input: PlaceInput): void;
   /** A ready-made board dragged out with the board tool. */
   onPlaceBoard(box: Box): void;
@@ -34,6 +36,7 @@ export function ObjectsLayer({
   tool,
   color,
   highlight,
+  tags,
   onPlace,
   onPlaceBoard,
   onMove,
@@ -86,6 +89,7 @@ export function ObjectsLayer({
             color={colors.get(o.id) ?? "#222222"}
             draggable={tool === "move" && BUILT_IN.has(o.kind) && o.pack !== SHAPES}
             highlighted={highlight?.has(o.id) ?? false}
+            tag={tags?.get(o.id)}
             onMove={onMove}
           />
         ))}
@@ -115,13 +119,15 @@ function ObjectShape(props: {
   color: string;
   draggable: boolean;
   highlighted: boolean;
+  tag?: string | undefined;
   onMove(id: string, dx: number, dy: number): void;
 }) {
-  const { object, color, draggable, highlighted, onMove } = props;
+  const { object, color, draggable, highlighted, tag, onMove } = props;
   const [x, y, w, h] = object.box;
   const style = { stroke: color, strokeWidth: 3, hitStrokeWidth: 14 };
   // What the comparator read from your ink: a light outline over it, so you see what it saw.
-  if (object.pack === SHAPES) return <RecognizedShape object={object} />;
+  if (object.pack === SHAPES || object.kind === "symbol")
+    return <RecognizedShape object={object} tag={tag} />;
   return (
     <Group
       x={x}
@@ -209,7 +215,7 @@ const GAME_KINDS = new Set(["mark", "board", "cell"]);
 const SHAPES = "shapes";
 const SEEN = "#339af0";
 
-function RecognizedShape({ object }: { object: SceneObject }) {
+function RecognizedShape({ object, tag }: { object: SceneObject; tag?: string | undefined }) {
   const [x, y, w, h] = object.box;
   const style = { stroke: SEEN, strokeWidth: 1.5, dash: [5, 4], opacity: 0.9, listening: false };
   const ends =
@@ -233,6 +239,20 @@ function RecognizedShape({ object }: { object: SceneObject }) {
           {...style}
         />
       ) : null;
+    case "symbol":
+      return (
+        <>
+          <Rect x={x - 4} y={y - 4} width={w + 8} height={h + 8} cornerRadius={4} {...style} />
+          <Text
+            x={x - 4}
+            y={y - 20}
+            text={tag ?? object.label}
+            fontSize={12}
+            fill={SEEN}
+            listening={false}
+          />
+        </>
+      );
     default:
       return null;
   }

@@ -1,5 +1,6 @@
 import { SceneObject, type Point2, type Stroke } from "@visthinker/contract";
 import { describe, expect, it } from "vitest";
+import { STARTER_PACKS } from "../packs/index.ts";
 import { createManualClock } from "../ports/index.ts";
 import { createSceneStore, createStory, createStrokeStore, recordStroke } from "../scene/index.ts";
 import {
@@ -175,12 +176,23 @@ describe("the cross rule", () => {
 });
 
 function play(strokes: Stroke[]) {
-  const story = createStory(createManualClock());
+  const clock = createManualClock();
+  const story = createStory(clock);
   const scene = createSceneStore();
   const strokesStore = createStrokeStore();
-  const comparator = createComparator({ scene, story });
-  for (const s of strokes) comparator.onStroke(s, recordStroke(story, strokesStore, s));
-  return { story, scene, comparator };
+  const comparator = createComparator({
+    scene,
+    story,
+    strokes: strokesStore,
+    clock,
+    packs: () => STARTER_PACKS,
+  });
+  // Each stroke a second apart, so none of them group with the one before.
+  for (const s of strokes) {
+    comparator.onStroke(s, recordStroke(story, strokesStore, s));
+    clock.advance(1_000);
+  }
+  return { story, scene, comparator, clock, strokesStore };
 }
 
 /** A # drawn big enough for D109: two lines down, two across, each 500 long. */
@@ -231,7 +243,7 @@ describe("the comparator (D64)", () => {
     expect(x.relations.filter((r) => r.type === "on")).toHaveLength(2);
   });
 
-  it(`a straight stroke shorter than ${INSTANT_LINE_LENGTH} isn't a line at once (D109)`, () => {
+  it(`a straight stroke shorter than ${INSTANT_LINE_LENGTH} isn't a line at once (D109): it's read as a symbol`, () => {
     const { scene } = play([
       stroke(
         along([
@@ -240,7 +252,7 @@ describe("the comparator (D64)", () => {
         ]),
       ),
     ]);
-    expect(scene.all()).toEqual([]);
+    expect(scene.all().map((o) => o.kind)).toEqual(["symbol"]);
   });
 
   it("a drawn circle, box and arrow become shapes objects owned by the user", () => {
@@ -296,5 +308,166 @@ describe("replay (moved from T08)", () => {
     }) => [e.seq, e.who, e.type, e.target, e.cause];
     expect(again.story.all().map(shape)).toEqual(first.story.all().map(shape));
     expect(again.scene.all()).toEqual(first.scene.all());
+  });
+});
+
+describe("grouping (D96 · D97)", () => {
+  function setup() {
+    const clock = createManualClock();
+    const story = createStory(clock);
+    const scene = createSceneStore();
+    const strokesStore = createStrokeStore();
+    const comparator = createComparator({
+      scene,
+      story,
+      strokes: strokesStore,
+      clock,
+      packs: () => STARTER_PACKS,
+    });
+    /** Draws a stroke that starts now and takes 80 ms. */
+    const draw = (pts: Point2[]) => {
+      const s = { ...stroke(pts), t0: clock.now() };
+      s.points = s.points.map(([x, y, p], i, all) => [
+        x,
+        y,
+        p,
+        Math.round((80 * i) / Math.max(1, all.length - 1)),
+      ]);
+      comparator.onStroke(s, recordStroke(story, strokesStore, s));
+      clock.advance(80);
+      return s;
+    };
+    return { clock, story, scene, comparator, draw };
+  }
+
+  it("two quick strokes close together are one group, read as an X 0.6 s after the last one", () => {
+    const { clock, scene, story, draw } = setup();
+    draw(
+      along([
+        [0, 0],
+        [60, 60],
+      ]),
+    );
+    clock.advance(200);
+    const second = draw(
+      along([
+        [60, 0],
+        [0, 60],
+      ]),
+    );
+    clock.advance(500);
+    expect(scene.all()).toEqual([]);
+    clock.advance(100);
+    const symbol = scene.all()[0]!;
+    expect(symbol).toMatchObject({
+      kind: "symbol",
+      label: "X",
+      strokes: [expect.any(String), second.id],
+    });
+    const event = story.all().at(-1)!;
+    expect(event).toMatchObject({
+      type: "recognized",
+      target: symbol.id,
+      detail: { kind: "symbol", label: "X" },
+    });
+    expect(story.get(event.cause!)?.target).toBe(second.id);
+    expect(symbol.confidence).toBeGreaterThan(0.6);
+  });
+
+  it("a stroke far away, or much later, starts a new group", () => {
+    const { clock, scene, draw } = setup();
+    draw(
+      along([
+        [0, 0],
+        [60, 60],
+      ]),
+    );
+    draw(
+      along([
+        [600, 0],
+        [660, 60],
+      ]),
+    );
+    clock.advance(600);
+    expect(scene.all().filter((o) => o.kind === "symbol")).toHaveLength(2);
+    const later = setup();
+    later.draw(
+      along([
+        [0, 0],
+        [60, 60],
+      ]),
+    );
+    later.clock.advance(650); // the first group is read before the next stroke
+    later.draw(
+      along([
+        [60, 0],
+        [0, 60],
+      ]),
+    );
+    later.clock.advance(600);
+    expect(later.scene.all().map((o) => o.label)).not.toContain("X");
+  });
+
+  it("a round stroke in a cell is an O, inside that cell; outside a cell it's a circle", () => {
+    const { clock, scene, draw } = setup();
+    scene.add(
+      {
+        id: "c5",
+        kind: "cell",
+        label: "cell 5",
+        pack: "tic-tac-toe",
+        parts: [],
+        relations: [],
+        box: [100, 100, 100, 100],
+        confidence: 1,
+        geom: {
+          poly: [
+            [100, 100],
+            [200, 100],
+            [200, 200],
+            [100, 200],
+          ],
+        },
+      },
+      "fastbrain",
+    );
+    draw(ellipse(150, 150, 30, 30));
+    clock.advance(600);
+    expect(scene.all().find((o) => o.kind === "symbol")).toMatchObject({
+      label: "O",
+      relations: [{ type: "inside", to: "c5" }],
+    });
+    draw(ellipse(600, 600, 30, 30));
+    clock.advance(600);
+    expect(scene.all().at(-1)!.kind).toBe("circle");
+  });
+
+  it("a grid line ends the open group at once", () => {
+    const { scene, draw } = setup();
+    draw(
+      along([
+        [700, 700],
+        [740, 740],
+      ]),
+    );
+    draw(
+      along([
+        [0, 10],
+        [500, 12],
+      ]),
+    );
+    expect(scene.all().map((o) => o.kind)).toEqual(["symbol", "line"]);
+  });
+
+  it("flush reads the open group now", () => {
+    const { scene, comparator, draw } = setup();
+    draw(
+      along([
+        [0, 0],
+        [60, 60],
+      ]),
+    );
+    comparator.flush();
+    expect(scene.all()).toHaveLength(1);
   });
 });

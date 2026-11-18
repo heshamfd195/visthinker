@@ -31,3 +31,27 @@ export function markColors(events: readonly VisEvent[]): Map<string, string> {
   }
   return colors;
 }
+
+/**
+ * What each symbol was read as, from its recognized event (D97): "X 87%", "?", and the runner-up
+ * when it came close, e.g. "O 61% · 0?".
+ */
+export function symbolTags(events: readonly VisEvent[]): Map<string, string> {
+  const tags = new Map<string, string>();
+  for (const e of events) {
+    const d = e.detail;
+    if (e.type !== "recognized" || d?.["kind"] !== "symbol" || !e.target) continue;
+    const label = String(d["label"]);
+    const score = typeof d["score"] === "number" ? d["score"] : 0;
+    const pct = (n: number) => `${Math.round(n * 100)}%`;
+    const alt = Array.isArray(d["alternatives"])
+      ? (d["alternatives"][0] as { label?: string; score?: number } | undefined)
+      : undefined;
+    const close = alt?.label && typeof alt.score === "number" && score - alt.score < 0.05;
+    tags.set(
+      e.target,
+      label === "?" ? "?" : `${label} ${pct(score)}${close ? ` · ${alt!.label}?` : ""}`,
+    );
+  }
+  return tags;
+}

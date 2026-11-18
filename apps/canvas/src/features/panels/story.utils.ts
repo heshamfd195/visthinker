@@ -12,6 +12,10 @@ export function describe(e: VisEvent): string {
   const d = e.detail ?? {};
   const bits: string[] = [];
   if (typeof d["kind"] === "string") bits.push(d["kind"]);
+  if (typeof d["label"] === "string") {
+    const score = typeof d["score"] === "number" ? ` ${Math.round(d["score"] * 100)}%` : "";
+    bits.push(`“${d["label"]}”${score}`);
+  }
   if (typeof d["color"] === "string") bits.push(d["color"]);
   if (typeof d["shape"] === "string") bits.push(d["shape"]);
   if (typeof d["text"] === "string") bits.push(`“${d["text"]}”`);

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { CLAUDE_COLOR, dragBox, isRealDrag, markColors, USER_COLOR } from "./objects.utils.ts";
+import {
+  CLAUDE_COLOR,
+  dragBox,
+  isRealDrag,
+  markColors,
+  symbolTags,
+  USER_COLOR,
+} from "./objects.utils.ts";
 
 describe("placing by drag", () => {
   it("the box covers the drag in any direction", () => {
@@ -27,6 +34,31 @@ describe("mark colours", () => {
     expect([...markColors([place(1, "m1", "user"), place(2, "m2", "claude")])]).toEqual([
       ["m1", USER_COLOR],
       ["m2", CLAUDE_COLOR],
+    ]);
+  });
+});
+
+describe("symbol tags (D97)", () => {
+  const read = (target: string, label: string, score: number, alternatives: unknown[] = []) =>
+    ({
+      seq: 1,
+      t: 0,
+      who: "fastbrain",
+      type: "recognized",
+      target,
+      detail: { kind: "symbol", label, score, alternatives },
+    }) as const;
+
+  it("shows the label and score, '?' when unsure, and the runner-up when it came close", () => {
+    const tags = symbolTags([
+      read("y1", "X", 0.87),
+      read("y2", "?", 0.3),
+      read("y3", "O", 0.61, [{ label: "X", score: 0.58 }]),
+    ]);
+    expect([...tags]).toEqual([
+      ["y1", "X 87%"],
+      ["y2", "?"],
+      ["y3", "O 61% · X?"],
     ]);
   });
 });
