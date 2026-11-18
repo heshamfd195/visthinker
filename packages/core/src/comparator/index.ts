@@ -12,6 +12,7 @@ import { classifyShape } from "./shapes.ts";
 export * from "./cross.ts";
 export * from "./geometry.ts";
 export * from "./shapes.ts";
+export * from "./symbols.ts";
 
 export const SHAPES_PACK = "shapes";
 
