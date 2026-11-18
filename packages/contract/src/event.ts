@@ -14,10 +14,15 @@ export const KNOWN_EVENT_TYPES = [
   "label",
   "remove",
   "undo",
+  "redo",
+  "clear",
   "say",
   "ask",
   "answer",
   "pack",
+  "message",
+  "takeback",
+  "mode",
 ] as const;
 export const EventType = z.string().min(1).max(32);
 

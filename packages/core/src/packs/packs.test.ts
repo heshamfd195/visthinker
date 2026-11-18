@@ -36,7 +36,11 @@ describe("loadPack (D92)", () => {
 
 describe("starter packs (D74)", () => {
   it("shapes and tic-tac-toe are built in and pass the same check", () => {
-    expect(STARTER_PACKS.map((p) => p["pack.json"].name)).toEqual(["shapes", "tic-tac-toe"]);
+    expect(STARTER_PACKS.map((p) => p["pack.json"].name)).toEqual([
+      "shapes",
+      "tic-tac-toe",
+      "modes",
+    ]);
     expect(unknownBlocks(STARTER_PACKS[1]!)).toEqual([]);
   });
 });
@@ -44,12 +48,12 @@ describe("starter packs (D74)", () => {
 describe("the registry", () => {
   it("starts with the starter packs, and a newer load replaces the older", () => {
     const registry = createPackRegistry(STARTER_PACKS);
-    expect(registry.names()).toEqual(["shapes", "tic-tac-toe"]);
+    expect(registry.names()).toEqual(["shapes", "tic-tac-toe", "modes"]);
     registry.load({
       "pack.json": { ...manifest, name: "tic-tac-toe", version: "0.9.0", blocks: ["grid"] },
     });
     expect(registry.get("tic-tac-toe")!.pack["pack.json"].version).toBe("0.9.0");
-    expect(registry.names()).toHaveLength(2);
+    expect(registry.names()).toHaveLength(3);
   });
 
   it("a bad pack is refused and doesn't replace a good one", () => {

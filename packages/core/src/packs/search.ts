@@ -39,6 +39,7 @@ export function createPackSearch({
       .sort()
       .join(",");
     for (const name of packs.names()) {
+      if (!packs.enabled(name)) continue;
       const loaded = packs.get(name)!;
       const manifest = loaded.pack["pack.json"];
       if (!loaded.pack["rules.json"]?.grid || Object.keys(manifest.match).length === 0) continue;

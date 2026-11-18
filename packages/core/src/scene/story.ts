@@ -18,10 +18,14 @@ export interface Story {
   subscribe(listener: (event: VisEvent) => void): () => void;
 }
 
-export function createStory(clock: Clock): Story {
-  const events: VisEvent[] = [];
+/** `initial`: the events of a saved project (D142); Claude's read cursor starts after them. */
+export function createStory(clock: Clock, initial: readonly VisEvent[] = []): Story {
+  const events: VisEvent[] = initial.map((e) => structuredClone(e));
+  events.forEach((e, i) => {
+    if (e.seq !== i + 1) throw new Error(`saved event ${i + 1} has seq ${e.seq}`);
+  });
   const listeners = new Set<(event: VisEvent) => void>();
-  let readUpTo = 0;
+  let readUpTo = events.length;
 
   // Copies in and out: nothing outside can change what the story holds.
   const copy = (event: VisEvent): VisEvent => structuredClone(event);
