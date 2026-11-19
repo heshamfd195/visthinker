@@ -1,67 +1,71 @@
 import type { Stroke } from "@visthinker/contract";
 import Konva from "konva";
-import { useEffect, useMemo, useRef } from "react";
-import { Layer, Rect } from "react-konva";
+import { memo, useMemo, useRef } from "react";
+import { Layer, Line, Rect } from "react-konva";
+import { paint, type CanvasColor } from "../../shared/theme.ts";
 import { createInkManager } from "./ink.manager.ts";
 import type { RawPoint } from "./ink.types.ts";
-import { outline, PEN, pressureOf } from "./ink.utils.ts";
+import { outline, PEN, pressureOf, samplesOf } from "./ink.utils.ts";
+
+/** What a press on the canvas does: draw, erase, pick, or nothing (another layer handles it). */
+export type InkMode = "draw" | "erase" | "select" | "off";
 
 interface Props {
-  width: number;
-  height: number;
+  /** The visible part of the world, in world units: the drawing surface covers it. */
+  view: { x: number; y: number; width: number; height: number };
   /** The session clock, in milliseconds. */
   now: () => number;
   /** The next stroke id from the core. */
   nextId: () => string;
   /** A finished stroke, ready to record in the story. */
   onStroke: (stroke: Stroke) => void;
-  /** The pen colour. */
+  /** Every stroke still visible: drawn from data, so undo, clear and projects redraw it (D141). */
+  strokes: readonly Stroke[];
+  /** The pen colour and width. */
   color?: string;
+  width?: number;
+  smoothing?: number;
+  canvas: CanvasColor;
+  mode: InkMode;
   /** A short press that barely moved: a tap at this world point, e.g. on a cell. */
   onTap?: (at: [number, number]) => void;
-  /** False while another tool is active: the layer then draws nothing. */
-  enabled?: boolean;
+  /** The eraser touched these strokes. */
+  onErase?: (ids: string[]) => void;
+  /** The select tool picked a stroke (with shift: added to the selection). */
+  onPick?: (id: string | undefined, add: boolean) => void;
   /** Strokes whose ink gave way to something cleaner, e.g. a drawn X now shown as a mark. */
   hidden?: ReadonlySet<string>;
 }
 
 /**
- * The drawing surface. Ink is drawn on an imperative Konva layer, outside React, so a stroke
- * doesn't re-render per point (semi-declarative, D83). World units = stage pixels for now.
+ * The drawing surface. The stroke being drawn is an imperative Konva line, outside React, so it
+ * doesn't re-render per point (semi-declarative, D83); finished strokes are drawn from data.
  * A tap leaves no ink and goes to `onTap`, e.g. to play in a cell.
  */
 export function InkLayer({
-  width,
-  height,
+  view,
   now,
   nextId,
   onStroke,
-  onTap,
+  strokes,
   color = PEN.color,
-  enabled = true,
+  width = PEN.width,
+  smoothing = 0.5,
+  canvas,
+  mode,
+  onTap,
+  onErase,
+  onPick,
   hidden,
 }: Props) {
-  const ink = useRef<Konva.Layer>(null);
+  const live = useRef<Konva.Layer>(null);
   const shape = useRef<Konva.Line | null>(null);
-  const manager = useMemo(() => createInkManager(nextId, { ...PEN, color }), [nextId, color]);
-  /** Each finished stroke's ink, by stroke id, so it can give way later. */
-  const shapes = useRef(new Map<string, Konva.Line>());
-
-  // Once gone, gone: the mark that replaced the ink stays.
-  useEffect(() => {
-    let changed = false;
-    for (const id of hidden ?? []) {
-      const line = shapes.current.get(id);
-      if (!line) continue;
-      line.destroy();
-      shapes.current.delete(id);
-      changed = true;
-    }
-    if (changed) ink.current?.batchDraw();
-  }, [hidden]);
+  const erasing = useRef(false);
+  const manager = useMemo(() => createInkManager(nextId, { color, width }), [nextId, color, width]);
 
   const sample = (e: Konva.KonvaEventObject<PointerEvent>): RawPoint | null => {
-    const at = e.target.getStage()?.getPointerPosition();
+    // World units: the stage may be zoomed and panned.
+    const at = e.target.getStage()?.getRelativePointerPosition();
     if (!at) return null;
     return {
       x: at.x,
@@ -72,17 +76,25 @@ export function InkLayer({
   };
 
   const down = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    if (mode === "erase") {
+      erasing.current = true;
+      return;
+    }
+    if (mode === "select") {
+      onPick?.(undefined, e.evt.shiftKey);
+      return;
+    }
     const point = sample(e);
-    if (!enabled || !point || !ink.current) return;
+    if (mode !== "draw" || !point || !live.current) return;
     manager.begin(point);
     shape.current = new Konva.Line({
-      points: outline([point]),
+      points: outline([point], width, false, smoothing),
       closed: true,
-      fill: color,
+      fill: paint(color, canvas),
       listening: false,
     });
-    ink.current.add(shape.current);
-    ink.current.batchDraw();
+    live.current.add(shape.current);
+    live.current.batchDraw();
   };
 
   const move = (e: Konva.KonvaEventObject<PointerEvent>) => {
@@ -90,38 +102,85 @@ export function InkLayer({
     const point = sample(e);
     if (!point) return;
     manager.extend(point);
-    shape.current?.points(outline([...manager.live()]));
-    ink.current?.batchDraw();
+    shape.current?.points(outline([...manager.live()], width, false, smoothing));
+    live.current?.batchDraw();
   };
 
   const up = () => {
-    const finished = [...manager.live()];
+    erasing.current = false;
     const result = manager.end();
-    if (result?.kind === "stroke") {
-      // Redraw the finished stroke to its real end before handing it on.
-      shape.current?.points(outline(finished, PEN.width, true));
-      if (shape.current) shapes.current.set(result.stroke.id, shape.current);
-      onStroke(result.stroke);
-    } else shape.current?.destroy();
-    if (result?.kind === "tap") onTap?.([result.at.x, result.at.y]);
+    shape.current?.destroy();
     shape.current = null;
-    ink.current?.batchDraw();
+    live.current?.batchDraw();
+    if (result?.kind === "stroke") onStroke(result.stroke);
+    if (result?.kind === "tap") onTap?.([result.at.x, result.at.y]);
   };
+
+  const visible = strokes.filter((s) => !hidden?.has(s.id));
+  const pickable = mode === "erase" || mode === "select";
 
   return (
     <>
       <Layer>
         <Rect
-          width={width}
-          height={height}
-          fill="#fff"
+          {...view}
+          fill="transparent"
+          listening={mode !== "off"}
           onPointerDown={down}
           onPointerMove={move}
           onPointerUp={up}
           onPointerLeave={up}
         />
       </Layer>
-      <Layer ref={ink} listening={false} />
+      <Layer listening={pickable}>
+        {visible.map((stroke) => (
+          <InkStroke
+            key={stroke.id}
+            stroke={stroke}
+            fill={paint(stroke.color, canvas)}
+            smoothing={smoothing}
+            onDown={(shift) =>
+              mode === "erase" ? onErase?.([stroke.id]) : onPick?.(stroke.id, shift)
+            }
+            onEnter={() => {
+              if (mode === "erase" && erasing.current) onErase?.([stroke.id]);
+            }}
+          />
+        ))}
+      </Layer>
+      <Layer ref={live} listening={false} />
     </>
   );
 }
+
+const InkStroke = memo(function InkStroke({
+  stroke,
+  fill,
+  smoothing,
+  onDown,
+  onEnter,
+}: {
+  stroke: Stroke;
+  fill: string;
+  smoothing: number;
+  onDown: (shift: boolean) => void;
+  onEnter: () => void;
+}) {
+  const points = useMemo(
+    () => outline(samplesOf(stroke), stroke.width, true, smoothing),
+    [stroke, smoothing],
+  );
+  return (
+    <Line
+      points={points}
+      closed
+      fill={fill}
+      hitStrokeWidth={12}
+      onPointerDown={(e) => {
+        e.cancelBubble = true;
+        onDown(e.evt.shiftKey);
+      }}
+      onPointerEnter={onEnter}
+    />
+  );
+});

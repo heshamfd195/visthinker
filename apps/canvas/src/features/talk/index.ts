@@ -1,3 +1,3 @@
-// features/talk: Claude's messages, questions and proposals (the only door, D83).
-export { MessageStrip } from "./MessageStrip.tsx";
+// features/talk: reading games and messages out of the story (the only door, D83).
+// The chat itself lives in features/chat (D126).
 export { winningLine } from "./talk.utils.ts";

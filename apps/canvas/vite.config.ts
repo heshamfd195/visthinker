@@ -6,6 +6,7 @@ import { defineConfig } from "vite";
 export default defineConfig({
   base: "./",
   plugins: [react(), tailwindcss()],
-  // React + Konva are ~550 kB before gzip (~170 kB after); fine for a local canvas.
-  build: { chunkSizeWarningLimit: 800 },
+  // React + Konva + the UI kit (Radix, lucide) are ~960 kB before gzip (~300 kB after); fine for
+  // a canvas served from this computer. Split it if it's ever served over the network.
+  build: { chunkSizeWarningLimit: 1_100 },
 });
