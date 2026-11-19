@@ -25,6 +25,8 @@ export interface History {
   redo(): VisEvent | undefined;
   /** One event that hides everything; a single undo brings it all back (D132). */
   clear(): VisEvent | undefined;
+  /** The eraser: hides these strokes and removes these objects, as one undoable event. */
+  erase(ids: string[]): VisEvent | undefined;
   /** Takes back one given event, e.g. Claude's move in an accepted take-back (D131). */
   undoEvent(seq: number, who: Who, cause?: number): VisEvent | undefined;
   canUndo(): boolean;
@@ -144,6 +146,7 @@ export function createHistory({ story, scene, strokeIds, state }: HistoryDeps): 
         break;
       }
       case "clear":
+      case "erase":
         restore(event.seq);
         break;
     }
@@ -168,7 +171,18 @@ export function createHistory({ story, scene, strokeIds, state }: HistoryDeps): 
       case "clear":
         hideAll(event.seq);
         break;
+      case "erase":
+        hideSome(event.seq, (event.detail?.["ids"] as string[] | undefined) ?? []);
+        break;
     }
+  };
+
+  const hideSome = (seq: number, ids: string[]) => {
+    const strokes = ids.filter((id) => strokeIds().includes(id) && !hidden.has(id));
+    for (const id of strokes) hidden.add(id);
+    const objects = scene.all().filter((o) => ids.includes(o.id));
+    const orphaned = orphans().filter((o) => !objects.some((x) => x.id === o.id));
+    save(seq, [...objects, ...orphaned], strokes);
   };
 
   const hideAll = (seq: number) => {
@@ -177,17 +191,20 @@ export function createHistory({ story, scene, strokeIds, state }: HistoryDeps): 
     save(seq, scene.all(), strokes);
   };
 
+  // The canvas changes first, then the event goes in: the screen redraws on each new event.
   const undoOf = (target: VisEvent, who: Who, cause?: number) => {
-    const event = story.append({
+    takeAway(target);
+    return story.append({
       who,
       type: "undo",
       cause: target.seq,
       ...(target.target === undefined ? {} : { target: target.target }),
       ...(cause === undefined ? {} : { detail: { request: cause } }),
     });
-    takeAway(target);
-    return event;
   };
+
+  /** The seq the next event will get: a clear or an erase keeps what it hid under it. */
+  const nextSeq = () => story.all().length + 1;
 
   return {
     undo() {
@@ -198,20 +215,26 @@ export function createHistory({ story, scene, strokeIds, state }: HistoryDeps): 
       const undoEvent = findRedoable(story.all());
       const target = undoEvent?.cause !== undefined ? story.get(undoEvent.cause) : undefined;
       if (!undoEvent || !target) return undefined;
-      const event = story.append({
+      bringBack(target);
+      return story.append({
         who: "user",
         type: "redo",
         cause: undoEvent.seq,
         ...(target.target === undefined ? {} : { target: target.target }),
       });
-      bringBack(target);
-      return event;
     },
     clear() {
       if (scene.all().length === 0 && strokeIds().every((id) => hidden.has(id))) return undefined;
-      const event = story.append({ who: "user", type: "clear" });
-      hideAll(event.seq);
-      return event;
+      hideAll(nextSeq());
+      return story.append({ who: "user", type: "clear" });
+    },
+    erase(ids) {
+      const live = ids.filter(
+        (id) => (strokeIds().includes(id) && !hidden.has(id)) || scene.has(id),
+      );
+      if (live.length === 0) return undefined;
+      hideSome(nextSeq(), live);
+      return story.append({ who: "user", type: "erase", detail: { ids: live } });
     },
     undoEvent(seq, who, cause) {
       const target = story.get(seq);

@@ -65,6 +65,17 @@ describe("undo, redo and clear change the canvas (D130–D133 · D141)", () => {
     expect(scene.get(object.id)?.box).toEqual([10, 10, 50, 40]);
   });
 
+  it("the canvas has already changed when the event arrives, so the screen redraws right", () => {
+    const { story, scene, history } = setup();
+    const { object } = placeObject(story, scene, box);
+    const seen: boolean[] = [];
+    story.subscribe(() => seen.push(scene.has(object.id)));
+    history.undo();
+    history.redo();
+    history.clear();
+    expect(seen).toEqual([false, true, false]);
+  });
+
   it("an undone move goes back", () => {
     const { story, scene, history } = setup();
     const { object } = placeObject(story, scene, box);
@@ -96,6 +107,22 @@ describe("undo, redo and clear change the canvas (D130–D133 · D141)", () => {
     history.undo();
     expect(scene.has(object.id)).toBe(true);
     expect(history.hiddenStrokes().has("s1")).toBe(false);
+  });
+
+  it("the eraser hides ink and removes objects in one undoable event", () => {
+    const { story, scene, strokes, history } = setup();
+    recordStroke(story, strokes, stroke("s1"));
+    const { object } = placeObject(story, scene, box);
+    expect(history.erase(["s1", object.id, "nothing"])).toMatchObject({
+      type: "erase",
+      detail: { ids: ["s1", object.id] },
+    });
+    expect(history.hiddenStrokes().has("s1")).toBe(true);
+    expect(scene.has(object.id)).toBe(false);
+    history.undo();
+    expect(history.hiddenStrokes().has("s1")).toBe(false);
+    expect(scene.has(object.id)).toBe(true);
+    expect(history.erase(["nothing"])).toBeUndefined();
   });
 
   it("undo only takes back the user's own actions (D130)", () => {

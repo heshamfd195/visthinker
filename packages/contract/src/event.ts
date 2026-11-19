@@ -16,6 +16,7 @@ export const KNOWN_EVENT_TYPES = [
   "undo",
   "redo",
   "clear",
+  "erase",
   "say",
   "ask",
   "answer",
