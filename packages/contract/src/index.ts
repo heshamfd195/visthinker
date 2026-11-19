@@ -5,5 +5,7 @@ export * from "./event.ts";
 export * from "./scene.ts";
 export * from "./act.ts";
 export * from "./pack.ts";
+export * from "./modes.ts";
+export * from "./project.ts";
 export * from "./tools.ts";
 export * from "./bridge.ts";

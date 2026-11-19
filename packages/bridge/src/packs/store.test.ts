@@ -42,7 +42,7 @@ describe("pack store (D93)", () => {
     const packs = await store();
     await mkdir(join(packs.dir, "broken"), { recursive: true });
     await writeFile(join(packs.dir, "broken", "pack.json"), "{ not json");
-    expect((await packs.list()).map((p) => p.name)).toEqual(["shapes", "tic-tac-toe"]);
+    expect((await packs.list()).map((p) => p.name)).toEqual(["modes", "shapes", "tic-tac-toe"]);
     await expect(packs.read("broken")).rejects.toMatchObject({ code: "bad_contract" });
   });
 

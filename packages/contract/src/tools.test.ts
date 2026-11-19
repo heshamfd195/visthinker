@@ -12,6 +12,8 @@ describe("TOOLS (D81)", () => {
       "act",
       "say",
       "ask",
+      "answer",
+      "set_mode",
       "list_packs",
       "install_pack",
       "read_pack",

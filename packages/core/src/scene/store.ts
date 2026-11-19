@@ -18,12 +18,27 @@ export interface SceneStore {
   all(): SceneObject[];
 }
 
-export function createSceneStore(): SceneStore {
+/** `initial`: the objects of a saved project (D142). Their ids, and `usedIds`, stay used. */
+export function createSceneStore(
+  initial: readonly { object: SceneObject; owner: Who }[] = [],
+  usedIds: readonly string[] = [],
+): SceneStore {
   const objects = new Map<string, SceneObject>();
   const owners = new Map<string, Who>();
   const counters = new Map<string, number>();
   const used = new Set<string>();
   const copy = (object: SceneObject): SceneObject => structuredClone(object);
+  const remember = (id: string) => {
+    used.add(id);
+    const match = /^([a-z]+)(\d+)$/.exec(id);
+    if (match) counters.set(match[1]!, Math.max(counters.get(match[1]!) ?? 0, Number(match[2])));
+  };
+  for (const id of usedIds) remember(id);
+  for (const { object, owner } of initial) {
+    remember(object.id);
+    objects.set(object.id, copy(object));
+    owners.set(object.id, owner);
+  }
 
   return {
     nextId(prefix) {

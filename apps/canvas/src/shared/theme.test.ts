@@ -29,3 +29,13 @@ describe("theme", () => {
     expect(currentTheme(root)).toBe("light");
   });
 });
+
+describe("paint", () => {
+  it("turns ink light on a dark canvas and dark on paper", async () => {
+    const { paint } = await import("./theme.ts");
+    expect(paint("ink", "black")).toBe("#e8e8e8");
+    expect(paint("#222222", "black")).toBe("#e8e8e8");
+    expect(paint("ink", "paper")).toBe("#222222");
+    expect(paint("#e03131", "black")).toBe("#e03131");
+  });
+});

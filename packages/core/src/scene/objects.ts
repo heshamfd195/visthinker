@@ -4,13 +4,20 @@ import type { Box, Point2, SceneObject, VisEvent, Who } from "@visthinker/contra
 import type { SceneStore } from "./store.ts";
 import type { Story } from "./story.ts";
 
-export const PREBUILT_KINDS = ["box", "circle", "arrow"] as const;
+/** Box, circle and arrow from the toolbar (D67); a glyph (π, ∑…) from the library and a text note (D123). */
+export const PREBUILT_KINDS = ["box", "circle", "arrow", "glyph", "text"] as const;
 export type PrebuiltKind = (typeof PREBUILT_KINDS)[number];
 
 /** The pack name for objects made by construction, not recognized from ink. */
 export const BUILTIN_PACK = "builtin";
 
-const PREFIX: Record<PrebuiltKind, string> = { box: "b", circle: "o", arrow: "a" };
+const PREFIX: Record<PrebuiltKind, string> = {
+  box: "b",
+  circle: "o",
+  arrow: "a",
+  glyph: "g",
+  text: "t",
+};
 
 export interface PlaceInput {
   kind: PrebuiltKind;

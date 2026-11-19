@@ -6,3 +6,4 @@ export * from "./blocks/index.ts";
 export * from "./packs/index.ts";
 export * from "./game/index.ts";
 export * from "./comparator/index.ts";
+export * from "./modes/index.ts";

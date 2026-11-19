@@ -56,15 +56,23 @@ export interface LoadedPack {
   unknown: string[];
 }
 
-/** The packs loaded in this session, by name. A newer load of the same name replaces the older. */
+/**
+ * The packs loaded in this session, by name. A newer load of the same name replaces the older.
+ * A pack switched off stays loaded but stops reading the drawing (D122).
+ */
 export interface PackRegistry {
   load(raw: unknown): LoadedPack;
   get(name: string): LoadedPack | undefined;
   names(): string[];
+  enabled(name: string): boolean;
+  setEnabled(name: string, on: boolean): void;
+  /** The packs that are switched on. */
+  active(): Pack[];
 }
 
 export function createPackRegistry(initial: readonly Pack[] = []): PackRegistry {
   const packs = new Map<string, LoadedPack>();
+  const off = new Set<string>();
   const registry: PackRegistry = {
     load(raw) {
       const pack = loadPack(raw);
@@ -74,6 +82,13 @@ export function createPackRegistry(initial: readonly Pack[] = []): PackRegistry 
     },
     get: (name) => packs.get(name),
     names: () => [...packs.keys()],
+    enabled: (name) => packs.has(name) && !off.has(name),
+    setEnabled(name, on) {
+      if (on) off.delete(name);
+      else off.add(name);
+    },
+    active: () =>
+      [...packs.values()].filter((p) => !off.has(p.pack["pack.json"].name)).map((p) => p.pack),
   };
   for (const pack of initial) registry.load(pack);
   return registry;
