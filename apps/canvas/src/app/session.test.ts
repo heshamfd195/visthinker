@@ -4,9 +4,10 @@ import { createSystemClock } from "../adapters/system-clock/index.ts";
 import { createSession } from "./session.ts";
 
 describe("composition root (D83)", () => {
-  it("wires the core to a port for each need; transport and packs are still fakes", () => {
+  it("wires the core to a port for each need; on its own, only the transport is a fake", () => {
     const session = createSession({ clock: createManualClock() });
-    expect(session.fakes).toEqual(["transport", "packs"]);
+    expect(session.fakes).toEqual(["transport"]);
+    expect(session.http).toBeUndefined();
     expect(session.transport.status()).toBe("ready");
     expect(session.packs.names()).toEqual([]);
   });
@@ -41,7 +42,7 @@ describe("transport (T18)", () => {
       bridgeUrl: "ws://127.0.0.1:1/?token=t",
     });
     expect(session.bridge).toBe(session.transport);
-    expect(session.fakes).toEqual(["packs"]);
+    expect(session.fakes).toEqual([]);
     expect(session.transport.status()).toBe("connecting");
   });
 
@@ -78,5 +79,28 @@ describe("system clock", () => {
     const clock = createSystemClock(() => wall);
     wall = 1_250.9;
     expect(clock.now()).toBe(251);
+  });
+});
+
+describe("projects (D142)", () => {
+  it("opening a project builds a fresh canvas and tells the app", () => {
+    const session = createSession({ clock: createManualClock() });
+    const first = session.canvas();
+    let told = 0;
+    session.onCanvas(() => told++);
+    const second = session.open();
+    expect(second).not.toBe(first);
+    expect(session.canvas()).toBe(second);
+    expect(session.story).toBe(second.story);
+    expect(told).toBe(1);
+  });
+
+  it("opened from the bridge's link, projects go through its HTTP API", () => {
+    const session = createSession({
+      clock: createManualClock(),
+      bridgeUrl: "ws://127.0.0.1:4321/?token=abc",
+      search: "?ws=4321&token=abc",
+    });
+    expect(session.http).toBeDefined();
   });
 });
