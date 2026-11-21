@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { positions, snapPoint, visibleStep } from "./guides.utils.ts";
+import { DEFAULT_LOOK, guidesFromOld } from "../shell/index.ts";
+import {
+  canSnap,
+  dottedDash,
+  GUIDE_OPACITY,
+  positions,
+  snapPoint,
+  visibleStep,
+} from "./guides.utils.ts";
 
 describe("snapPoint (D124)", () => {
   it("moves a point to the nearest grid crossing", () => {
@@ -40,5 +48,50 @@ describe("positions", () => {
   it("gives nothing for an empty range or a bad step", () => {
     expect(positions(10, 0, 24)).toEqual([]);
     expect(positions(0, 10, 0)).toEqual([]);
+  });
+});
+
+describe("one guide at a time", () => {
+  it("snaps only to dots or a grid, and only when asked", () => {
+    expect(canSnap({ kind: "dots", snap: true })).toBe(true);
+    expect(canSnap({ kind: "grid", snap: true })).toBe(true);
+    expect(canSnap({ kind: "lines", snap: true })).toBe(false);
+    expect(canSnap({ kind: "none", snap: true })).toBe(false);
+    expect(canSnap({ kind: "grid", snap: false })).toBe(false);
+  });
+
+  it("has three strengths, faint to strong", () => {
+    expect(GUIDE_OPACITY.faint).toBeLessThan(GUIDE_OPACITY.soft);
+    expect(GUIDE_OPACITY.soft).toBeLessThan(GUIDE_OPACITY.strong);
+  });
+
+  it("dots a dotted line in screen pixels", () => {
+    expect(dottedDash(1)).toEqual([1, 4]);
+    expect(dottedDash(0.5)).toEqual([0.5, 2]);
+  });
+});
+
+describe("a look saved with separate grid and lines", () => {
+  it("keeps the grid, which was drawn on top, when both were on", () => {
+    expect(
+      guidesFromOld({
+        grid: { kind: "squares", size: 32, snap: true },
+        lines: { kind: "ruled", spacing: 48 },
+      }),
+    ).toMatchObject({ kind: "grid", size: 32, snap: true });
+    expect(guidesFromOld({ grid: { kind: "dots", size: 20 } })).toMatchObject({
+      kind: "dots",
+      size: 20,
+    });
+  });
+
+  it("turns writing lines into lines with the writing guide", () => {
+    expect(
+      guidesFromOld({ grid: { kind: "none" }, lines: { kind: "writing", spacing: 56 } }),
+    ).toMatchObject({ kind: "lines", size: 56, writing: true });
+  });
+
+  it("starts with no guide when neither was on", () => {
+    expect(guidesFromOld({})).toEqual(DEFAULT_LOOK.guides);
   });
 });

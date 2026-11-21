@@ -1,9 +1,10 @@
-// The grid and the writing lines (T48 · D124): background only, under everything, and never
-// listening, so they're never read as strokes. Each kind is one Shape, not a node per line.
+// The background guide (T48 · D124): dots, a grid or writing lines, one at a time. Background only,
+// under everything, and never listening, so it's never read as strokes. One Shape per kind, not
+// a node per line.
 import type Konva from "konva";
 import { Layer, Shape } from "react-konva";
 import { useUi } from "../shell/index.ts";
-import { positions, visibleStep } from "./guides.utils.ts";
+import { dottedDash, GUIDE_OPACITY, positions, visibleStep } from "./guides.utils.ts";
 
 export interface GuidesLayerProps {
   /** The visible world rect. */
@@ -18,14 +19,13 @@ export interface GuidesLayerProps {
 }
 
 export function GuidesLayer({ x, y, width, height, color, scale }: GuidesLayerProps) {
-  const grid = useUi((s) => s.grid);
-  const lines = useUi((s) => s.lines);
+  const guides = useUi((s) => s.guides);
   const px = 1 / (scale > 0 ? scale : 1);
   const right = x + width;
   const bottom = y + height;
+  const step = visibleStep(guides.size, scale);
 
   const dots = (ctx: Konva.Context, shape: Konva.Shape) => {
-    const step = visibleStep(grid.size, scale);
     ctx.beginPath();
     for (const gx of positions(x, right, step))
       for (const gy of positions(y, bottom, step)) {
@@ -35,8 +35,7 @@ export function GuidesLayer({ x, y, width, height, color, scale }: GuidesLayerPr
     ctx.fillShape(shape);
   };
 
-  const squares = (ctx: Konva.Context, shape: Konva.Shape) => {
-    const step = visibleStep(grid.size, scale);
+  const grid = (ctx: Konva.Context, shape: Konva.Shape) => {
     ctx.beginPath();
     for (const gx of positions(x, right, step)) {
       ctx.moveTo(gx, y);
@@ -49,9 +48,8 @@ export function GuidesLayer({ x, y, width, height, color, scale }: GuidesLayerPr
     ctx.strokeShape(shape);
   };
 
-  // `middle`: the dashed guide halfway between two lines, for writing paper.
+  // `middle`: the guide halfway between two lines, for writing paper.
   const rows = (middle: boolean) => (ctx: Konva.Context, shape: Konva.Shape) => {
-    const step = visibleStep(lines.spacing, scale);
     ctx.beginPath();
     for (const ly of positions(y, bottom, step, middle ? step / 2 : 0)) {
       ctx.moveTo(x, ly);
@@ -60,26 +58,28 @@ export function GuidesLayer({ x, y, width, height, color, scale }: GuidesLayerPr
     ctx.strokeShape(shape);
   };
 
-  const common = { listening: false, perfectDrawEnabled: false } as const;
+  const opacity = GUIDE_OPACITY[guides.opacity];
+  const common = { listening: false, perfectDrawEnabled: false, opacity } as const;
+  // Lines one screen pixel wide; dotted, a round dot then a gap, measured in screen pixels too.
+  const line = {
+    ...common,
+    stroke: color,
+    strokeWidth: guides.dotted ? 1.5 * px : px,
+    ...(guides.dotted ? { dash: dottedDash(1.5 * px), lineCap: "round" as const } : {}),
+  };
 
   return (
     <Layer listening={false}>
-      {grid.kind === "dots" && <Shape {...common} sceneFunc={dots} fill={color} opacity={0.35} />}
-      {grid.kind === "squares" && (
-        <Shape {...common} sceneFunc={squares} stroke={color} strokeWidth={px} opacity={0.35} />
-      )}
-      {lines.kind !== "none" && (
-        <Shape {...common} sceneFunc={rows(false)} stroke={color} strokeWidth={px} opacity={0.3} />
-      )}
-      {lines.kind === "writing" && (
+      {guides.kind === "dots" && <Shape {...common} sceneFunc={dots} fill={color} />}
+      {guides.kind === "grid" && <Shape {...line} sceneFunc={grid} />}
+      {guides.kind === "lines" && <Shape {...line} sceneFunc={rows(false)} />}
+      {guides.kind === "lines" && guides.writing && (
         <Shape
-          {...common}
+          {...line}
           sceneFunc={rows(true)}
-          stroke={color}
-          strokeWidth={px}
-          // Dashes measured in screen pixels, like the line width.
-          dash={[6 * px, 6 * px]}
-          opacity={0.3}
+          // The middle guide stays lighter, dashed unless the lines are dotted.
+          {...(guides.dotted ? {} : { dash: [6 * px, 6 * px] })}
+          opacity={opacity * 0.7}
         />
       )}
     </Layer>

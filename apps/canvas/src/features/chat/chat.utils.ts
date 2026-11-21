@@ -163,7 +163,9 @@ export function lastClaudeWords(
 /** The status line above the input (D134). */
 export function chatStatus(listening: boolean, connected: boolean): string {
   if (!connected) return "Not connected to Claude";
-  return listening ? "Claude is listening" : "Claude is away, your message will wait";
+  return listening
+    ? "Claude is listening"
+    : "Claude is connected, not watching. Your message will wait";
 }
 
 export interface Dot {

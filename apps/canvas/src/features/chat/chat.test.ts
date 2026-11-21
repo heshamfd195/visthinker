@@ -136,9 +136,11 @@ describe("Claude's last words", () => {
 });
 
 describe("the status line (D134)", () => {
-  it("says listening, away or not connected", () => {
+  it("says listening, not watching or not connected", () => {
     expect(chatStatus(true, true)).toBe("Claude is listening");
-    expect(chatStatus(false, true)).toBe("Claude is away, your message will wait");
+    expect(chatStatus(false, true)).toBe(
+      "Claude is connected, not watching. Your message will wait",
+    );
     expect(chatStatus(false, false)).toBe("Not connected to Claude");
   });
 });

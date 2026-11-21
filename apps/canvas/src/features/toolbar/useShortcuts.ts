@@ -1,11 +1,14 @@
 // Standard shortcuts, a small handler of our own (D146): ⌘Z undo, ⇧⌘Z redo, single letters for
-// tools, F for focus, \ for all panels, ⌘, for settings. Never while typing in a field.
+// tools, F for focus, \ for all panels, ⌘, for settings, Delete or Backspace to delete the
+// selection. Never while typing in a field.
 import { useEffect } from "react";
 import { toolForKey, useToolbar } from "./toolbar.store.ts";
 
 export interface ShortcutActions {
   undo(): void;
   redo(): void;
+  /** Deletes what's selected. */
+  deleteSelection(): void;
   focus(): void;
   openAll(): void;
   settings(): void;
@@ -38,6 +41,10 @@ export function useShortcuts(actions: ShortcutActions): void {
         return;
       }
       if (mod || e.altKey) return;
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        return actions.deleteSelection();
+      }
       if (e.key === "f" || e.key === "F") return actions.focus();
       if (e.key === "\\") return actions.openAll();
       const tool = toolForKey(e.key);

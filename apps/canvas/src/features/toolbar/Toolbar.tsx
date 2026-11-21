@@ -7,12 +7,14 @@ import {
   Eraser,
   Grid3x3,
   Hand,
+  LassoSelect,
   MousePointer2,
   MoreHorizontal,
   Pencil,
   Redo2,
   Save,
   Square,
+  SquareDashedMousePointer,
   Trash2,
   Type,
   Undo2,
@@ -39,7 +41,14 @@ import {
   Tip,
 } from "../../shared/ui/index.ts";
 import { COLORS, SHAPE_TOOLS, TOOLS, useToolbar } from "./toolbar.store.ts";
-import type { Tool } from "./toolbar.types.ts";
+import type { SelectBy, Tool } from "./toolbar.types.ts";
+
+/** The ways to select, under the one select button (like Photoshop's): click, box or lasso. */
+const SELECT_BY: { by: SelectBy; label: string; icon: LucideIcon }[] = [
+  { by: "pointer", label: "Arrow", icon: MousePointer2 },
+  { by: "box", label: "Box select", icon: SquareDashedMousePointer },
+  { by: "lasso", label: "Lasso select", icon: LassoSelect },
+];
 
 const ICONS: Record<Tool, LucideIcon> = {
   select: MousePointer2,
@@ -59,6 +68,10 @@ export interface ToolbarProps {
   canRedo: boolean;
   onUndo(): void;
   onRedo(): void;
+  /** Whether something is selected to delete. */
+  canDelete: boolean;
+  /** Deletes the selection (undoable). */
+  onDelete(): void;
   onSave(): void;
   onExport(): void;
   /** Called once the person confirmed "Clear the whole canvas?" (D132). */
@@ -73,14 +86,17 @@ export function Toolbar({
   canRedo,
   onUndo,
   onRedo,
+  canDelete,
+  onDelete,
   onSave,
   onExport,
   onClear,
 }: ToolbarProps) {
-  const { tool, color, shape, setTool, setColor } = useToolbar();
+  const { tool, color, shape, selectBy, setTool, setColor, setSelectBy } = useToolbar();
   const [confirm, setConfirm] = useState(false);
   const ShapeIcon = ICONS[shape];
   const shapeOn = SHAPE_TOOLS.includes(tool);
+  const SelectIcon = SELECT_BY.find((s) => s.by === selectBy)!.icon;
 
   const toolButton = (t: Tool) => {
     const Icon = ICONS[t];
@@ -104,7 +120,30 @@ export function Toolbar({
   return (
     <>
       <Surface className="flex items-center gap-0.5 p-1" role="toolbar" aria-label="Tools">
-        {toolButton("select")}
+        <DropdownMenu>
+          <Tip label={`Select · ${keyOf("select").key.toUpperCase()}`}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Select"
+                aria-pressed={tool === "select"}
+                className={cn(tool === "select" && "bg-accent text-accent-foreground")}
+              >
+                <SelectIcon />
+              </Button>
+            </DropdownMenuTrigger>
+          </Tip>
+          <DropdownMenuContent align="start">
+            {SELECT_BY.map(({ by, label, icon: Icon }) => (
+              <DropdownMenuItem key={by} onSelect={() => setSelectBy(by)}>
+                <Icon />
+                <span className="flex-1">{label}</span>
+                {by === selectBy && <span className="text-xs text-muted-foreground">✓</span>}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
         {toolButton("hand")}
         {toolButton("pen")}
         {toolButton("eraser")}
@@ -185,6 +224,17 @@ export function Toolbar({
             onClick={onRedo}
           >
             <Redo2 />
+          </Button>
+        </Tip>
+        <Tip label="Delete selection · ⌫">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Delete selection"
+            disabled={!canDelete}
+            onClick={onDelete}
+          >
+            <Trash2 />
           </Button>
         </Tip>
         <span className="mx-1 h-5 w-px bg-border" />

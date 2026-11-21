@@ -27,6 +27,8 @@ export interface EventsBoxProps {
   events: VisEvent[];
   calls: CallRecord[];
   listening: boolean;
+  /** Whether the bridge to Claude is up at all. */
+  connected: boolean;
   /** Clock time Claude got events and hasn't called back yet, else undefined. */
   thinkingSince: number | undefined;
   /** The session clock, in ms. */
@@ -51,7 +53,7 @@ function StatusDot({ status: s }: { status: Status }) {
         "inline-block size-2 shrink-0 rounded-full",
         s === "listening" && "bg-foreground",
         s === "thinking" && "animate-pulse bg-foreground",
-        s === "away" && "border border-muted-foreground bg-transparent",
+        (s === "away" || s === "offline") && "border border-muted-foreground bg-transparent",
       )}
     />
   );
@@ -68,7 +70,14 @@ function download(name: string, text: string) {
   URL.revokeObjectURL(url);
 }
 
-export function EventsBox({ events, calls, listening, thinkingSince, now }: EventsBoxProps) {
+export function EventsBox({
+  events,
+  calls,
+  listening,
+  connected,
+  thinkingSince,
+  now,
+}: EventsBoxProps) {
   const eventsOpen = useUi((s) => s.eventsOpen);
   const layout = useUi((s) => s.layout);
   const pointAt = useUi((s) => s.pointAt);
@@ -82,7 +91,7 @@ export function EventsBox({ events, calls, listening, thinkingSince, now }: Even
   const [seen, setSeen] = useState(events.length);
   const end = useRef<HTMLLIElement>(null);
 
-  const s = status(listening, thinkingSince);
+  const s = status(listening, thinkingSince, connected);
   useTick(s === "thinking" || eventsOpen, s === "thinking" ? 100 : 1000);
   const label = statusText(s, thinkingSince === undefined ? 0 : now() - thinkingSince);
 

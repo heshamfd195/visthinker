@@ -1,5 +1,6 @@
-// The grid and lines buttons on the right-hand strip, each opening its settings (T48 · D124).
-import { Grid3x3, Rows3 } from "lucide-react";
+// The guides button on the right-hand strip (T48 · D124): one background guide at a time, dots, a
+// grid or writing lines, with its spacing, strength and style.
+import { Grid3x3 } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "../../shared/cn.ts";
 import {
@@ -11,75 +12,84 @@ import {
   Switch,
   Tip,
 } from "../../shared/ui/index.ts";
-import { useUi, type GridKind, type LinesKind } from "../shell/index.ts";
+import { useUi, type GuideKind, type GuideOpacity, type Guides } from "../shell/index.ts";
 
-const GRID_KINDS: readonly { value: GridKind; label: string }[] = [
+const KINDS: readonly { value: GuideKind; label: string }[] = [
   { value: "none", label: "None" },
   { value: "dots", label: "Dots" },
-  { value: "squares", label: "Squares" },
+  { value: "grid", label: "Grid" },
+  { value: "lines", label: "Lines" },
 ];
 
-const LINES_KINDS: readonly { value: LinesKind; label: string }[] = [
-  { value: "none", label: "None" },
-  { value: "ruled", label: "Ruled" },
-  { value: "writing", label: "Writing" },
+const OPACITIES: readonly { value: GuideOpacity; label: string }[] = [
+  { value: "faint", label: "Faint" },
+  { value: "soft", label: "Soft" },
+  { value: "strong", label: "Strong" },
 ];
 
-export function GridControl() {
-  const grid = useUi((s) => s.grid);
+export function GuidesControl() {
+  const guides = useUi((s) => s.guides);
   const set = useUi((s) => s.set);
-  const patch = (p: Partial<typeof grid>) => set({ grid: { ...grid, ...p } });
+  const patch = (p: Partial<Guides>) => set({ guides: { ...guides, ...p } });
+  const { kind } = guides;
   return (
-    <Control label="Grid" icon={<Grid3x3 />} active={grid.kind !== "none"}>
-      <Segmented
-        label="Grid"
-        value={grid.kind}
-        options={GRID_KINDS}
-        onChange={(kind) => patch({ kind })}
-      />
-      <Field label="Size" value={grid.size}>
-        <Slider
-          aria-label="Grid size"
-          min={12}
-          max={64}
-          step={4}
-          value={[grid.size]}
-          onValueChange={([size]) => size !== undefined && patch({ size })}
-        />
-      </Field>
-      <label className="flex items-center justify-between text-xs">
-        Snap to grid
-        <Switch checked={grid.snap} onCheckedChange={(snap) => patch({ snap })} />
-      </label>
+    <Control label="Guides" icon={<Grid3x3 />} active={kind !== "none"}>
+      <Segmented label="Guide" value={kind} options={KINDS} onChange={(k) => patch({ kind: k })} />
+      {kind !== "none" && (
+        <>
+          <Field label={kind === "lines" ? "Line spacing" : "Size"} value={guides.size}>
+            <Slider
+              aria-label="Guide size"
+              min={12}
+              max={96}
+              step={4}
+              value={[guides.size]}
+              onValueChange={([size]) => size !== undefined && patch({ size })}
+            />
+          </Field>
+          <div className="flex flex-col gap-1.5 text-xs">
+            Opacity
+            <Segmented
+              label="Opacity"
+              value={guides.opacity}
+              options={OPACITIES}
+              onChange={(opacity) => patch({ opacity })}
+            />
+          </div>
+          {kind !== "dots" && (
+            <Toggle
+              label="Dotted"
+              checked={guides.dotted}
+              onChange={(dotted) => patch({ dotted })}
+            />
+          )}
+          {kind === "lines" && (
+            <Toggle
+              label="Writing guide"
+              checked={guides.writing}
+              onChange={(writing) => patch({ writing })}
+            />
+          )}
+          {kind !== "lines" && (
+            <Toggle
+              label="Snap to guide"
+              checked={guides.snap}
+              onChange={(snap) => patch({ snap })}
+            />
+          )}
+        </>
+      )}
       <Note>Background only. Claude never reads it as strokes.</Note>
     </Control>
   );
 }
 
-export function LinesControl() {
-  const lines = useUi((s) => s.lines);
-  const set = useUi((s) => s.set);
-  const patch = (p: Partial<typeof lines>) => set({ lines: { ...lines, ...p } });
+function Toggle(props: { label: string; checked: boolean; onChange(on: boolean): void }) {
   return (
-    <Control label="Lines" icon={<Rows3 />} active={lines.kind !== "none"}>
-      <Segmented
-        label="Lines"
-        value={lines.kind}
-        options={LINES_KINDS}
-        onChange={(kind) => patch({ kind })}
-      />
-      <Field label="Spacing" value={lines.spacing}>
-        <Slider
-          aria-label="Line spacing"
-          min={24}
-          max={96}
-          step={4}
-          value={[lines.spacing]}
-          onValueChange={([spacing]) => spacing !== undefined && patch({ spacing })}
-        />
-      </Field>
-      <Note>Writing adds a middle guide, like school paper.</Note>
-    </Control>
+    <label className="flex items-center justify-between text-xs">
+      {props.label}
+      <Switch checked={props.checked} onCheckedChange={props.onChange} />
+    </label>
   );
 }
 

@@ -183,9 +183,11 @@ group("time", () => {
     expect(rowTarget(rows[1]!)).toBeUndefined();
   });
 
-  it("the status says listening, thinking with seconds, or away", () => {
+  it("the status says listening, thinking with seconds, not watching, or not connected", () => {
     expect(statusText(status(true, undefined))).toBe("Claude is listening");
     expect(statusText(status(true, 1000), 4100)).toBe("Claude is thinking… 4.1 s");
-    expect(statusText(status(false, undefined))).toBe("Claude is away");
+    expect(statusText(status(false, undefined))).toBe("Claude is connected, not watching");
+    expect(statusText(status(false, undefined, false))).toBe("Not connected to Claude");
+    expect(statusText(status(true, 1000, false))).toBe("Not connected to Claude");
   });
 });

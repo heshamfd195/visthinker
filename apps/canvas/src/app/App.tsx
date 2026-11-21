@@ -12,23 +12,42 @@ import {
   setMode,
   moveObject,
   colorsFromStory,
+  reshapeSelection,
+  selectionBounds,
+  selectionParts,
   type CallRecord,
+  type Matrix,
   type PlaceInput,
 } from "@visthinker/core";
 import type Konva from "konva";
 import { Maximize, Minus, PanelsTopLeft, Plus, Settings as SettingsIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type RefObject,
+} from "react";
 import { Stage } from "react-konva";
 import { bridgeUrlFromPage } from "../adapters/ws-transport/index.ts";
 import { ChatPanel, ReplyDots } from "../features/chat/index.ts";
 import { EventsBox } from "../features/events/index.ts";
-import { GridControl, GuidesLayer, LinesControl, snapPoint } from "../features/guides/index.ts";
-import { InkLayer, type InkMode } from "../features/ink/index.ts";
+import { canSnap, GuidesControl, GuidesLayer, snapPoint } from "../features/guides/index.ts";
+import {
+  InkLayer,
+  liveSelection,
+  selectInRegion,
+  type InkMode,
+  type Region,
+} from "../features/ink/index.ts";
 import { LIBRARY_DRAG_TYPE, LibraryPanel, type LibraryItem } from "../features/library/index.ts";
 import { ModeButton, ModeNote } from "../features/modes/index.ts";
 import { markColors, ObjectsLayer, symbolTags } from "../features/objects/index.ts";
 import { PacksPanel, type PackRow } from "../features/packs/index.ts";
 import { ProjectsMenu } from "../features/projects/index.ts";
+import { TransformLayer } from "../features/transform/index.ts";
 import { SettingsDialog } from "../features/settings/index.ts";
 import { useUi } from "../features/shell/index.ts";
 import { winningLine } from "../features/talk/index.ts";
@@ -51,7 +70,7 @@ import type { PackListing } from "../adapters/bridge-http/index.ts";
 import { createSession, type Canvas, type Session } from "./session.ts";
 import { useFrame } from "./useFrame.ts";
 import { useLinkStatus } from "./useLinkStatus.ts";
-import { useProjects } from "./useProjects.ts";
+import { useProjects, type Projects } from "./useProjects.ts";
 import { useStoryVersion } from "./useStoryVersion.ts";
 import { useWindowSize } from "./useWindowSize.ts";
 
@@ -99,8 +118,21 @@ export function App() {
     [],
   );
   const canvas = useCanvas(session);
+  // Projects live above the keyed Workspace: opening one swaps the canvas, so below the key they
+  // would remount with it, reopen the latest project, swap the canvas again, and never stop.
+  const picture = useRef<() => string | undefined>(() => undefined);
+  const thumbnail = useCallback(() => picture.current(), []);
+  const projects = useProjects(session, canvas, thumbnail);
   // A new canvas remounts everything that draws it.
-  return <Workspace key={canvasKey(canvas)} session={session} canvas={canvas} />;
+  return (
+    <Workspace
+      key={canvasKey(canvas)}
+      session={session}
+      canvas={canvas}
+      projects={projects}
+      picture={picture}
+    />
+  );
 }
 
 const keys = new WeakMap<Canvas, number>();
@@ -110,7 +142,18 @@ function canvasKey(canvas: Canvas): number {
   return keys.get(canvas)!;
 }
 
-function Workspace({ session, canvas }: { session: Session; canvas: Canvas }) {
+function Workspace({
+  session,
+  canvas,
+  projects,
+  picture,
+}: {
+  session: Session;
+  canvas: Canvas;
+  projects: Projects;
+  /** Where this canvas hands App its picture for the project card. */
+  picture: RefObject<() => string | undefined>;
+}) {
   const link = useLinkStatus(session.transport);
   // Only the real bridge counts: on its own the page runs on a fake transport that is always ready.
   const connected = !!session.bridge && link === "ready";
@@ -134,7 +177,7 @@ function Workspace({ session, canvas }: { session: Session; canvas: Canvas }) {
 
   const ui = useUi();
   const screen = useWindowSize();
-  const { tool, color } = useToolbar();
+  const { tool, color, selectBy } = useToolbar();
   const version = useStoryVersion(canvas.story);
   const objects = useFrame(canvas.renderer);
   const events = useMemo(() => canvas.story.all(), [canvas, version]);
@@ -157,11 +200,10 @@ function Workspace({ session, canvas }: { session: Session; canvas: Canvas }) {
     height: screen.height / zoom,
   };
 
-  const thumbnail = useCallback(
-    () => stage.current?.toDataURL({ pixelRatio: Math.min(0.2, 240 / screen.width) }),
-    [screen.width],
-  );
-  const projects = useProjects(session, canvas, thumbnail);
+  useEffect(() => {
+    picture.current = () =>
+      stage.current?.toDataURL({ pixelRatio: Math.min(0.2, 240 / screen.width) });
+  }, [picture, screen.width]);
 
   // Behaviour settings live on disk (D143).
   const [behaviour, setBehaviour] = useState<BehaviourSettings>();
@@ -222,9 +264,8 @@ function Workspace({ session, canvas }: { session: Session; canvas: Canvas }) {
   const tags = useMemo(() => (ui.showRead ? symbolTags(events) : new Map()), [events, ui.showRead]);
 
   const snap = useCallback(
-    (p: Point2): Point2 =>
-      ui.grid.snap && ui.grid.kind !== "none" ? snapPoint(p, ui.grid.size) : p,
-    [ui.grid],
+    (p: Point2): Point2 => (canSnap(ui.guides) ? snapPoint(p, ui.guides.size) : p),
+    [ui.guides],
   );
 
   // Undo (D130 · D131): after Claude answered a game move, undo asks for a take-back first.
@@ -238,12 +279,23 @@ function Workspace({ session, canvas }: { session: Session; canvas: Canvas }) {
   }, [canvas]);
   const redo = useCallback(() => canvas.history.redo(), [canvas]);
   const clear = useCallback(() => canvas.history.clear(), [canvas]);
+  // Delete takes the selection away as one undoable erase; a recognized letter or shape takes the
+  // ink that made it along, so nothing is left behind.
+  const deleteSelection = useCallback(() => {
+    const { selection, set } = useUi.getState();
+    if (!selection.length) return;
+    const ids = new Set(selection);
+    for (const id of selection) for (const s of canvas.scene.get(id)?.strokes ?? []) ids.add(s);
+    canvas.history.erase([...ids]);
+    set({ selection: [] });
+  }, [canvas]);
 
   useShortcuts(
     useMemo(
       () => ({
         undo,
         redo,
+        deleteSelection,
         focus: () => {
           const s = useUi.getState();
           s.setLayout(s.layout === "focus" ? "collapsed" : "focus");
@@ -251,7 +303,7 @@ function Workspace({ session, canvas }: { session: Session; canvas: Canvas }) {
         openAll: () => useUi.getState().setLayout("open"),
         settings: () => useUi.getState().set({ settingsOpen: true }),
       }),
-      [undo, redo],
+      [undo, redo, deleteSelection],
     ),
   );
 
@@ -288,6 +340,51 @@ function Workspace({ session, canvas }: { session: Session; canvas: Canvas }) {
         : [id],
     });
   }, []);
+  // Undo, erase or clear can take selected things off the canvas: they leave the selection too.
+  useEffect(() => {
+    const { selection, set } = useUi.getState();
+    const kept = liveSelection(
+      selection,
+      strokes.filter((s) => !hidden.has(s.id)),
+      objects,
+    );
+    if (kept !== selection) set({ selection: [...kept] });
+  }, [strokes, hidden, objects]);
+
+  // The selection's handles (resize, rotate, move): what they carry, and one undoable reshape.
+  const transformable = useMemo(
+    () =>
+      selectionParts(
+        ui.selection,
+        strokes.filter((s) => !hidden.has(s.id)),
+        objects,
+      ),
+    [ui.selection, strokes, hidden, objects],
+  );
+  const transformIds = useMemo(
+    () => [
+      ...(transformable?.objects.map((o) => o.id) ?? []),
+      ...(transformable?.strokes.map((s) => s.id) ?? []),
+    ],
+    [transformable],
+  );
+  const reshape = useCallback(
+    (m: Matrix) => {
+      if (transformable) canvas.history.reshape(reshapeSelection(transformable, m));
+    },
+    [canvas, transformable],
+  );
+
+  // A dragged box or lasso selects what lies wholly inside it; with shift it adds to the selection.
+  const selectRegion = useCallback(
+    (region: Region, add: boolean) => {
+      const { selection, set } = useUi.getState();
+      const visible = canvas.strokes.all().filter((s) => !hidden.has(s.id));
+      const ids = selectInRegion(region, visible, objects);
+      set({ selection: add ? [...new Set([...selection, ...ids])] : ids });
+    },
+    [canvas, hidden, objects],
+  );
 
   // The library (D123): drop or click an item to place it.
   const placeItem = useCallback(
@@ -457,6 +554,9 @@ function Workspace({ session, canvas }: { session: Session; canvas: Canvas }) {
             onTap={(at) => canvas.games.tap(at)}
             onErase={(ids) => canvas.history.erase(ids)}
             onPick={pick}
+            onSelect={selectRegion}
+            selectBy={selectBy}
+            selection={ui.selection}
             hidden={hidden}
           />
           <ObjectsLayer
@@ -488,6 +588,15 @@ function Workspace({ session, canvas }: { session: Session; canvas: Canvas }) {
             }}
           />
           <ReplyDots events={events} objects={objects} />
+          {tool === "select" && (
+            <TransformLayer
+              bounds={transformable && selectionBounds(transformable)}
+              ids={transformIds}
+              color={ink}
+              onReshape={reshape}
+              onPick={pick}
+            />
+          )}
         </Stage>
 
         {/* Everything else floats on top (D144); focus hides all but one button (D121). */}
@@ -514,6 +623,8 @@ function Workspace({ session, canvas }: { session: Session; canvas: Canvas }) {
                 canRedo={canvas.history.canRedo()}
                 onUndo={undo}
                 onRedo={redo}
+                canDelete={ui.selection.length > 0}
+                onDelete={deleteSelection}
                 onSave={() => void projects.saveNow()}
                 onExport={projects.exportFile}
                 onClear={clear}
@@ -524,7 +635,7 @@ function Workspace({ session, canvas }: { session: Session; canvas: Canvas }) {
               <ModeButton state={mode} infos={infos} onPick={pickMode} />
             </div>
 
-            {/* The right side bar: library, packs, grid, lines (D123 · D124). */}
+            {/* The right side bar: library, packs, guides (D123 · D124). */}
             <div className="absolute top-16 right-3 flex items-start gap-2">
               {ui.side === "library" && (
                 <LibraryPanel
@@ -572,8 +683,7 @@ function Workspace({ session, canvas }: { session: Session; canvas: Canvas }) {
                   <Package />
                 </SideButton>
                 <span className="my-0.5 h-px w-4 bg-border" />
-                <GridControl />
-                <LinesControl />
+                <GuidesControl />
               </Surface>
             </div>
 
@@ -671,6 +781,7 @@ function Workspace({ session, canvas }: { session: Session; canvas: Canvas }) {
                 events={events}
                 calls={claude.calls}
                 listening={claude.listening}
+                connected={connected}
                 thinkingSince={claude.thinkingSince}
                 now={now}
               />

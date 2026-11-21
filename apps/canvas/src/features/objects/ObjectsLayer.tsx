@@ -3,6 +3,8 @@ import type { PlaceInput } from "@visthinker/core";
 import type Konva from "konva";
 import { useRef, useState } from "react";
 import { Arrow, Ellipse, Group, Layer, Line, Rect, Text } from "react-konva";
+import { rotationOf } from "@visthinker/core";
+import { itemName } from "../../shared/items.ts";
 import { isDarkCanvas, paint, type CanvasColor } from "../../shared/theme.ts";
 import type { Tool } from "../toolbar/index.ts";
 import { CLAUDE_COLOR, dragBox, isRealDrag } from "./objects.utils.ts";
@@ -126,8 +128,12 @@ export function ObjectsLayer({
         .map((o) => (
           <Rect
             key={`sel-${o.id}`}
-            x={o.box[0] - 6}
-            y={o.box[1] - 6}
+            // Turned with the object, around its centre.
+            x={o.box[0] + o.box[2] / 2}
+            y={o.box[1] + o.box[3] / 2}
+            offsetX={o.box[2] / 2 + 6}
+            offsetY={o.box[3] / 2 + 6}
+            rotation={TURNS.has(o.kind) ? rotationOf(o) : 0}
             width={o.box[2] + 12}
             height={o.box[3] + 12}
             cornerRadius={6}
@@ -183,16 +189,22 @@ function ObjectShape(props: {
   // What the comparator read from your ink: a light outline over it, so you see what it saw.
   if (object.pack === SHAPES || object.kind === "symbol")
     return <RecognizedShape object={object} tag={tag} onPress={onPress} />;
+  // A box, circle, glyph or text turns around its centre (the handles rotate it).
+  const turn = TURNS.has(object.kind) ? rotationOf(object) : 0;
   return (
     <Group
-      x={x}
-      y={y}
+      name={itemName(object.id)}
+      x={x + w / 2}
+      y={y + h / 2}
+      offsetX={w / 2}
+      offsetY={h / 2}
+      rotation={turn}
       draggable={draggable}
       onPointerDown={(e) => {
         e.cancelBubble = true;
         onPress(e.evt.shiftKey);
       }}
-      onDragEnd={(e) => onMove(object.id, e.target.x() - x, e.target.y() - y)}
+      onDragEnd={(e) => onMove(object.id, e.target.x() - (x + w / 2), e.target.y() - (y + h / 2))}
     >
       {/* A transparent fill makes the inside grabbable with the move tool, not just the outline. */}
       {object.kind === "box" && (
@@ -242,7 +254,8 @@ function ObjectShape(props: {
           text={object.label}
           align={object.kind === "glyph" ? "center" : "left"}
           verticalAlign="middle"
-          fontSize={object.kind === "glyph" ? Math.max(18, h * 0.8) : 18}
+          // Text grows with its box, so resizing it resizes the words (28 high is 18 px).
+          fontSize={object.kind === "glyph" ? Math.max(18, h * 0.8) : Math.max(8, h * 0.64)}
           fontFamily={object.kind === "glyph" ? "Georgia, serif" : "system-ui, sans-serif"}
           fill={color}
         />
@@ -287,6 +300,8 @@ function ObjectShape(props: {
 }
 
 const BUILT_IN = new Set(["box", "circle", "arrow", "glyph", "text"]);
+/** Kinds that turn around their centre. */
+const TURNS = new Set(["box", "circle", "glyph", "text"]);
 /** What the select tool can drag. */
 const MOVABLE = BUILT_IN;
 const GAME_KINDS = new Set(["mark", "board", "cell"]);
@@ -304,7 +319,15 @@ function RecognizedShape({
   onPress(add: boolean): void;
 }) {
   const [x, y, w, h] = object.box;
-  const style = { stroke: SEEN, strokeWidth: 1.5, dash: [5, 4], opacity: 0.9, listening: false };
+  const name = itemName(object.id);
+  const style = {
+    name,
+    stroke: SEEN,
+    strokeWidth: 1.5,
+    dash: [5, 4],
+    opacity: 0.9,
+    listening: false,
+  };
   // A symbol can be picked or erased by its frame (its ink sits on another layer).
   const press = (e: Konva.KonvaEventObject<PointerEvent>) => {
     e.cancelBubble = true;
@@ -316,7 +339,9 @@ function RecognizedShape({
     case "line":
       return ends ? <Line points={[...ends.a, ...ends.b]} {...style} /> : null;
     case "crossing":
-      return <Ellipse x={x} y={y} radiusX={5} radiusY={5} fill={SEEN} listening={false} />;
+      return (
+        <Ellipse name={name} x={x} y={y} radiusX={5} radiusY={5} fill={SEEN} listening={false} />
+      );
     case "box":
       return <Rect x={x} y={y} width={w} height={h} {...style} />;
     case "circle":
@@ -346,6 +371,7 @@ function RecognizedShape({
             onPointerDown={press}
           />
           <Text
+            name={name}
             x={x - 4}
             y={y - 20}
             text={tag ?? object.label}

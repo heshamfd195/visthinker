@@ -1,4 +1,4 @@
-// Grid and lines, the pure parts (T48 · D124): snapping and where the guides fall.
+// The guides, the pure parts (T48 · D124): snapping, how strong they show, where they fall.
 
 /** The point moved to the nearest grid crossing. */
 export function snapPoint(p: [number, number], size: number): [number, number] {
@@ -24,4 +24,17 @@ export function positions(start: number, end: number, step: number, offset = 0):
   const out: number[] = [];
   for (let v = Math.ceil((start - offset) / step) * step + offset; v <= end; v += step) out.push(v);
   return out;
+}
+
+/** How strongly each opacity step shows the guide. */
+export const GUIDE_OPACITY = { faint: 0.15, soft: 0.3, strong: 0.55 } as const;
+
+/** Snapping follows the dots or the grid crossings; lines have nothing to snap to. */
+export function canSnap(guides: { kind: string; snap: boolean }): boolean {
+  return guides.snap && (guides.kind === "dots" || guides.kind === "grid");
+}
+
+/** The dash for a dotted guide, in screen pixels `px` wide: a dot, then a gap. */
+export function dottedDash(px: number): [number, number] {
+  return [px, 4 * px];
 }

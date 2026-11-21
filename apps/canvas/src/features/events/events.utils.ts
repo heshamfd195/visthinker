@@ -220,15 +220,24 @@ export function rowJson(row: Row): string {
   return JSON.stringify(row.kind === "call" ? row.call : row.event, null, 2);
 }
 
-export type Status = "listening" | "thinking" | "away";
+/**
+ * What Claude is doing, for the pill and the header. "away": connected, but not waiting on the
+ * canvas right now (Claude Code works in turns); "offline": no bridge at all.
+ */
+export type Status = "listening" | "thinking" | "away" | "offline";
 
-/** What Claude is doing, for the pill and the header. */
-export function status(listening: boolean, thinkingSince: number | undefined): Status {
+export function status(
+  listening: boolean,
+  thinkingSince: number | undefined,
+  connected = true,
+): Status {
+  if (!connected) return "offline";
   if (thinkingSince !== undefined) return "thinking";
   return listening ? "listening" : "away";
 }
 
 export function statusText(s: Status, thinkingFor = 0): string {
   if (s === "thinking") return `Claude is thinking… ${seconds(thinkingFor)}`;
-  return s === "listening" ? "Claude is listening" : "Claude is away";
+  if (s === "offline") return "Not connected to Claude";
+  return s === "listening" ? "Claude is listening" : "Claude is connected, not watching";
 }

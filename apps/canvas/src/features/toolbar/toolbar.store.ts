@@ -1,6 +1,6 @@
 // The toolbar's UI state (Zustand holds UI state only, D83): the tool and the colour.
 import { create } from "zustand";
-import type { Tool } from "./toolbar.types.ts";
+import type { SelectBy, Tool } from "./toolbar.types.ts";
 
 /** Tools in toolbar order, with their shortcut key (D120 · D146). */
 export const TOOLS: { tool: Tool; label: string; key: string }[] = [
@@ -32,7 +32,11 @@ interface ToolbarState {
   color: string;
   /** The last shape picked, shown on the shapes button. */
   shape: Tool;
+  /** How the select tool picks: arrow, box or lasso, chosen under the select button. */
+  selectBy: SelectBy;
   setTool(tool: Tool): void;
+  /** Picks the select tool with this way of picking. */
+  setSelectBy(by: SelectBy): void;
   setColor(color: string): void;
 }
 
@@ -40,8 +44,10 @@ export const useToolbar = create<ToolbarState>((set) => ({
   tool: "pen",
   color: COLORS[0]!.color,
   shape: "box",
+  selectBy: "pointer",
   setTool: (tool) => set(SHAPE_TOOLS.includes(tool) ? { tool, shape: tool } : { tool }),
   setColor: (color) => set({ color }),
+  setSelectBy: (selectBy) => set({ tool: "select", selectBy }),
 }));
 
 /** The tool a key picks, if any. */
