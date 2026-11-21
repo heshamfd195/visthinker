@@ -115,7 +115,7 @@ describe("the canvas's HTTP API (D142 · D143)", () => {
   it("lists the packs for the packs panel (D122)", async () => {
     const { api } = await setup();
     const body = (await (await api("packs")).json()) as { packs: { name: string }[] };
-    expect(body.packs.map((p) => p.name)).toEqual(["modes", "shapes", "tic-tac-toe"]);
+    expect(body.packs.map((p) => p.name)).toEqual(["modes", "shapes"]);
     const install = await api("packs/chess/install", { method: "POST" });
     expect(install.status).toBe(403);
   });

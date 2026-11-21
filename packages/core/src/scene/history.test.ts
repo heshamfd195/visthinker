@@ -11,7 +11,6 @@ import {
   placeObject,
   readSnapshot,
   recordStroke,
-  requestTakeBack,
   sendMessage,
   takeSnapshot,
 } from "./index.ts";
@@ -37,8 +36,6 @@ function setup() {
   const handle = createToolHandler({ clock, packs, story, scene, strokes });
   return { clock, story, scene, strokes, packs, handle, history: handle.history };
 }
-
-const centre = (b: readonly number[]): [number, number] => [b[0]! + b[2]! / 2, b[1]! + b[3]! / 2];
 
 const box = {
   kind: "box" as const,
@@ -130,51 +127,6 @@ describe("undo, redo and clear change the canvas (D130–D133 · D141)", () => {
     placeObject(story, scene, box, "claude");
     expect(history.canUndo()).toBe(false);
     expect(history.undo()).toBeUndefined();
-  });
-});
-
-describe("take back in a game (D131)", () => {
-  it("asks Claude once it has answered, and an accepted take-back undoes both moves", async () => {
-    const { story, scene, handle, history } = setup();
-    const board = handle.games.placeBoard("tic-tac-toe", [0, 0, 300, 300]);
-    const [c1, c2] = board.order;
-    const mine = handle.games.tap(centre(scene.get(c1!)!.box))!;
-    // Before Claude answers, undo simply takes back the move.
-    expect(history.takeBack()).toBeUndefined();
-    await handle("act", { actions: [{ op: "mark", target: c2!, detail: { shape: "O" } }] });
-    const theirs = story.all().find((e) => e.type === "place" && e.detail?.["by"] === "claude")!;
-    expect(history.takeBack()).toMatchObject({
-      mine: { seq: mine.seq },
-      theirs: { seq: theirs.seq },
-    });
-
-    const request = requestTakeBack(story, history)!;
-    expect(request).toMatchObject({ type: "takeback", cause: mine.seq, who: "user" });
-    expect(requestTakeBack(story, history)).toBeUndefined();
-
-    await handle("answer", { cause: request.seq, accept: true, text: "Sure" });
-    expect(handle.games.markIn(c1!)).toBeUndefined();
-    expect(handle.games.markIn(c2!)).toBeUndefined();
-    const undos = story.all().filter((e) => e.type === "undo");
-    expect(undos.map((e) => [e.who, e.cause])).toEqual([
-      ["claude", theirs.seq],
-      ["user", mine.seq],
-    ]);
-  });
-
-  it("a refused take-back leaves the board as it is", async () => {
-    const { story, scene, handle, history } = setup();
-    const board = handle.games.placeBoard("tic-tac-toe", [0, 0, 300, 300]);
-    handle.games.tap(centre(scene.get(board.order[0]!)!.box));
-    await handle("act", {
-      actions: [{ op: "mark", target: board.order[1]!, detail: { shape: "O" } }],
-    });
-    const request = requestTakeBack(story, history)!;
-    await handle("answer", { cause: request.seq, accept: false });
-    expect(handle.games.movesMade(board)).toBe(2);
-    await expect(handle("answer", { cause: request.seq, accept: true })).rejects.toThrow(
-      /already answered/,
-    );
   });
 });
 

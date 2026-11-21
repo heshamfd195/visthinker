@@ -55,7 +55,7 @@ interface Props {
 /**
  * The drawing surface. The stroke being drawn is an imperative Konva line, outside React, so it
  * doesn't re-render per point (semi-declarative, D83); finished strokes are drawn from data.
- * A tap leaves no ink and goes to `onTap`, e.g. to play in a cell.
+ * A tap leaves no ink and goes to `onTap`.
  */
 export function InkLayer({
   view,

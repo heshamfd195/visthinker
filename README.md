@@ -15,7 +15,7 @@ A shared canvas where Claude sees your drawing as data, not pixels.
 
 ## What it is
 
-You draw on a canvas, and every stroke, shape and tap reaches Claude as structured events instead of a screenshot. Claude understands what you drew and answers on the same canvas. The first game is tic-tac-toe: you draw the grid, you play X, Claude plays O.
+You draw on a canvas, and every stroke, shape and tap reaches Claude as structured events instead of a screenshot. Claude understands what you drew and answers on the same canvas. Next up: handwriting, so you and Claude can write to each other.
 
 ## Try it
 
@@ -46,7 +46,7 @@ pnpm install && pnpm build
 claude mcp add visthinker -- node "$PWD/packages/visthinker/dist/visthinker.js"
 ```
 
-Then ask Claude to open the canvas, place a tic-tac-toe board from the toolbar, and tap a cell to play X.
+Then ask Claude to open the canvas, draw something, and talk about it in the chat.
 
 ## How it works
 
@@ -66,7 +66,7 @@ packages/core       the Fast Brain: no React, no Konva, no Node
 packages/bridge     the MCP server
 packages/visthinker the npm package: the bridge bundled with the canvas and packs
 apps/canvas         the React + Konva app
-packs/              the starter packs: shapes, tic-tac-toe
+packs/              the starter packs: shapes, modes
 ```
 
 Imports go one way: the canvas uses the core, and the core uses only the contract. Lint enforces it.

@@ -19,7 +19,7 @@ const recognizer = createRecognizer(sets);
 const pOnly = createRecognizer(sets, { crossRule: false });
 
 describe("symbol sets from packs (D96)", () => {
-  it("shapes lists the symbol block and holds the X and O templates; tic-tac-toe has none", () => {
+  it("shapes lists the symbol block and holds the X and O templates; modes has none", () => {
     expect(sets.map((s) => s.pack)).toEqual(["shapes"]);
     expect(new Set(sets[0]!.rules.templates.map((t) => t.label))).toEqual(new Set(["X", "O"]));
   });

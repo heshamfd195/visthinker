@@ -16,10 +16,6 @@ export type ThreadItem =
       answer?: string;
     }
   | { kind: "you"; seq: number; text: string; refs: string[]; target?: string }
-  /** The person asks Claude to take back their move (D131). */
-  | { kind: "takeback"; seq: number; text: string; target?: string }
-  /** Claude's reply to a take-back. */
-  | { kind: "verdict"; seq: number; agreed: boolean; text?: string }
   | {
       kind: "propose";
       seq: number;
@@ -29,7 +25,7 @@ export type ThreadItem =
       answer?: string;
     };
 
-const THREAD_TYPES = new Set(["say", "ask", "answer", "message", "takeback", "propose"]);
+const THREAD_TYPES = new Set(["say", "ask", "message", "propose"]);
 
 const str = (v: unknown): string | undefined => (typeof v === "string" && v ? v : undefined);
 const strings = (v: unknown): string[] =>
@@ -68,9 +64,7 @@ export function threadFor(
   clicked: ReadonlyMap<number, string> = new Map(),
 ): ThreadItem[] {
   const answers = new Map(clicked);
-  const bySeq = new Map<number, VisEvent>();
   for (const e of events) {
-    bySeq.set(e.seq, e);
     if (e.type === "answer" && e.who === "user" && e.cause !== undefined) {
       answers.set(e.cause, str(e.detail?.["choice"]) ?? "");
     }
@@ -106,26 +100,6 @@ export function threadFor(
             ...target,
           });
         break;
-      case "takeback":
-        items.push({
-          kind: "takeback",
-          seq: e.seq,
-          text: text ?? "Can I take back my move?",
-          ...target,
-        });
-        break;
-      case "answer": {
-        // Only Claude's reply to a take-back stands alone; the person's answers fold in above.
-        const asked = e.cause !== undefined ? bySeq.get(e.cause) : undefined;
-        if (e.who !== "claude" || asked?.type !== "takeback") break;
-        items.push({
-          kind: "verdict",
-          seq: e.seq,
-          agreed: e.detail?.["choice"] === "yes",
-          ...(text ? { text } : {}),
-        });
-        break;
-      }
       case "propose": {
         const answer = answers.get(e.seq);
         items.push({

@@ -52,18 +52,6 @@ export const TOOLS = {
     result: Seq,
   },
 
-  /**
-   * Claude answers something the person asked of it, e.g. a take-back request (D131):
-   * `cause` is the request's seq. Accepting a take-back undoes both moves.
-   */
-  answer: {
-    args: z.object({
-      cause: z.number().int().positive(),
-      accept: z.boolean(),
-      text: z.string().min(1).max(2_000).optional(),
-    }),
-    result: Seq,
-  },
   /** Claude switches the mode, with the reason the person sees (D129 · D138). */
   set_mode: {
     args: z.object({ mode: Mode, reason: z.string().min(1).max(200) }),

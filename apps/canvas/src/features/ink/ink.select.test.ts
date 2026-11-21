@@ -119,15 +119,15 @@ describe("selectInRegion", () => {
     expect(selectInRegion(box(0, 0, 20, 50), strokes, [symbol])).toEqual([]);
   });
 
-  it("a board takes its cells along instead of listing them", () => {
-    const board = object("b1", [0, 0, 90, 90], { kind: "board", parts: ["c1", "c2"] });
-    const cells = [
-      object("c1", [0, 0, 30, 30], { kind: "cell" }),
-      object("c2", [30, 0, 30, 30], { kind: "cell" }),
+  it("a group takes its parts along instead of listing them", () => {
+    const group = object("g1", [0, 0, 90, 90], { kind: "group", parts: ["p1", "p2"] });
+    const parts = [
+      object("p1", [0, 0, 30, 30], { kind: "box" }),
+      object("p2", [30, 0, 30, 30], { kind: "box" }),
     ];
-    expect(selectInRegion(box(-5, -5, 95, 95), [], [board, ...cells])).toEqual(["b1"]);
-    // Around one cell only: that cell.
-    expect(selectInRegion(box(-5, -5, 32, 32), [], [board, ...cells])).toEqual(["c1"]);
+    expect(selectInRegion(box(-5, -5, 95, 95), [], [group, ...parts])).toEqual(["g1"]);
+    // Around one part only: that part.
+    expect(selectInRegion(box(-5, -5, 32, 32), [], [group, ...parts])).toEqual(["p1"]);
   });
 });
 

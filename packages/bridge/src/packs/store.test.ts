@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { PackStore, visthinkerHome } from "./store.ts";
 
 const pack = (name: string, version = "0.1.0") =>
-  ({ "pack.json": { name, version, contract: "0", match: {}, blocks: ["grid"] } }) as never;
+  ({ "pack.json": { name, version, contract: "0", match: {}, blocks: ["symbol"] } }) as never;
 
 const store = async () => new PackStore(await mkdtemp(join(tmpdir(), "visthinker-home-")));
 
@@ -27,22 +27,22 @@ describe("pack store (D93)", () => {
 
   it("a local pack is read before a starter pack of the same name", async () => {
     const packs = await store();
-    expect((await packs.read("tic-tac-toe"))["pack.json"].version).toBe("0.1.0");
-    await packs.save(pack("tic-tac-toe", "2.0.0"));
-    expect((await packs.read("tic-tac-toe"))["pack.json"].version).toBe("2.0.0");
+    expect((await packs.read("shapes"))["pack.json"].version).toBe("0.1.0");
+    await packs.save(pack("shapes", "2.0.0"));
+    expect((await packs.read("shapes"))["pack.json"].version).toBe("2.0.0");
   });
 
   it("a name that isn't a pack name can't reach outside the folder", async () => {
     const packs = await store();
     await expect(packs.read("../../etc")).rejects.toMatchObject({ code: "bad_args" });
-    expect(() => packs.folderOf("Tic Tac")).toThrow();
+    expect(() => packs.folderOf("Two Words")).toThrow();
   });
 
   it("a broken pack on disk is skipped in the list and refused on read", async () => {
     const packs = await store();
     await mkdir(join(packs.dir, "broken"), { recursive: true });
     await writeFile(join(packs.dir, "broken", "pack.json"), "{ not json");
-    expect((await packs.list()).map((p) => p.name)).toEqual(["modes", "shapes", "tic-tac-toe"]);
+    expect((await packs.list()).map((p) => p.name)).toEqual(["modes", "shapes"]);
     await expect(packs.read("broken")).rejects.toMatchObject({ code: "bad_contract" });
   });
 

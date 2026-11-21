@@ -24,30 +24,30 @@ describe("SceneObject (D79 · D89)", () => {
     expect(SceneObject.parse(crossing).geom).toEqual({ at: [100, 100] });
   });
 
-  it("a cell keeps the shape the lines make, 4 corners from the top left (D95)", () => {
+  it("an object can keep an exact outline, its corners from the top left (D95)", () => {
     const poly = [
       [0, 0],
       [100, 0],
       [100, 100],
       [0, 100],
     ];
-    const cell = { ...line, id: "c1", kind: "cell", pack: "tictactoe", geom: { poly } };
-    expect(SceneObject.parse(cell).geom).toEqual({ poly });
+    const region = { ...line, id: "r1", kind: "region", pack: "shapes", geom: { poly } };
+    expect(SceneObject.parse(region).geom).toEqual({ poly });
   });
 
-  it("a mark is its own object inside its cell", () => {
-    const mark = {
-      id: "m1",
-      kind: "mark",
-      label: "O",
-      pack: "tictactoe",
-      relations: [{ type: "inside", to: "c5" }],
+  it("a symbol is its own object, inside what holds it", () => {
+    const symbol = {
+      id: "y1",
+      kind: "symbol",
+      label: "A",
+      pack: "shapes",
+      relations: [{ type: "inside", to: "b5" }],
       box: [110, 110, 80, 80],
       confidence: 1,
     };
-    const parsed = SceneObject.parse(mark);
+    const parsed = SceneObject.parse(symbol);
     expect(parsed.parts).toEqual([]);
-    expect(parsed.relations).toEqual([{ type: "inside", to: "c5" }]);
+    expect(parsed.relations).toEqual([{ type: "inside", to: "b5" }]);
   });
 
   it("refuses a confidence above 1, a negative size and an empty id", () => {

@@ -41,7 +41,6 @@ describe("toolbar state (D120)", () => {
       "box",
       "circle",
       "arrow",
-      "board",
       "text",
     ]);
     expect(new Set(TOOLS.map((t) => t.key)).size).toBe(TOOLS.length);

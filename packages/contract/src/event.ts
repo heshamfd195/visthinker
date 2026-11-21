@@ -8,7 +8,6 @@ export const Who = z.enum(["user", "fastbrain", "claude", "api"]);
 export const KNOWN_EVENT_TYPES = [
   "stroke",
   "recognized",
-  "mark",
   "move",
   "transform",
   "place",
@@ -23,7 +22,6 @@ export const KNOWN_EVENT_TYPES = [
   "answer",
   "pack",
   "message",
-  "takeback",
   "mode",
 ] as const;
 export const EventType = z.string().min(1).max(32);

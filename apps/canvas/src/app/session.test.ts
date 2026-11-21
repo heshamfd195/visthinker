@@ -60,7 +60,7 @@ describe("transport (T18)", () => {
 describe("packs (T24)", () => {
   it("the starter packs are built in (D74)", () => {
     const session = createSession({ clock: createManualClock() });
-    expect(session.registry.names()).toEqual(["shapes", "tic-tac-toe", "modes"]);
+    expect(session.registry.names()).toEqual(["shapes", "modes"]);
   });
 });
 

@@ -12,14 +12,14 @@ describe("TOOLS (D81)", () => {
       "act",
       "say",
       "ask",
-      "answer",
       "set_mode",
       "list_packs",
       "install_pack",
       "read_pack",
       "write_pack",
     ]);
-    for (const old of ["get_board", "play", "wait_for_move"]) expect(TOOL_NAMES).not.toContain(old);
+    for (const old of ["get_board", "play", "wait_for_move", "answer"])
+      expect(TOOL_NAMES).not.toContain(old);
   });
 
   it("splits every tool between the bridge and the browser, once (D90)", () => {

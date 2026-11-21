@@ -2,7 +2,7 @@
 // normalising a drawing, and keeping "Yours" in this browser.
 
 export type LibraryGroup = "artifacts" | "symbols" | "yours";
-export type LibraryKind = "board" | "box" | "circle" | "arrow" | "symbol" | "drawing";
+export type LibraryKind = "box" | "circle" | "arrow" | "symbol" | "drawing";
 /** A stroke point: x, y, pressure, time. */
 export type LibraryPoint = [number, number, number, number];
 export interface LibraryStroke {
@@ -33,7 +33,6 @@ export const GROUPS: readonly { value: LibraryGroup; label: string }[] = [
 ];
 
 const ARTIFACTS: readonly { kind: LibraryKind; name: string }[] = [
-  { kind: "board", name: "Board" },
   { kind: "arrow", name: "Arrow" },
   { kind: "box", name: "Box" },
   { kind: "circle", name: "Circle" },

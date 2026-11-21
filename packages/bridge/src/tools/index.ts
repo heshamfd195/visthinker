@@ -1,6 +1,5 @@
 import type { ToolName } from "@visthinker/contract";
 import { act } from "./act.ts";
-import { answer } from "./answer.ts";
 import { ask } from "./ask.ts";
 import { getEvents } from "./get_events.ts";
 import { getScene } from "./get_scene.ts";
@@ -25,7 +24,6 @@ export const ALL_TOOLS: { [N in ToolName]: ToolDef<N> } = {
   act,
   say,
   ask,
-  answer,
   set_mode: setMode,
   list_packs: listPacks,
   install_pack: installPack,

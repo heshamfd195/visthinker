@@ -1,7 +1,6 @@
 // act (D91): Claude names targets by id, never pixels, and the Fast Brain decides where things go
 // (D24). Every action is checked first and only then applied, so a batch is all or nothing.
 // Moving or removing the user's own drawing becomes a proposal the user accepts (Policy ✅ 9).
-// A mark follows the pack's turns, and a winning or last mark ends the game (T25).
 import {
   ContractError,
   type ActArgs,
@@ -12,16 +11,11 @@ import {
   type VisEvent,
   type Who,
 } from "@visthinker/contract";
-import type { Game, Games } from "../game/games.ts";
 import type { SceneStore } from "../scene/store.ts";
 import type { Story } from "../scene/story.ts";
 
 type Applied = ActResult["applied"][number];
 type Step = (cause: number | undefined) => Applied;
-type Batch = { marked: Set<string>; moves: Map<Game, number> };
-
-/** Kinds only the Fast Brain or a pack makes: Claude marks a cell, it doesn't add one. */
-const RESERVED_KINDS = new Set(["mark", "cell", "board"]);
 
 export interface Actor {
   act(args: ActArgs): ActResult;
@@ -29,15 +23,7 @@ export interface Actor {
   answer(askSeq: number, choice: string): VisEvent | undefined;
 }
 
-export function createActor({
-  story,
-  scene,
-  games,
-}: {
-  story: Story;
-  scene: SceneStore;
-  games: Games;
-}): Actor {
+export function createActor({ story, scene }: { story: Story; scene: SceneStore }): Actor {
   const mustExist = (id: string): SceneObject => {
     const object = scene.get(id);
     if (!object) throw new ContractError("unknown_target", `no object ${id}`);
@@ -86,42 +72,11 @@ export function createActor({
     });
   };
 
-  /** Checks one action against the scene and the batch so far; returns how to apply it. */
-  const plan = (action: Action, batch: Batch): Step => {
+  /** Checks one action against the scene; returns how to apply it. */
+  const plan = (action: Action): Step => {
     const target = mustExist(action.target);
     const owner = scene.owner(target.id);
     switch (action.op) {
-      case "mark": {
-        if (target.kind !== "cell") {
-          throw new ContractError("not_allowed", `${target.id} is a ${target.kind}, not a cell`);
-        }
-        if (games.markIn(target.id) || batch.marked.has(target.id)) {
-          throw new ContractError("not_allowed", `${target.id} is already marked`);
-        }
-        // The pack's turns decide whose move it is and which mark Claude makes (D80).
-        const game = games.gameOf(target.id);
-        if (game?.ended !== undefined) throw new ContractError("not_allowed", "the game is over");
-        if (game?.turns) {
-          const moves = batch.moves.get(game) ?? games.movesMade(game);
-          const turn = game.turns.whoseTurn(moves);
-          if (turn !== "claude") {
-            throw new ContractError("not_allowed", `it's the ${turn}'s turn, not claude's`);
-          }
-          const shape = game.turns.markFor("claude");
-          if (shape && shape !== action.detail.shape) {
-            throw new ContractError(
-              "not_allowed",
-              `claude plays ${shape}, not ${action.detail.shape}`,
-            );
-          }
-          batch.moves.set(game, moves + 1);
-        }
-        batch.marked.add(target.id);
-        return (cause) => {
-          const e = games.placeMark(target, action.detail.shape, "claude", cause);
-          return { seq: e.seq, type: "place", target: target.id };
-        };
-      }
       case "label":
         return (cause) => {
           scene.update(target.id, (o) => ({ ...o, label: action.detail.text }));
@@ -136,9 +91,6 @@ export function createActor({
         };
       case "add": {
         const { kind, label, where } = action.detail;
-        if (RESERVED_KINDS.has(kind)) {
-          throw new ContractError("not_allowed", `add can't make a ${kind}: use mark, or a pack`);
-        }
         return (cause) => {
           const id = scene.nextId(kind.toLowerCase().replace(/[^a-z]/g, "") || "obj");
           const [, , w, h] = target.box;
@@ -168,8 +120,6 @@ export function createActor({
       }
       case "move":
       case "remove": {
-        if (target.kind === "mark")
-          throw new ContractError("not_allowed", "marks stay where they are");
         if (owner === "fastbrain")
           throw new ContractError("not_allowed", `${target.id} is built by its pack`);
         if (action.op === "move") mustExist(Object.values(action.detail)[0]!);
@@ -198,8 +148,7 @@ export function createActor({
   return {
     act({ actions }) {
       // Check every action first, then apply them in order: all or nothing (D91).
-      const batch: Batch = { marked: new Set(), moves: new Map() };
-      const steps = actions.map((action) => plan(action, batch));
+      const steps = actions.map((action) => plan(action));
       const cause = lastUserSeq();
       return { applied: steps.map((step) => step(cause)) };
     },

@@ -1,15 +1,15 @@
 // The comparator (D64): turns strokes into objects of the built-in `shapes` pack (D89).
 // A straight stroke of 400+ units is a line at once (D109), and each pair of lines that cross makes
-// a crossing. Every other stroke is grouped first (D96): strokes close in place and time, or in the
-// same cell, form one group, read about 0.6 s after the last one. A group is then a one-stroke box,
+// a crossing. Every other stroke is grouped first (D96): strokes close in place and time form one
+// group, read about 0.6 s after the last one. A group is then a one-stroke box,
 // circle or arrow, or a symbol read by the cross rule and $P against the packs' templates (D97).
 import type { Box, Pack, Point2, SceneObject, Stroke, VisEvent } from "@visthinker/contract";
-import { boxOf, inPolygon, polyArea } from "../blocks/grid.ts";
 import type { Clock } from "../ports/index.ts";
 import { strokeBox } from "../scene/strokes.ts";
 import type { SceneStore } from "../scene/store.ts";
 import type { StrokeStore } from "../scene/strokes.ts";
 import type { Story } from "../scene/story.ts";
+import { boxAround as boxOf } from "../scene/transform.ts";
 import { crossingPoint, fitLine } from "./geometry.ts";
 import { classifyShape } from "./shapes.ts";
 import { createRecognizer, symbolSetsFrom } from "./symbols.ts";
@@ -25,17 +25,15 @@ export const SHAPES_PACK = "shapes";
 export const INSTANT_LINE_LENGTH = 400;
 /** D97: a group is read this long after its last stroke. */
 export const GROUP_MS = 600;
-/** Outside cells, a stroke joins the open group if it starts within this long of its last stroke… */
+/** A stroke joins the open group if it starts within this long of its last stroke… */
 export const GROUP_GAP_MS = 700;
 /** …and its box is closer to the group's than this share of the larger of the two. */
 export const GROUP_NEAR = 0.5;
 /**
- * D110: a stroke that lands in the same cell, or close by, within this long of the last symbol's
- * last stroke rejoins it, and both are read again together (an X's second stroke can come late).
+ * D110: a stroke that lands close by within this long of the last symbol's last stroke rejoins
+ * it, and both are read again together (an X's second stroke can come late).
  */
 export const REJOIN_MS = 2_000;
-/** A stroke this share of its cell's size or bigger isn't drawn in the cell. */
-export const CELL_SYMBOL_MAX = 0.9;
 
 export interface Comparator {
   /** Takes a recorded stroke: a line at once, or into a group read a moment later. */
@@ -56,7 +54,6 @@ export interface ComparatorDeps {
 }
 
 interface Group {
-  cell?: string;
   /** The symbol this group reads again, when a late stroke rejoined it (D110). */
   symbol?: string;
   strokes: string[];
@@ -106,25 +103,7 @@ export function createComparator({
     return full;
   };
 
-  /** A small stroke centred in a cell is drawn in that cell (D96). */
-  const cellOf = (stroke: Stroke): string | undefined => {
-    const [x, y, w, h] = strokeBox(stroke);
-    const cell = scene
-      .all()
-      .find(
-        (c) =>
-          c.kind === "cell" &&
-          c.geom &&
-          "poly" in c.geom &&
-          inPolygon([x + w / 2, y + h / 2], c.geom.poly as Point2[]),
-      );
-    if (!cell) return undefined;
-    const poly = (cell.geom as { poly: Point2[] }).poly;
-    return Math.max(w, h) < CELL_SYMBOL_MAX * Math.sqrt(polyArea(poly)) ? cell.id : undefined;
-  };
-
-  const joins = (g: Group, stroke: Stroke, cell: string | undefined) => {
-    if (cell || g.cell) return g.cell === cell;
+  const joins = (g: Group, stroke: Stroke) => {
     const box = strokeBox(stroke);
     return (
       stroke.t0 - g.lastEnd <= GROUP_GAP_MS &&
@@ -132,11 +111,10 @@ export function createComparator({
     );
   };
 
-  /** D110: a late stroke in the same cell (or close by, outside cells) reopens the last symbol. */
-  const rejoins = (last: Omit<Group, "cancel">, stroke: Stroke, cell: string | undefined) => {
+  /** D110: a late stroke close by reopens the last symbol. */
+  const rejoins = (last: Omit<Group, "cancel">, stroke: Stroke) => {
     if (!last.symbol || !scene.has(last.symbol) || stroke.t0 - last.lastEnd > REJOIN_MS)
       return false;
-    if (cell || last.cell) return last.cell === cell;
     const box = strokeBox(stroke);
     return gap(last.box, box) < GROUP_NEAR * Math.max(size(last.box), size(box));
   };
@@ -187,15 +165,14 @@ export function createComparator({
     return found;
   };
 
-  /** Reads a closed group: a one-stroke shape outside cells, else a symbol. */
+  /** Reads a closed group: a one-stroke shape, else a symbol. */
   const read = (g: Group) => {
     const drawn = g.strokes
       .map((id) => strokes.get(id))
       .filter((s): s is Stroke => s !== undefined);
-    if (drawn.length === 0 || (g.cell !== undefined && !scene.has(g.cell))) return;
-    const relations = g.cell ? [{ type: "inside", to: g.cell }] : [];
+    if (drawn.length === 0) return;
 
-    if (drawn.length === 1 && !g.cell) {
+    if (drawn.length === 1) {
       const shape = classifyShape(drawn[0]!);
       if (shape.kind !== null) {
         const object = add({
@@ -221,7 +198,7 @@ export function createComparator({
       kind: "symbol",
       label: result.label,
       pack: result.pack ?? SHAPES_PACK,
-      relations,
+      relations: [],
       box: boxOf(points.flat()),
       confidence: result.score,
       strokes: drawn.map((s) => s.id),
@@ -255,12 +232,11 @@ export function createComparator({
     onStroke(stroke, strokeEvent) {
       const verdict = fitLine(stroke);
       if (verdict.line && verdict.fit.length >= INSTANT_LINE_LENGTH) {
-        close(); // a grid line ends whatever was being drawn
+        close(); // a long line ends whatever was being drawn
         return addLine(stroke, verdict.fit, strokeEvent.seq);
       }
-      const cell = cellOf(stroke);
-      if (group && !joins(group, stroke, cell)) close();
-      if (!group && lastRead && rejoins(lastRead, stroke, cell)) {
+      if (group && !joins(group, stroke)) close();
+      if (!group && lastRead && rejoins(lastRead, stroke)) {
         group = { ...lastRead, strokes: [...lastRead.strokes], cancel: () => {} };
       }
       const box = strokeBox(stroke);
@@ -272,7 +248,6 @@ export function createComparator({
         group.lastSeq = strokeEvent.seq;
       } else {
         group = {
-          ...(cell ? { cell } : {}),
           strokes: [stroke.id],
           box,
           lastEnd: strokeEnd(stroke),

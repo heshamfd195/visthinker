@@ -14,7 +14,6 @@ import {
 } from "./index.ts";
 import {
   applyMatrix,
-  canTransform,
   reshapeSelection,
   rotationOf,
   selectionBounds,
@@ -111,12 +110,6 @@ describe("objects through a transform", () => {
     expect(a.geom).toEqual({ a: [0, 0], b: [0, 100] });
     expect(a.box).toEqual([0, 0, 0, 100]);
   });
-
-  it("game pieces never take handles", () => {
-    expect(canTransform(object("b1", "board", [0, 0, 90, 90]))).toBe(false);
-    expect(canTransform(object("m1", "mark", [0, 0, 30, 30]))).toBe(false);
-    expect(canTransform(object("t1", "text", [0, 0, 30, 30]))).toBe(true);
-  });
 });
 
 describe("a selection", () => {
@@ -141,11 +134,6 @@ describe("a selection", () => {
   it("frames everything selected", () => {
     const parts = selectionParts(["y1", "s2"], strokes, [symbol]);
     expect(selectionBounds(parts!)).toEqual([0, 0, 60, 70]);
-  });
-
-  it("has no handles with a game piece in it", () => {
-    const board = object("b1", "board", [0, 0, 90, 90]);
-    expect(selectionParts(["b1", "s2"], strokes, [board])).toBeUndefined();
   });
 
   it("reshapes as a whole", () => {

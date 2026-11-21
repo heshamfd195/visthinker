@@ -3,7 +3,7 @@ import { createManualClock } from "../ports/index.ts";
 import { createStory, findUndoable, undo, undoneSeqs } from "./index.ts";
 
 describe("undo is an event (D78)", () => {
-  it("appends an undo that points at the latest user stroke or mark", () => {
+  it("appends an undo that points at the latest user stroke", () => {
     const story = createStory(createManualClock());
     story.append({ who: "user", type: "stroke", target: "s1" });
     story.append({ who: "user", type: "stroke", target: "s2" });
@@ -16,7 +16,7 @@ describe("undo is an event (D78)", () => {
 
   it("never undoes Claude's or the Fast Brain's events", () => {
     const story = createStory(createManualClock());
-    story.append({ who: "claude", type: "mark", target: "m1" });
+    story.append({ who: "claude", type: "place", target: "n1" });
     story.append({ who: "fastbrain", type: "recognized", target: "l1" });
     expect(findUndoable(story.all())).toBeUndefined();
     expect(undo(story)).toBeUndefined();
@@ -26,7 +26,7 @@ describe("undo is an event (D78)", () => {
   it("knows which events were taken back", () => {
     const story = createStory(createManualClock());
     story.append({ who: "user", type: "stroke" });
-    story.append({ who: "user", type: "mark" });
+    story.append({ who: "user", type: "place" });
     undo(story);
     expect([...undoneSeqs(story.all())]).toEqual([2]);
   });

@@ -11,7 +11,6 @@ import {
   createMemoryPackSource,
   createMemoryTransport,
   createPackRegistry,
-  createPackSearch,
   createSceneStore,
   createStory,
   createStrokeStore,
@@ -21,7 +20,6 @@ import {
   type CallRecord,
   type Clock,
   type Comparator,
-  type Games,
   type History,
   type PackRegistry,
   type PackSource,
@@ -49,8 +47,6 @@ export interface Canvas {
   renderer: ReactRenderer;
   /** Applies the user's answers to Claude's asks and proposals. */
   actor: Actor;
-  /** Boards placed from the toolbar, and the user's taps on them. */
-  games: Games;
   /** Undo, redo, clear and the eraser (D130–D133). */
   history: History;
   /** Reads each finished stroke: lines, crossings, and one-stroke shapes (T27). */
@@ -115,8 +111,6 @@ export function createSession(options: SessionOptions = {}): Session {
       strokes,
       ...(parts ? { history: parts.history } : {}),
     });
-    // The fast search over packs: a drawing that matches one asks "Tic-tac-toe?" (D68).
-    createPackSearch({ story, scene, packs: registry, games: handler.games });
     renderer.render(scene.all());
     return {
       story,
@@ -124,7 +118,6 @@ export function createSession(options: SessionOptions = {}): Session {
       strokes,
       renderer,
       actor: handler.actor,
-      games: handler.games,
       history: handler.history,
       handler,
       comparator: createComparator({
@@ -177,9 +170,6 @@ export function createSession(options: SessionOptions = {}): Session {
     },
     get actor() {
       return current.actor;
-    },
-    get games() {
-      return current.games;
     },
     get history() {
       return current.history;

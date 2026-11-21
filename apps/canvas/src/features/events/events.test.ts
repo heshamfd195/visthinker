@@ -39,23 +39,23 @@ group("plain words (D127)", () => {
           who: "fastbrain",
           type: "recognized",
           target: "y3",
-          detail: { kind: "symbol", label: "X", score: 0.92, cell: "c5" },
+          detail: { kind: "symbol", label: "X", score: 0.92 },
         }),
       ),
-    ).toBe("read X in c5 · y3 · 92%");
+    ).toBe("read X · y3 · 92%");
     expect(
       describe(
         e({
           seq: 3,
           who: "fastbrain",
           type: "recognized",
-          target: "b1",
-          detail: { kind: "board" },
+          target: "l1",
+          detail: { kind: "line" },
         }),
       ),
-    ).toBe("read board · b1");
-    expect(describe(e({ seq: 4, type: "mark", target: "c5", detail: { shape: "X" } }))).toBe(
-      "your move X · cell c5",
+    ).toBe("read line · l1");
+    expect(describe(e({ seq: 4, type: "place", target: "b2", detail: { kind: "box" } }))).toBe(
+      "placed box · b2",
     );
     expect(
       describe(
@@ -63,11 +63,12 @@ group("plain words (D127)", () => {
           seq: 5,
           who: "fastbrain",
           type: "place",
-          target: "c5",
-          detail: { shape: "O", by: "claude" },
+          target: "n1",
+          // What act sends: the Fast Brain applies it and names Claude.
+          detail: { kind: "note", near: "b2", by: "claude" },
         }),
       ),
-    ).toBe("placed O · cell c5 · for Claude");
+    ).toBe("placed note · n1 · near b2 · by Claude");
     expect(
       describe(e({ seq: 6, type: "message", detail: { text: "what is this?", refs: ["b1"] } })),
     ).toBe("you said: what is this? · with b1");
@@ -92,12 +93,12 @@ group("plain words (D127)", () => {
           who: "claude",
           type: "propose",
           target: "b1",
-          detail: { op: "move", near: "c5" },
+          detail: { op: "move", near: "b2" },
         }),
       ),
-    ).toBe("Claude proposed: move b1 · near c5");
-    expect(describe(e({ seq: 10, type: "mode", detail: { mode: "game", manual: true } }))).toBe(
-      "mode → game · by hand",
+    ).toBe("Claude proposed: move b1 · near b2");
+    expect(describe(e({ seq: 10, type: "mode", detail: { mode: "playing", manual: true } }))).toBe(
+      "mode → playing · by hand",
     );
     expect(describe(e({ seq: 11, type: "clear" }))).toBe("cleared the canvas");
   });

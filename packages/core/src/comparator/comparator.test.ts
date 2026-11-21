@@ -409,40 +409,6 @@ describe("grouping (D96 · D97)", () => {
     expect(later.scene.all().map((o) => o.label)).not.toContain("X");
   });
 
-  it("a round stroke in a cell is an O, inside that cell; outside a cell it's a circle", () => {
-    const { clock, scene, draw } = setup();
-    scene.add(
-      {
-        id: "c5",
-        kind: "cell",
-        label: "cell 5",
-        pack: "tic-tac-toe",
-        parts: [],
-        relations: [],
-        box: [100, 100, 100, 100],
-        confidence: 1,
-        geom: {
-          poly: [
-            [100, 100],
-            [200, 100],
-            [200, 200],
-            [100, 200],
-          ],
-        },
-      },
-      "fastbrain",
-    );
-    draw(ellipse(150, 150, 30, 30));
-    clock.advance(600);
-    expect(scene.all().find((o) => o.kind === "symbol")).toMatchObject({
-      label: "O",
-      relations: [{ type: "inside", to: "c5" }],
-    });
-    draw(ellipse(600, 600, 30, 30));
-    clock.advance(600);
-    expect(scene.all().at(-1)!.kind).toBe("circle");
-  });
-
   it("a grid line ends the open group at once", () => {
     const { scene, draw } = setup();
     draw(

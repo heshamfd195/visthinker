@@ -27,7 +27,6 @@ const pct = (score: number) => `${Math.round(score * 100)}%`;
 const quote = (text: string, max = 80) =>
   text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
 
-const BY: Record<string, string> = { user: "you", claude: "Claude", fastbrain: "the pack" };
 const SPEAKER: Record<VisEvent["who"], string> = {
   user: "you",
   claude: "Claude",
@@ -45,7 +44,10 @@ function where(d: Record<string, unknown>): string | undefined {
 
 const join = (...bits: (string | undefined | false)[]) => bits.filter(Boolean).join(" · ");
 
-/** What an event says, in plain words: "stroke s14", "read X in c5 · 92%", "you said: …". */
+/** Claude's change, made directly or through `act` (the Fast Brain applies it, naming Claude in `by`). */
+const byClaude = (e: VisEvent) => e.who === "claude" || e.detail?.["by"] === "claude";
+
+/** What an event says, in plain words: "stroke s14", "read X · y3 · 92%", "you said: …". */
 export function describe(e: VisEvent): string {
   const d = e.detail ?? {};
   const who = SPEAKER[e.who];
@@ -59,30 +61,14 @@ export function describe(e: VisEvent): string {
       const label = str(d["label"]);
       const score = num(d["score"]);
       if (!label || label === "?") return join("couldn't read", e.target);
-      const cell = str(d["cell"]) ?? str(d["inside"]);
-      return join(
-        `read ${label}${cell ? ` in ${cell}` : ""}`,
-        e.target,
-        score !== undefined && pct(score),
-      );
+      return join(`read ${label}`, e.target, score !== undefined && pct(score));
     }
-    case "mark":
-      return join(
-        `${e.who === "user" ? "your" : `${who}'s`} move ${str(d["shape"]) ?? ""}`.trim(),
-        e.target && `cell ${e.target}`,
-        d["via"] === "drawn" && "drawn",
-      );
     case "place": {
-      const shape = str(d["shape"]);
-      if (shape) {
-        const by = BY[str(d["by"]) ?? ""] ?? str(d["by"]);
-        return join(`placed ${shape}`, e.target && `cell ${e.target}`, by && `for ${by}`);
-      }
       const kind = str(d["kind"]) ?? "object";
-      return join(`placed ${kind}`, e.target, where(d), e.who === "claude" && "by Claude");
+      return join(`placed ${kind}`, e.target, where(d), byClaude(e) && "by Claude");
     }
     case "move":
-      return join(`moved ${e.target ?? ""}`.trim(), where(d), e.who === "claude" && "by Claude");
+      return join(`moved ${e.target ?? ""}`.trim(), where(d), byClaude(e) && "by Claude");
     case "label":
       return join(`labelled ${e.target ?? ""}`.trim(), text && `“${quote(text)}”`);
     case "remove":
@@ -111,8 +97,6 @@ export function describe(e: VisEvent): string {
       const refs = Array.isArray(d["refs"]) ? (d["refs"] as unknown[]).map(String) : [];
       return join(`you said: ${quote(text ?? "")}`, refs.length > 0 && `with ${refs.join(", ")}`);
     }
-    case "takeback":
-      return "you asked to take back your move";
     case "propose": {
       const { op, ...rest } = d as { op?: unknown } & Record<string, unknown>;
       return join(
@@ -175,7 +159,7 @@ export function isProblem(row: Row): boolean {
   return d["label"] === "?" || (score !== undefined && score < LOW_CONFIDENCE);
 }
 
-const READ_TYPES = new Set(["recognized", "mark", "place"]);
+const READ_TYPES = new Set(["recognized", "place"]);
 
 /** Whether a row shows under a filter chip. */
 export function matches(row: Row, filter: EventsFilter): boolean {

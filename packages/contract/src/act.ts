@@ -20,12 +20,6 @@ export const MoveAction = z.object({
   target: Id,
   detail: z.union([z.object({ inside: Id }), z.object({ near: Id })]),
 });
-export const MarkAction = z.object({
-  op: z.literal("mark"),
-  target: Id,
-  /** e.g. { "shape": "O" } */
-  detail: z.object({ shape: z.string().min(1).max(16) }),
-});
 export const LabelAction = z.object({
   op: z.literal("label"),
   target: Id,
@@ -40,7 +34,6 @@ export const RemoveAction = z.object({
 export const Action = z.discriminatedUnion("op", [
   AddAction,
   MoveAction,
-  MarkAction,
   LabelAction,
   RemoveAction,
 ]);
