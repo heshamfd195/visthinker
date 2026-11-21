@@ -24,14 +24,14 @@ describe("starter packs (D74)", () => {
     const folders = (await readdir(PACKS, { withFileTypes: true }))
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
-    expect(folders.sort()).toEqual(["shapes", "tic-tac-toe"]);
+    expect(folders.sort()).toEqual(["modes", "shapes", "tic-tac-toe"]);
     for (const name of folders) {
       expect(Pack.parse(await readPack(name))["pack.json"].name).toBe(name);
     }
   });
 
   it("every pack explains itself in a README", async () => {
-    for (const name of ["shapes", "tic-tac-toe"]) {
+    for (const name of ["modes", "shapes", "tic-tac-toe"]) {
       expect(String((await readPack(name))["README.md"]).length).toBeGreaterThan(200);
     }
   });

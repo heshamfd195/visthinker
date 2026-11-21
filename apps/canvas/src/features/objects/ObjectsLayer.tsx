@@ -3,12 +3,16 @@ import type { PlaceInput } from "@visthinker/core";
 import type Konva from "konva";
 import { useRef, useState } from "react";
 import { Arrow, Ellipse, Group, Layer, Line, Rect, Text } from "react-konva";
+import { rotationOf } from "@visthinker/core";
+import { itemName } from "../../shared/items.ts";
+import { isDarkCanvas, paint, type CanvasColor } from "../../shared/theme.ts";
 import type { Tool } from "../toolbar/index.ts";
 import { CLAUDE_COLOR, dragBox, isRealDrag } from "./objects.utils.ts";
 
 interface Props {
-  width: number;
-  height: number;
+  /** The visible part of the world, in world units. */
+  view: { x: number; y: number; width: number; height: number };
+  canvas: CanvasColor;
   objects: readonly SceneObject[];
   colors: Map<string, string>;
   tool: Tool;
@@ -21,6 +25,18 @@ interface Props {
   /** A ready-made board dragged out with the board tool. */
   onPlaceBoard(box: Box): void;
   onMove(id: string, dx: number, dy: number): void;
+  /** Ids selected now, outlined (D135). */
+  selection: readonly string[];
+  /** What a chip or the events box points at, outlined (D126 · D127). */
+  pointAt?: string | undefined;
+  /** The select tool picked an object (with shift: added to the selection). */
+  onPick(id: string | undefined, add: boolean): void;
+  /** The eraser touched an object. */
+  onErase(ids: string[]): void;
+  /** Snaps a placed point to the grid when snapping is on (D124). */
+  snap?: (p: Point2) => Point2;
+  /** The text tool clicked here. */
+  onText(at: Point2): void;
 }
 
 const SHAPE_TOOLS: Tool[] = ["box", "circle", "arrow", "board"];
@@ -29,8 +45,8 @@ type Draft = { from: Point2; to: Point2 };
 
 /** Draws pre-built objects from the scene, places new ones, and moves them with the move tool. */
 export function ObjectsLayer({
-  width,
-  height,
+  view,
+  canvas,
   objects,
   colors,
   tool,
@@ -40,6 +56,12 @@ export function ObjectsLayer({
   onPlace,
   onPlaceBoard,
   onMove,
+  selection,
+  pointAt,
+  onPick,
+  onErase,
+  snap = (p) => p,
+  onText,
 }: Props) {
   // The drag lives in a ref: pointer events can arrive faster than React re-renders, and a
   // handler reading state would see the drag as it was at the last render (a fast drag got lost).
@@ -49,8 +71,9 @@ export function ObjectsLayer({
   const placing = SHAPE_TOOLS.includes(tool);
 
   const at = (e: Konva.KonvaEventObject<PointerEvent>): Point2 | null => {
-    const p = e.target.getStage()?.getPointerPosition();
-    return p ? [p.x, p.y] : null;
+    // World units: the stage may be zoomed and panned.
+    const p = e.target.getStage()?.getRelativePointerPosition();
+    return p ? snap([p.x, p.y]) : null;
   };
 
   const update = (next: Draft | null) => {
@@ -77,8 +100,10 @@ export function ObjectsLayer({
     update(null);
   };
 
+  const ink = paint("ink", canvas);
+  const outlined = new Set([...selection, ...(pointAt ? [pointAt] : [])]);
   return (
-    <Layer listening={tool !== "pen"}>
+    <Layer listening={tool !== "pen" && tool !== "hand"}>
       {/* Cells first, so a winning line's highlight sits under the board's lines. */}
       {[...objects]
         .sort((a, b) => Number(b.kind === "cell") - Number(a.kind === "cell"))
@@ -86,18 +111,52 @@ export function ObjectsLayer({
           <ObjectShape
             key={o.id}
             object={o}
-            color={colors.get(o.id) ?? "#222222"}
-            draggable={tool === "move" && BUILT_IN.has(o.kind) && o.pack !== SHAPES}
+            color={paint(colors.get(o.id), canvas)}
+            dark={isDarkCanvas(canvas)}
+            draggable={tool === "select" && MOVABLE.has(o.kind) && o.pack !== SHAPES}
             highlighted={highlight?.has(o.id) ?? false}
             tag={tags?.get(o.id)}
             onMove={onMove}
+            onPress={(add) => {
+              if (tool === "eraser") onErase([o.id]);
+              else if (tool === "select") onPick(o.id, add);
+            }}
           />
         ))}
+      {objects
+        .filter((o) => outlined.has(o.id))
+        .map((o) => (
+          <Rect
+            key={`sel-${o.id}`}
+            // Turned with the object, around its centre.
+            x={o.box[0] + o.box[2] / 2}
+            y={o.box[1] + o.box[3] / 2}
+            offsetX={o.box[2] / 2 + 6}
+            offsetY={o.box[3] / 2 + 6}
+            rotation={TURNS.has(o.kind) ? rotationOf(o) : 0}
+            width={o.box[2] + 12}
+            height={o.box[3] + 12}
+            cornerRadius={6}
+            stroke={ink}
+            strokeWidth={1.5}
+            dash={o.id === pointAt ? [2, 4] : [6, 4]}
+            opacity={0.8}
+            listening={false}
+          />
+        ))}
+      {tool === "text" && (
+        <Rect
+          {...view}
+          onPointerDown={(e) => {
+            const p = at(e);
+            if (p) onText(p);
+          }}
+        />
+      )}
       {draft && placing && <DraftShape kind={tool} from={draft.from} to={draft.to} color={color} />}
       {placing && (
         <Rect
-          width={width}
-          height={height}
+          {...view}
           onPointerDown={(e) => {
             const p = at(e);
             if (p) update({ from: p, to: p });
@@ -117,23 +176,35 @@ export function ObjectsLayer({
 function ObjectShape(props: {
   object: SceneObject;
   color: string;
+  dark: boolean;
   draggable: boolean;
   highlighted: boolean;
   tag?: string | undefined;
   onMove(id: string, dx: number, dy: number): void;
+  onPress(add: boolean): void;
 }) {
-  const { object, color, draggable, highlighted, tag, onMove } = props;
+  const { object, color, dark, draggable, highlighted, tag, onMove, onPress } = props;
   const [x, y, w, h] = object.box;
   const style = { stroke: color, strokeWidth: 3, hitStrokeWidth: 14 };
   // What the comparator read from your ink: a light outline over it, so you see what it saw.
   if (object.pack === SHAPES || object.kind === "symbol")
-    return <RecognizedShape object={object} tag={tag} />;
+    return <RecognizedShape object={object} tag={tag} onPress={onPress} />;
+  // A box, circle, glyph or text turns around its centre (the handles rotate it).
+  const turn = TURNS.has(object.kind) ? rotationOf(object) : 0;
   return (
     <Group
-      x={x}
-      y={y}
+      name={itemName(object.id)}
+      x={x + w / 2}
+      y={y + h / 2}
+      offsetX={w / 2}
+      offsetY={h / 2}
+      rotation={turn}
       draggable={draggable}
-      onDragEnd={(e) => onMove(object.id, e.target.x() - x, e.target.y() - y)}
+      onPointerDown={(e) => {
+        e.cancelBubble = true;
+        onPress(e.evt.shiftKey);
+      }}
+      onDragEnd={(e) => onMove(object.id, e.target.x() - (x + w / 2), e.target.y() - (y + h / 2))}
     >
       {/* A transparent fill makes the inside grabbable with the move tool, not just the outline. */}
       {object.kind === "box" && (
@@ -165,10 +236,29 @@ function ObjectShape(props: {
       )}
       {/* A board draws its inner lines; its cells stay invisible, unless part of a winning line. */}
       {object.kind === "board" && !drawnBoard(object) && (
-        <BoardLines w={w} h={h} n={Math.round(Math.sqrt(object.parts.length)) || 3} />
+        <BoardLines w={w} h={h} n={Math.round(Math.sqrt(object.parts.length)) || 3} color={color} />
       )}
       {object.kind === "cell" && highlighted && (
-        <Rect width={w} height={h} fill="#fff3bf" listening={false} />
+        <Rect
+          width={w}
+          height={h}
+          fill={dark ? "rgba(255,255,255,0.14)" : "#fff3bf"}
+          listening={false}
+        />
+      )}
+      {/* A glyph from the library (π, ∑…) or a text note: the label is the content (D123). */}
+      {(object.kind === "glyph" || object.kind === "text") && (
+        <Text
+          width={w}
+          height={h}
+          text={object.label}
+          align={object.kind === "glyph" ? "center" : "left"}
+          verticalAlign="middle"
+          // Text grows with its box, so resizing it resizes the words (28 high is 18 px).
+          fontSize={object.kind === "glyph" ? Math.max(18, h * 0.8) : Math.max(8, h * 0.64)}
+          fontFamily={object.kind === "glyph" ? "Georgia, serif" : "system-ui, sans-serif"}
+          fill={color}
+        />
       )}
       {/* A mark (X, O…) fills its cell; anything else Claude adds is a labelled, dashed note. */}
       {object.kind === "mark" && (
@@ -209,22 +299,49 @@ function ObjectShape(props: {
   );
 }
 
-const BUILT_IN = new Set(["box", "circle", "arrow"]);
+const BUILT_IN = new Set(["box", "circle", "arrow", "glyph", "text"]);
+/** Kinds that turn around their centre. */
+const TURNS = new Set(["box", "circle", "glyph", "text"]);
+/** What the select tool can drag. */
+const MOVABLE = BUILT_IN;
 const GAME_KINDS = new Set(["mark", "board", "cell"]);
 /** Objects the comparator recognized from strokes (D89). */
 const SHAPES = "shapes";
 const SEEN = "#339af0";
 
-function RecognizedShape({ object, tag }: { object: SceneObject; tag?: string | undefined }) {
+function RecognizedShape({
+  object,
+  tag,
+  onPress,
+}: {
+  object: SceneObject;
+  tag?: string | undefined;
+  onPress(add: boolean): void;
+}) {
   const [x, y, w, h] = object.box;
-  const style = { stroke: SEEN, strokeWidth: 1.5, dash: [5, 4], opacity: 0.9, listening: false };
+  const name = itemName(object.id);
+  const style = {
+    name,
+    stroke: SEEN,
+    strokeWidth: 1.5,
+    dash: [5, 4],
+    opacity: 0.9,
+    listening: false,
+  };
+  // A symbol can be picked or erased by its frame (its ink sits on another layer).
+  const press = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    e.cancelBubble = true;
+    onPress(e.evt.shiftKey);
+  };
   const ends =
     object.geom && "a" in object.geom ? (object.geom as { a: Point2; b: Point2 }) : undefined;
   switch (object.kind) {
     case "line":
       return ends ? <Line points={[...ends.a, ...ends.b]} {...style} /> : null;
     case "crossing":
-      return <Ellipse x={x} y={y} radiusX={5} radiusY={5} fill={SEEN} listening={false} />;
+      return (
+        <Ellipse name={name} x={x} y={y} radiusX={5} radiusY={5} fill={SEEN} listening={false} />
+      );
     case "box":
       return <Rect x={x} y={y} width={w} height={h} {...style} />;
     case "circle":
@@ -242,8 +359,19 @@ function RecognizedShape({ object, tag }: { object: SceneObject; tag?: string | 
     case "symbol":
       return (
         <>
-          <Rect x={x - 4} y={y - 4} width={w + 8} height={h + 8} cornerRadius={4} {...style} />
+          <Rect
+            x={x - 4}
+            y={y - 4}
+            width={w + 8}
+            height={h + 8}
+            cornerRadius={4}
+            {...style}
+            listening
+            fill="transparent"
+            onPointerDown={press}
+          />
           <Text
+            name={name}
             x={x - 4}
             y={y - 20}
             text={tag ?? object.label}
@@ -263,7 +391,7 @@ const drawnBoard = (o: SceneObject) =>
   (o.geom as { from?: string } | undefined)?.from === "crossings";
 
 /** The inner lines of an n × n board. */
-function BoardLines({ w, h, n }: { w: number; h: number; n: number }) {
+function BoardLines({ w, h, n, color }: { w: number; h: number; n: number; color: string }) {
   const lines: number[][] = [];
   for (let k = 1; k < n; k++) {
     lines.push([(w * k) / n, 0, (w * k) / n, h], [0, (h * k) / n, w, (h * k) / n]);
@@ -274,7 +402,7 @@ function BoardLines({ w, h, n }: { w: number; h: number; n: number }) {
         <Line
           key={i}
           points={points}
-          stroke="#222222"
+          stroke={color}
           strokeWidth={4}
           lineCap="round"
           listening={false}

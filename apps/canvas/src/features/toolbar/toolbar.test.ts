@@ -1,21 +1,52 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { COLORS, TOOLS, useToolbar } from "./toolbar.store.ts";
+import { COLORS, TOOLS, toolForKey, useToolbar } from "./toolbar.store.ts";
 
-describe("toolbar state", () => {
-  beforeEach(() => useToolbar.setState({ tool: "pen", color: COLORS[0]!.color }));
+describe("toolbar state (D120)", () => {
+  beforeEach(() =>
+    useToolbar.setState({
+      tool: "pen",
+      color: COLORS[0]!.color,
+      shape: "box",
+      selectBy: "pointer",
+    }),
+  );
 
-  it("starts with the pen and the ink colour", () => {
-    expect(useToolbar.getState()).toMatchObject({ tool: "pen", color: "#222222" });
+  it("starts with the pen and the ink colour, which follows the canvas", () => {
+    expect(useToolbar.getState()).toMatchObject({ tool: "pen", color: "ink" });
   });
 
-  it("switches tool and colour", () => {
+  it("switches tool and colour, and remembers the last shape", () => {
     useToolbar.getState().setTool("arrow");
     useToolbar.getState().setColor("#2f9e44");
-    expect(useToolbar.getState()).toMatchObject({ tool: "arrow", color: "#2f9e44" });
+    useToolbar.getState().setTool("pen");
+    expect(useToolbar.getState()).toMatchObject({ tool: "pen", color: "#2f9e44", shape: "arrow" });
   });
 
-  it("offers the pen, three shapes, a board and move, and five colours", () => {
-    expect(TOOLS.map((t) => t.tool)).toEqual(["pen", "box", "circle", "arrow", "board", "move"]);
+  it("selects with the arrow until box or lasso is chosen; choosing one picks the select tool", () => {
+    expect(useToolbar.getState().selectBy).toBe("pointer");
+    useToolbar.getState().setSelectBy("lasso");
+    expect(useToolbar.getState()).toMatchObject({ tool: "select", selectBy: "lasso" });
+    // Leaving and coming back keeps the lasso.
+    useToolbar.getState().setTool("pen");
+    useToolbar.getState().setTool("select");
+    expect(useToolbar.getState().selectBy).toBe("lasso");
+  });
+
+  it("offers select, hand, pen, eraser, shapes and text, each with its own key (D146)", () => {
+    expect(TOOLS.map((t) => t.tool)).toEqual([
+      "select",
+      "hand",
+      "pen",
+      "eraser",
+      "box",
+      "circle",
+      "arrow",
+      "board",
+      "text",
+    ]);
+    expect(new Set(TOOLS.map((t) => t.key)).size).toBe(TOOLS.length);
+    expect(toolForKey("P")).toBe("pen");
+    expect(toolForKey("z")).toBeUndefined();
     expect(COLORS).toHaveLength(5);
   });
 });

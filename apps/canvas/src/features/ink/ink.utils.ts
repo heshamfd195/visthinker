@@ -2,7 +2,8 @@ import type { Stroke, StrokePoint } from "@visthinker/contract";
 import { getStroke } from "perfect-freehand";
 import type { PenStyle, RawPoint } from "./ink.types.ts";
 
-export const PEN: PenStyle = { color: "#222", width: 4 };
+/** "ink" follows the canvas: light on a dark canvas, dark on paper (D119 · D128). */
+export const PEN: PenStyle = { color: "ink", width: 4 };
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -36,12 +37,17 @@ export function toStroke(id: string, raw: RawPoint[], pen: PenStyle = PEN): Stro
  * The filled outline perfect-freehand draws for these points, flat for a closed Konva.Line.
  * `last` marks a finished stroke, so the outline reaches its final point instead of lagging behind.
  */
-export function outline(raw: RawPoint[], width: number = PEN.width, last = false): number[] {
+export function outline(
+  raw: RawPoint[],
+  width: number = PEN.width,
+  last = false,
+  smoothing = 0.5,
+): number[] {
   const input = raw.map((p) => [p.x, p.y, p.pressure]);
   return getStroke(input, {
     size: width * 1.6,
     thinning: 0.5,
-    smoothing: 0.5,
+    smoothing,
     streamline: 0.4,
     last,
   }).flat();
@@ -56,4 +62,9 @@ export function isTap(raw: RawPoint[]): boolean {
   if (!first || !last) return false;
   if (last.time - first.time > TAP.maxMs) return false;
   return raw.every((p) => Math.hypot(p.x - first.x, p.y - first.y) <= TAP.maxMove);
+}
+
+/** A recorded stroke's points as pointer samples again, to draw it. */
+export function samplesOf(stroke: Stroke): RawPoint[] {
+  return stroke.points.map(([x, y, pressure, dt]) => ({ x, y, pressure, time: stroke.t0 + dt }));
 }

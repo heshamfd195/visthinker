@@ -1,0 +1,7 @@
+{
+  "name": "modes",
+  "version": "0.1.0",
+  "contract": "0",
+  "match": {},
+  "blocks": ["modes"]
+}

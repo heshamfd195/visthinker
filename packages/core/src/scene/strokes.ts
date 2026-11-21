@@ -15,9 +15,15 @@ interface MutableStrokeStore extends StrokeStore {
   put(stroke: Stroke): void;
 }
 
-export function createStrokeStore(): StrokeStore {
+/** `initial`: the raw ink of a saved project (D142). */
+export function createStrokeStore(initial: readonly Stroke[] = []): StrokeStore {
   const strokes = new Map<string, Stroke>();
   let count = 0;
+  for (const stroke of initial) {
+    strokes.set(stroke.id, structuredClone(stroke));
+    const n = /^s(\d+)$/.exec(stroke.id);
+    if (n) count = Math.max(count, Number(n[1]));
+  }
   const store: MutableStrokeStore = {
     nextId() {
       let id: string;
@@ -36,6 +42,11 @@ export function createStrokeStore(): StrokeStore {
     },
   };
   return store;
+}
+
+/** Puts a stroke's new points in place of its old ones, e.g. after a resize or rotate. */
+export function replaceStroke(strokes: StrokeStore, stroke: Stroke): void {
+  if (strokes.has(stroke.id)) (strokes as MutableStrokeStore).put(stroke);
 }
 
 /** The smallest box around a stroke's points, in world units (D79). */
