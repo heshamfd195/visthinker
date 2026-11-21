@@ -44,6 +44,11 @@ export function createStrokeStore(initial: readonly Stroke[] = []): StrokeStore 
   return store;
 }
 
+/** Puts a stroke's new points in place of its old ones, e.g. after a resize or rotate. */
+export function replaceStroke(strokes: StrokeStore, stroke: Stroke): void {
+  if (strokes.has(stroke.id)) (strokes as MutableStrokeStore).put(stroke);
+}
+
 /** The smallest box around a stroke's points, in world units (D79). */
 export function strokeBox(stroke: Stroke): Box {
   const xs = stroke.points.map((p) => p[0]);

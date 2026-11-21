@@ -68,6 +68,7 @@ export function createToolHandler({
     story,
     scene,
     strokeIds: () => strokes.all().map((s) => s.id),
+    strokes,
     ...(historyState ? { state: historyState } : {}),
   });
   const activity = new Set<(record: CallRecord | undefined) => void>();

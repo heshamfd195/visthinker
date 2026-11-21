@@ -5,7 +5,7 @@ import type { VisEvent } from "@visthinker/contract";
 import type { Story } from "./story.ts";
 
 /** User events that undo can take back (D130 · D132). */
-export const UNDOABLE = ["stroke", "mark", "place", "move", "clear", "erase"] as const;
+export const UNDOABLE = ["stroke", "mark", "place", "move", "transform", "clear", "erase"] as const;
 
 /** The undos a later `redo` has cancelled. */
 export function redoneUndos(events: VisEvent[]): Set<number> {

@@ -2,14 +2,23 @@
 // The story says what happened; the history keeps the scene and the visible ink in step with it:
 // an undone stroke hides its ink and the objects read only from it, an undone mark or placed
 // object leaves the scene, an undone move goes back, and a clear hides everything before it.
-import type { Point2, SceneObject, VisEvent, Who } from "@visthinker/contract";
+import type { Point2, SceneObject, Stroke, VisEvent, Who } from "@visthinker/contract";
 import type { SceneStore } from "./store.ts";
 import type { Story } from "./story.ts";
+import { replaceStroke, type StrokeStore } from "./strokes.ts";
 import { findRedoable, findUndoable, undoneSeqs } from "./undo.ts";
 
 interface Saved {
   objects: { object: SceneObject; owner: Who }[];
   strokes: string[];
+  /** A transform's geometry before and after, kept for undo and redo. */
+  reshape?: { before: Shape; after: Shape };
+}
+
+/** New geometry for some ink and objects: their points, boxes and turns. */
+export interface Shape {
+  strokes: Stroke[];
+  objects: SceneObject[];
 }
 
 /** What the history holds besides the story, so a saved project can bring it back (D142). */
@@ -27,6 +36,11 @@ export interface History {
   clear(): VisEvent | undefined;
   /** The eraser: hides these strokes and removes these objects, as one undoable event. */
   erase(ids: string[]): VisEvent | undefined;
+  /**
+   * Resize, rotate or move with the handles: puts this new geometry in place as one undoable
+   * `transform` event. Ids that aren't on the canvas are skipped.
+   */
+  reshape(after: Shape, who?: Who): VisEvent | undefined;
   /** Takes back one given event, e.g. Claude's move in an accepted take-back (D131). */
   undoEvent(seq: number, who: Who, cause?: number): VisEvent | undefined;
   canUndo(): boolean;
@@ -46,6 +60,8 @@ export interface HistoryDeps {
   scene: SceneStore;
   /** Every stroke id recorded so far, for a clear to hide. */
   strokeIds: () => string[];
+  /** The ink itself, for a transform to reshape. */
+  strokes?: StrokeStore;
   state?: HistoryState;
 }
 
@@ -64,7 +80,13 @@ function shift(scene: SceneStore, id: string, dx: number, dy: number): void {
   });
 }
 
-export function createHistory({ story, scene, strokeIds, state }: HistoryDeps): History {
+export function createHistory({
+  story,
+  scene,
+  strokeIds,
+  strokes: ink,
+  state,
+}: HistoryDeps): History {
   const hidden = new Set<string>(state?.hidden ?? []);
   const saved = new Map<number, Saved>(state?.saved ?? []);
 
@@ -129,6 +151,14 @@ export function createHistory({ story, scene, strokeIds, state }: HistoryDeps): 
     return [Number(to[0]) - Number(from[0]), Number(to[1]) - Number(from[1])];
   };
 
+  /** Puts a transform's geometry in place: the ink's points, the objects' boxes and turns. */
+  const applyShape = (shape: Shape) => {
+    if (ink) for (const stroke of shape.strokes) replaceStroke(ink, stroke);
+    for (const object of shape.objects)
+      if (scene.has(object.id)) scene.update(object.id, () => structuredClone(object));
+  };
+  const reshapeOf = (event: VisEvent) => saved.get(event.seq)?.reshape;
+
   /** Reverses what the event did to the canvas. */
   const takeAway = (event: VisEvent) => {
     switch (event.type) {
@@ -143,6 +173,11 @@ export function createHistory({ story, scene, strokeIds, state }: HistoryDeps): 
       case "move": {
         const d = moveDelta(event);
         if (d && event.target) shift(scene, event.target, -d[0], -d[1]);
+        break;
+      }
+      case "transform": {
+        const r = reshapeOf(event);
+        if (r) applyShape(r.before);
         break;
       }
       case "clear":
@@ -166,6 +201,11 @@ export function createHistory({ story, scene, strokeIds, state }: HistoryDeps): 
       case "move": {
         const d = moveDelta(event);
         if (d && event.target) shift(scene, event.target, d[0], d[1]);
+        break;
+      }
+      case "transform": {
+        const r = reshapeOf(event);
+        if (r) applyShape(r.after);
         break;
       }
       case "clear":
@@ -235,6 +275,23 @@ export function createHistory({ story, scene, strokeIds, state }: HistoryDeps): 
       if (live.length === 0) return undefined;
       hideSome(nextSeq(), live);
       return story.append({ who: "user", type: "erase", detail: { ids: live } });
+    },
+    reshape(after, who = "user") {
+      const strokes = ink ? after.strokes.filter((s) => ink.has(s.id)) : [];
+      const objects = after.objects.filter((o) => scene.has(o.id));
+      if (!strokes.length && !objects.length) return undefined;
+      const before: Shape = {
+        strokes: strokes.map((s) => ink!.get(s.id)!),
+        objects: objects.map((o) => scene.get(o.id)!),
+      };
+      const next: Shape = structuredClone({ strokes, objects });
+      saved.set(nextSeq(), { objects: [], strokes: [], reshape: { before, after: next } });
+      applyShape(next);
+      return story.append({
+        who,
+        type: "transform",
+        detail: { ids: [...objects.map((o) => o.id), ...strokes.map((s) => s.id)] },
+      });
     },
     undoEvent(seq, who, cause) {
       const target = story.get(seq);

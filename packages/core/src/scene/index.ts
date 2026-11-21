@@ -7,3 +7,4 @@ export * from "./history.ts";
 export * from "./talk.ts";
 export * from "./snapshot.ts";
 export * from "./relations.ts";
+export * from "./transform.ts";
