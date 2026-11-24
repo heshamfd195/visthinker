@@ -288,6 +288,18 @@ group("letters from the handwriting ability (T51)", () => {
     expect(isProblem(row(unsure))).toBe(true);
   });
 
+  it("a letter still being written says so; a tilted one says how far it was turned", () => {
+    const waiting = { ...letter, detail: { ...letter.detail, waiting: true } };
+    expect(describe(waiting)).toContain("letter 1 of 5 · … still writing · y3");
+    expect(isProblem(row(waiting))).toBe(false);
+    const reading = { label: "A", score: 100, clear: true, guesses: [{ char: "A", score: 100 }] };
+    const tilted = {
+      ...letter,
+      detail: { ...letter.detail, reading, turn: { deg: -20, about: [0, 0] } },
+    };
+    expect(describe(tilted)).toContain("letter 1 of 5 · A 100% · tilted 20° anticlockwise · y3");
+  });
+
   it("a word read by its letters says the word; one with an unsure letter is a problem", () => {
     const word = (text: string) =>
       e({

@@ -4,7 +4,7 @@
 // where lines cross or touch, and each loop. All in recognized blue, the colour of what the canvas
 // read, and in screen pixels so it looks the same at any zoom. Never listening.
 import { Fragment } from "react";
-import { Circle, Ellipse, Layer, Line, Rect, Text } from "react-konva";
+import { Circle, Ellipse, Layer, Line, Text } from "react-konva";
 import type { LetterMarks } from "./handwriting.utils.ts";
 
 const SEEN = "#339af0";
@@ -39,6 +39,7 @@ export function LettersLayer({ letters, scale, names, scores, parts }: LettersLa
 function LetterName({ letter, px, score }: { letter: LetterMarks; px: number; score: boolean }) {
   const [x, y, w, h] = letter.box;
   const name = letter.name!;
+  // "…" while you're still writing it; "?" when unsure (D115).
   const text = name.clear && score ? `${name.label} ${Math.round(name.score)}%` : name.label;
   const width = 120 * px;
   return (
@@ -57,23 +58,28 @@ function LetterName({ letter, px, score }: { letter: LetterMarks; px: number; sc
 }
 
 function LetterParts({ letter, px }: { letter: LetterMarks; px: number }) {
-  const [x, y, w, h] = letter.box;
+  const [corner] = letter.outline;
+  const turn = letter.turn ?? 0;
   return (
     <>
-      <Rect
-        x={x}
-        y={y}
-        width={w}
-        height={h}
+      {/* The box it was measured in, turned with a tilted letter. */}
+      <Line
+        points={letter.outline.flat()}
+        closed
         stroke={SEEN}
         strokeWidth={px}
         dash={[2 * px, 3 * px]}
         opacity={0.6}
       />
       <Text
-        x={x + 2 * px}
-        y={y + 2 * px}
-        text={`#${letter.index}`}
+        x={corner![0]}
+        y={corner![1]}
+        offsetX={-2 * px}
+        offsetY={-2 * px}
+        rotation={turn}
+        text={
+          turn ? `#${letter.index} · turned ${Math.round(Math.abs(turn))}°` : `#${letter.index}`
+        }
         fontSize={10 * px}
         fill={SEEN}
         opacity={0.8}
@@ -119,6 +125,7 @@ function LetterParts({ letter, px }: { letter: LetterMarks; px: number }) {
           y={l.center[1]}
           radiusX={l.rx}
           radiusY={l.ry}
+          rotation={turn}
           stroke={SEEN}
           strokeWidth={1.5 * px}
           dash={[3 * px, 3 * px]}

@@ -145,8 +145,11 @@ export function letterFeatures(
 
   const loops: LetterLoop[] = [];
   paths.forEach((path, i) => {
-    if (!world.some((p) => p.stroke === i && p.kind === "curve")) return;
-    if (!closes(path, size, tol)) return;
+    // A stroke with a curve closes when it comes back near its start, or runs past it (an O that
+    // overshoots). One made only of lines must come back to its very start (a four-sided O), so
+    // an A drawn in one stroke, which ends partway up a leg, still has no loop (D112).
+    const curved = world.some((p) => p.stroke === i && p.kind === "curve");
+    if (!closes(path, size, tol, curved ? tol.loopStart : 0)) return;
     const b = boxAround(path);
     if (Math.max(b[2], b[3]) < tol.loopMin * size) return;
     loops.push({
@@ -276,15 +279,14 @@ function meetsBetween(p1: WorldPart, p2: WorldPart, reach: number) {
   return chosen.sort((x, y) => x.ends.join().localeCompare(y.ends.join()));
 }
 
-/** Does the stroke come back to its start, or run past it? */
-function closes(path: Point2[], size: number, tol: FeatureTolerances): boolean {
+/** Does the stroke come back within reach of a point in the first `start` share of its path? */
+function closes(path: Point2[], size: number, tol: FeatureTolerances, start: number): boolean {
   const cum = cumulative(path);
   const total = cum.at(-1)!;
   const end = path.at(-1)!;
   const reach = tol.loopClose * size;
   return (
-    path.some((p, i) => cum[i]! <= tol.loopStart * total && dist(p, end) <= reach) &&
-    total > 2 * reach
+    path.some((p, i) => cum[i]! <= start * total && dist(p, end) <= reach) && total > 2 * reach
   );
 }
 

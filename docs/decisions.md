@@ -96,6 +96,7 @@ Only this repo's decisions are listed, so the numbers have gaps. When a later de
 | D110 | ⏱️ A stroke that lands close by within 2 s rejoins the last symbol, and both are read again together.                                                                                                           |
 | D167 | ⏱️ A stroke can join several recent words: every word read in the last 2 s counts, and a stroke that reaches more than one (an H's bar after its legs were read apart) merges them into one word. Extends D110. |
 | D168 | 🔤 A lone letter the cards read clearly is a word (a one-letter `A`); a lone mark no card knows (an X) stays a symbol.                                                                                          |
+| D169 | ⏱️ A written word waits 5 s for its next letter: a stroke beside it (closer than half its height) joins it within 5 s, not D110's 2 s. Writers pause between letters.                                           |
 
 ## ✍️ Handwriting ability (being built)
 

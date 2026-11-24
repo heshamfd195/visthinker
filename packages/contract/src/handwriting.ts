@@ -96,6 +96,8 @@ export const PartSelector = z.object({
   maxLength: z.number().nonnegative().optional(),
   /** Where the part's middle lies. */
   at: Region.optional(),
+  /** Its angle from level, in degrees (0 flat, 90 upright): `[45, 90]` is steep, like an A's legs. */
+  tilt: z.tuple([z.number().min(0).max(90), z.number().min(0).max(90)]).optional(),
 });
 
 /** One thing a computer can check on a letter's features (D112). */
@@ -169,7 +171,7 @@ export const LetterReading = z.object({
 /**
  * The `detail` of a `letter` event: one letter of a word the comparator read, its `target` the
  * word and its `cause` the word's `recognized` event. A word read again (a late stroke, D110)
- * sends only the letters that are new or whose strokes changed; the word's `recognized` event
+ * sends only the letters that are new, whose strokes changed, or that just got their name; the word's `recognized` event
  * lists all its letters, and each one's latest `letter` event with the same strokes holds its
  * measurements. `index` and `of` are as they were when it was sent.
  */
@@ -179,8 +181,21 @@ export const LetterEventDetail = z.object({
   of: z.number().int().positive(),
   strokes: z.array(Id).min(1),
   features: LetterFeatures,
-  /** What the cards read it as (T53); missing from events made before the cards. */
+  /**
+   * What the cards read it as (T53). Missing while it `waiting`, and from events made before the
+   * cards.
+   */
   reading: LetterReading.optional(),
+  /**
+   * The letter is still being written: its name comes in a later `letter` event once you pause
+   * or move on to the next letter.
+   */
+  waiting: z.literal(true).optional(),
+  /**
+   * How far it leans, degrees clockwise on the page, and the point it was turned about to be
+   * read upright; `features` are measured turned. Missing when read as drawn.
+   */
+  turn: z.object({ deg: z.number().min(-45).max(45), about: Point2 }).optional(),
 });
 
 /**
@@ -192,7 +207,7 @@ export const LetterEventDetail = z.object({
 export const WordReading = z.object({
   kind: z.enum(["word", "symbol"]),
   letters: z.array(z.array(Id).min(1)),
-  /** The word as read, a `?` for each unsure letter, e.g. "HE?LO" (T53). */
+  /** The word as read: `?` for an unsure letter, `…` for one still being written ("HE?L…", T53). */
   text: z.string().max(200).optional(),
 });
 

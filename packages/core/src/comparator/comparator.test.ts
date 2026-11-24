@@ -6,6 +6,7 @@ import {
   type Stroke,
 } from "@visthinker/contract";
 import { describe, expect, it } from "vitest";
+import hello from "../abilities/handwriting/fixtures/hello.json" with { type: "json" };
 import { STARTER_PACKS } from "../packs/index.ts";
 import { createManualClock } from "../ports/index.ts";
 import { createSceneStore, createStory, createStrokeStore, recordStroke } from "../scene/index.ts";
@@ -15,6 +16,7 @@ import {
   crossRule,
   fitLine,
   INSTANT_LINE_LENGTH,
+  SETTLE_MS,
 } from "./index.ts";
 
 /** A hand-ish stroke along a path: points every few units, with a small wobble. */
@@ -344,7 +346,13 @@ describe("grouping (D96 · D97)", () => {
       clock.advance(80);
       return s;
     };
-    return { clock, story, scene, comparator, draw };
+    /** Feeds a saved stroke when it ended, as the canvas does when you lift the pen. */
+    const replay = (saved: Stroke) => {
+      const end = saved.t0 + (saved.points.at(-1)?.[3] ?? 0);
+      clock.advance(Math.max(0, end - clock.now()));
+      comparator.onStroke(saved, recordStroke(story, strokesStore, saved));
+    };
+    return { clock, story, scene, comparator, draw, replay };
   }
 
   it("two quick strokes close together are one group, read as an X 0.6 s after the last one", () => {
@@ -436,16 +444,16 @@ describe("grouping (D96 · D97)", () => {
         [72, 60],
       ]),
     );
-    clock.advance(600);
+    clock.advance(SETTLE_MS);
     const words = scene.all().filter((o) => o.kind === "word" || o.kind === "symbol");
     expect(words).toHaveLength(1);
     expect(words[0]).toMatchObject({ kind: "word", label: "H" });
     expect(words[0]!.strokes).toEqual([left.id, right.id, bar.id]);
-    const reading = story.all().findLast((e) => e.type === "recognized")!;
-    const letters = story.all().filter((e) => e.type === "letter" && e.cause === reading.seq);
-    expect(letters.map((e) => LetterEventDetail.parse(e.detail).features.parts.length)).toEqual([
-      3,
-    ]);
+    const named = story.all().findLast((e) => e.type === "letter" && e.detail?.["reading"])!;
+    expect(LetterEventDetail.parse(named.detail)).toMatchObject({
+      strokes: [left.id, right.id, bar.id],
+      reading: { label: "H", clear: true },
+    });
   });
 
   it("a slow H: each leg already read on its own, the bar merges both into one word (D110)", () => {
@@ -472,7 +480,7 @@ describe("grouping (D96 · D97)", () => {
         [72, 60],
       ]),
     );
-    clock.advance(700);
+    clock.advance(SETTLE_MS);
     const words = scene.all().filter((o) => o.kind === "word" || o.kind === "symbol");
     expect(words.map((o) => [o.id, o.kind, o.label, o.strokes])).toEqual([
       [first!.id, "word", "H", [left.id, right.id, bar.id]],
@@ -483,12 +491,6 @@ describe("grouping (D96 · D97)", () => {
       target: second!.id,
       detail: { into: first!.id },
     });
-    expect(
-      story
-        .all()
-        .filter((e) => e.type === "letter")
-        .at(-1)?.detail?.["of"],
-    ).toBe(1);
   });
 
   it("two or more letters are a written word: no X or O guess, its letters listed (T51)", () => {
@@ -507,7 +509,7 @@ describe("grouping (D96 · D97)", () => {
         [135, 80],
       ]),
     );
-    clock.advance(700);
+    clock.advance(SETTLE_MS);
     const [word] = scene.all();
     expect(word).toMatchObject({ kind: "word", label: "LL", pack: "handwriting" });
     const reading = story.all().findLast((e) => e.type === "recognized")!;
@@ -516,12 +518,90 @@ describe("grouping (D96 · D97)", () => {
       letters: [[first.id], [second.id]],
       text: "LL",
     });
-    const letters = story.all().filter((e) => e.type === "letter");
-    expect(letters.map((e) => LetterEventDetail.parse(e.detail).reading)).toMatchObject([
+    expect(reading.detail).not.toHaveProperty("alternatives");
+    const named = story.all().filter((e) => e.type === "letter" && e.detail?.["reading"]);
+    expect(named.map((e) => LetterEventDetail.parse(e.detail).reading)).toMatchObject([
       { label: "L", clear: true },
       { label: "L", clear: true },
     ]);
-    expect(reading.detail).not.toHaveProperty("alternatives");
+  });
+
+  it("the letter you're still writing waits for its name until you pause (no flash of a wrong one)", () => {
+    const { clock, scene, story, draw } = setup();
+    draw(
+      along([
+        [0, 0],
+        [0, 100],
+        [55, 100],
+      ]),
+    ); // an L
+    clock.advance(800);
+    // An E's back and two bars: on their own they would read L.
+    draw(
+      along([
+        [90, 0],
+        [90, 100],
+      ]),
+    );
+    draw(
+      along([
+        [90, 0],
+        [140, 0],
+      ]),
+    );
+    draw(
+      along([
+        [90, 100],
+        [140, 100],
+      ]),
+    );
+    clock.advance(700);
+    expect(scene.all()[0]).toMatchObject({ kind: "word", label: "L…" });
+    const waiting = story.all().findLast((e) => e.type === "letter")!;
+    expect(LetterEventDetail.parse(waiting.detail)).toMatchObject({ index: 2, waiting: true });
+    expect(waiting.detail).not.toHaveProperty("reading");
+    draw(
+      along([
+        [90, 50],
+        [130, 50],
+      ]),
+    ); // the middle bar, before the pause
+    clock.advance(SETTLE_MS);
+    expect(scene.all()[0]).toMatchObject({ label: "LE" });
+    const names = story
+      .all()
+      .filter((e) => e.type === "letter" && e.detail?.["reading"])
+      .map((e) => LetterEventDetail.parse(e.detail).reading!.label);
+    expect(names).toEqual(["L", "E"]);
+  });
+
+  it("a written word waits 5 s for its next letter beside it, not 2 (D169)", () => {
+    const { clock, scene, draw } = setup();
+    draw(
+      along([
+        [0, 0],
+        [0, 100],
+        [55, 100],
+      ]),
+    );
+    clock.advance(3_000); // a long pause after the first letter
+    draw(
+      along([
+        [80, 0],
+        [80, 100],
+        [135, 100],
+      ]),
+    );
+    clock.advance(SETTLE_MS);
+    expect(scene.all().map((o) => [o.kind, o.label])).toEqual([["word", "LL"]]);
+  });
+
+  it("your fourth HELLO, replayed with its real timing, is one word: HELLO (D169)", () => {
+    const { clock, scene, replay } = setup();
+    // A 2.4 s pause after the H once split it from ELLO; its O is drawn with four straight sides.
+    for (const stroke of hello.fourth as Stroke[]) replay(stroke);
+    clock.advance(SETTLE_MS);
+    expect(scene.all().map((o) => [o.kind, o.label])).toEqual([["word", "HELLO"]]);
   });
 
   it("a lone letter the cards read clearly is a word; a mark they don't know is a symbol", () => {
@@ -533,7 +613,7 @@ describe("grouping (D96 · D97)", () => {
         [55, 100],
       ]),
     );
-    clock.advance(700);
+    clock.advance(SETTLE_MS);
     expect(scene.all()[0]).toMatchObject({ kind: "word", label: "L" });
     expect(story.all().findLast((e) => e.type === "recognized")?.detail).toMatchObject({
       kind: "word",
@@ -560,13 +640,16 @@ describe("grouping (D96 · D97)", () => {
     });
   });
 
-  it("a word read again sends only the letters that are new or changed", () => {
+  it("a word read again sends only letters that are new, changed, or just named", () => {
     const { clock, story, draw } = setup();
     const sent = () =>
       story
         .all()
         .filter((e) => e.type === "letter")
-        .map((e) => LetterEventDetail.parse(e.detail).strokes);
+        .map((e) => {
+          const d = LetterEventDetail.parse(e.detail);
+          return [d.strokes, d.reading?.label ?? "…"];
+        });
     const first = draw(
       along([
         [0, 0],
@@ -574,25 +657,35 @@ describe("grouping (D96 · D97)", () => {
         [55, 100],
       ]),
     );
-    clock.advance(700); // read alone
+    clock.advance(SETTLE_MS); // read alone, then named
     const second = draw(
       along([
         [80, 0],
         [80, 100],
       ]),
-    ); // rejoins: a new letter (D110)
+    ); // rejoins: a new letter, waiting
     clock.advance(700);
-    expect(sent()).toEqual([[first.id], [second.id]]);
+    expect(sent()).toEqual([
+      [[first.id], "…"],
+      [[first.id], "L"],
+      [[second.id], "…"],
+    ]);
     const bar = draw(
       along([
-        [78, 50],
-        [120, 50],
+        [78, 100],
+        [130, 100],
       ]),
-    ); // joins the second letter: it changed
-    clock.advance(700);
-    expect(sent()).toEqual([[first.id], [second.id], [second.id, bar.id]]);
+    ); // its foot: the same letter, changed
+    clock.advance(SETTLE_MS);
+    expect(sent().slice(3)).toEqual([
+      [[second.id, bar.id], "…"],
+      [[second.id, bar.id], "L"],
+    ]);
     const reading = story.all().findLast((e) => e.type === "recognized")!;
-    expect(WordReading.parse(reading.detail).letters).toEqual([[first.id], [second.id, bar.id]]);
+    expect(WordReading.parse(reading.detail)).toMatchObject({
+      letters: [[first.id], [second.id, bar.id]],
+      text: "LL",
+    });
   });
 
   it("with the handwriting ability switched off, a word gets no letter events (D161)", () => {

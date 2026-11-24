@@ -79,13 +79,13 @@ export function describe(e: VisEvent): string {
       // One letter of a word, with what the handwriting ability measured (T51).
       const letter = LetterEventDetail.safeParse(d);
       if (!letter.success) return join("letter", e.target);
-      const { index, of, features, reading } = letter.data;
-      return join(
-        `letter ${index} of ${of}`,
-        reading && named(reading),
-        e.target,
-        letterSummary(features),
-      );
+      const { index, of, features, reading, waiting, turn } = letter.data;
+      // A letter still being written gets its name when you pause or move on.
+      const name = waiting ? "… still writing" : reading && named(reading);
+      const tilted =
+        turn &&
+        `tilted ${Math.round(Math.abs(turn.deg))}° ${turn.deg > 0 ? "clockwise" : "anticlockwise"}`;
+      return join(`letter ${index} of ${of}`, name, tilted, e.target, letterSummary(features));
     }
     case "place": {
       const kind = str(d["kind"]) ?? "object";

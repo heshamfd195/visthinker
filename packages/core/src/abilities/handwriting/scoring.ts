@@ -1,5 +1,5 @@
 // Scoring the character cards (D113 · T53): each check whose tests all pass earns its weight, so a
-// card scores 0–100 against a letter's features. The best card is clear at 70 or more with a lead
+// card scores 0–100 against a letter's features, less 20 for each part it can't explain. The best card is clear at 70 or more with a lead
 // of 15 or more over the next; anything else is unsure, and its two best guesses go along (D115).
 import type {
   CardTest,
@@ -18,21 +18,35 @@ export const CLEAR_SCORE = 70;
 /** …and at least this lead over the next card. */
 export const CLEAR_LEAD = 15;
 
-/** One card against one letter: its score and which checks passed. */
+/**
+ * Ink a card can't explain costs this much per part: an E with a curve, an L with extra bars.
+ * A card explains the parts its passing checks pick out; parts it only forbids explain nothing.
+ */
+export const UNEXPLAINED_COST = 20;
+/** Parts shorter than this (a share of the letter's size) are never charged: a pen's flick. */
+export const SMALL_PART = 0.15;
+
+/** One card against one letter: its score, which checks passed, and the parts it couldn't explain. */
 export interface CardScore {
   char: string;
   score: number;
   checks: { label: string; weight: number; passed: boolean }[];
+  /** How many parts none of its passing checks used. */
+  unexplained: number;
 }
 
 export function scoreCard(card: CharacterCard, f: LetterFeatures): CardScore {
-  const checks = card.checks.map((c) => ({
-    label: c.label,
-    weight: c.weight,
-    passed: c.tests.every((t) => passes(t, f)),
-  }));
-  const score = checks.reduce((sum, c) => sum + (c.passed ? c.weight : 0), 0);
-  return { char: card.char, score: Math.round(score), checks };
+  const explained = new Set<number>();
+  const checks = card.checks.map((c) => {
+    const results = c.tests.map((t) => evaluate(t, f));
+    const passed = results.every((r) => r.pass);
+    if (passed) for (const r of results) for (const i of r.explains) explained.add(i);
+    return { label: c.label, weight: c.weight, passed };
+  });
+  const unexplained = f.parts.filter((p, i) => p.length >= SMALL_PART && !explained.has(i)).length;
+  const earned = checks.reduce((sum, c) => sum + (c.passed ? c.weight : 0), 0);
+  const score = Math.max(0, Math.round(earned - UNEXPLAINED_COST * unexplained));
+  return { char: card.char, score, checks, unexplained };
 }
 
 /** Every card against the letter, best first; the reading says whether the best is clear. */
@@ -55,47 +69,55 @@ export function readLetter(
   };
 }
 
-function passes(t: CardTest, f: LetterFeatures): boolean {
+/** Whether a test passes, and which parts it explains (none for a test that forbids them). */
+function evaluate(t: CardTest, f: LetterFeatures): { pass: boolean; explains: number[] } {
+  const within = (n: number, min: number, max?: number) =>
+    n >= min && (max === undefined || n <= max);
   switch (t.test) {
     case "strokes":
-      return f.strokes >= t.min && f.strokes <= t.max;
+      return { pass: within(f.strokes, t.min, t.max), explains: [] };
     case "count": {
-      const n = f.parts.filter((p) => matches(p, t.parts, f)).length;
-      return n >= t.min && (t.max === undefined || n <= t.max);
+      const found = f.parts.flatMap((p, i) => (matches(p, t.parts, f) ? [i] : []));
+      return { pass: within(found.length, t.min, t.max), explains: t.max === 0 ? [] : found };
     }
     case "loops": {
-      const size = t.minSize ?? 0;
-      const n = f.loops.filter((l) => Math.max(l.width, l.height) >= size).length;
-      return n >= t.min && (t.max === undefined || n <= t.max);
+      const loops = f.loops.filter((l) => Math.max(l.width, l.height) >= (t.minSize ?? 0));
+      const strokes = new Set(loops.map((l) => l.stroke));
+      const explains =
+        t.max === 0 ? [] : f.parts.flatMap((p, i) => (strokes.has(p.stroke) ? [i] : []));
+      return { pass: within(loops.length, t.min, t.max), explains };
     }
     case "join": {
-      const n = joins(f, t.a, t.b, t.how, t.at);
-      return n >= t.min && (t.max === undefined || n <= t.max);
+      const pairs = joins(f, t.a, t.b, t.how, t.at);
+      return {
+        pass: within(pairs.length, t.min, t.max),
+        explains: t.max === 0 ? [] : pairs.flat(),
+      };
     }
   }
 }
 
-/** How many pairs of different parts, one matching `a` and one `b`, meet or cross in `at`. */
+/** The pairs of different parts, one matching `a` and one `b`, that meet or cross in `at`. */
 function joins(
   f: LetterFeatures,
   a: PartSelector,
   b: PartSelector,
   how: "meet" | "cross" | "any",
   at: Region | undefined,
-): number {
+): [number, number][] {
   const links = [
     ...(how !== "cross" ? f.meets.map((m) => ({ parts: m.parts, at: m.at })) : []),
     ...(how !== "meet" ? f.crossings.map((c) => ({ parts: c.parts, at: c.at })) : []),
   ];
-  const pairs = new Set<string>();
+  const pairs = new Map<string, [number, number]>();
   for (const link of links) {
     if (at && !inRegion(link.at, at)) continue;
     const [i, j] = link.parts;
     const [p, q] = [f.parts[i]!, f.parts[j]!];
     const fits = (matches(p, a, f) && matches(q, b, f)) || (matches(q, a, f) && matches(p, b, f));
-    if (fits) pairs.add(`${Math.min(i, j)}-${Math.max(i, j)}`);
+    if (fits) pairs.set(`${Math.min(i, j)}-${Math.max(i, j)}`, [i, j]);
   }
-  return pairs.size;
+  return [...pairs.values()];
 }
 
 function matches(p: LetterPart, s: PartSelector, f: LetterFeatures): boolean {
@@ -103,7 +125,12 @@ function matches(p: LetterPart, s: PartSelector, f: LetterFeatures): boolean {
   if (s.minLength !== undefined && p.length < s.minLength) return false;
   if (s.maxLength !== undefined && p.length > s.maxLength) return false;
   if (s.at && !inRegion(mid(p.a, p.b), s.at)) return false;
-  if (s.slant && !slants(angleOf(p, f), s.slant)) return false;
+  if (s.slant || s.tilt) {
+    const angle = angleOf(p, f);
+    if (s.slant && !slants(angle, s.slant)) return false;
+    const tilt = Math.min(angle, 180 - angle);
+    if (s.tilt && (tilt < s.tilt[0] || tilt > s.tilt[1])) return false;
+  }
   return true;
 }
 

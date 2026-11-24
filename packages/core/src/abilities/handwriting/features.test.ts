@@ -189,8 +189,11 @@ describe("letter features: H, O and the rest", () => {
     expect(f.loops).toEqual([]);
   });
 
-  it("a closed shape of straight lines is not a loop (an A drawn in one stroke has none, D112)", () => {
-    expect(read(path([0, 80], [30, 0], [60, 80], [0, 80])).loops).toEqual([]);
+  it("straight lines that close on their own start are a loop; an A in one stroke has none (D112)", () => {
+    // A four-sided O drawn in one stroke, back to where it began.
+    expect(read(path([30, 0], [0, 40], [30, 80], [60, 40], [30, 0])).loops).toHaveLength(1);
+    // A one-stroke A ends partway up a leg, so it never closes.
+    expect(read(path([0, 80], [30, 0], [60, 80], [48, 48], [10, 48])).loops).toEqual([]);
   });
 
   it("D: a back and a bowl drawn apart meet at both ends", () => {

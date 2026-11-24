@@ -84,16 +84,37 @@ describe("the handwriting debug view (T51)", () => {
 
   it("carries each letter's name and score for the label under it (D116)", () => {
     const reading = { label: "A", score: 100, clear: true, guesses: [{ char: "A", score: 100 }] };
-    expect(marksOf("y1-1", 1, A, reading).name).toEqual({ label: "A", score: 100, clear: true });
-    expect(marksOf("y1-1", 1, A).name).toBeUndefined();
+    const detail = (features = A) => ({ index: 1, of: 1, strokes: ["s1"], features });
+    expect(marksOf("y1-1", 1, { ...detail(), reading }).name).toEqual({
+      label: "A",
+      score: 100,
+      clear: true,
+    });
+    expect(marksOf("y1-1", 1, { ...detail(), waiting: true }).name).toMatchObject({ label: "…" });
+    expect(marksOf("y1-1", 1, detail()).name).toBeUndefined();
+  });
+
+  it("a letter read turned upright is drawn turned back, where you wrote it", () => {
+    // Turned 90° clockwise about the A's box corner (100, 200): its top left stays put.
+    const turned = marksOf("y1-1", 1, {
+      index: 1,
+      of: 1,
+      strokes: ["s1"],
+      features: A,
+      turn: { deg: 90, about: [100, 200] },
+    });
+    expect(turned.turn).toBe(90);
+    expect(turned.outline[0]).toEqual([100, 200]);
+    const [x, y] = turned.outline[1]!; // the top right corner swings down
+    expect([Math.round(x), Math.round(y)]).toEqual([100, 260]);
   });
 
   it("puts the parts, meets, crossings and loops back where you drew them", () => {
-    const a = marksOf("y1-1", 1, A);
+    const a = marksOf("y1-1", 1, { index: 1, of: 1, strokes: ["s1"], features: A });
     expect(a.parts[0]).toMatchObject({ kind: "line", a: [100, 280], b: [130, 200], label: "1" });
     expect(a.meets).toEqual([[130, 200]]);
     expect(a.crossings).toEqual([[112, 248]]);
-    const o = marksOf("y2-1", 1, O);
+    const o = marksOf("y2-1", 1, { index: 1, of: 1, strokes: ["s1"], features: O });
     expect(o.loops).toEqual([{ center: [230, 240], rx: 30, ry: 40 }]);
   });
 });

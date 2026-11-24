@@ -5,11 +5,19 @@ import type { CharacterCard, PartSelector } from "@visthinker/contract";
 
 const LONG = 0.6;
 const leg = (slant: PartSelector["slant"]): PartSelector => ({ slant, minLength: LONG });
+/** An A's leg: long and steep, so a long bar leaning a little never passes for one. */
+const steepLeg = (slant: PartSelector["slant"]): PartSelector => ({
+  ...leg(slant),
+  tilt: [45, 90],
+});
 const upright: PartSelector = leg("upright");
 const bar: PartSelector = { slant: "flat", minLength: 0.2 };
 const anyPart: PartSelector = {};
 
-/** A: two legs leaning together, meeting at the top, and a bar across them (the drawing's card). */
+/**
+ * A: two legs leaning together, meeting at the top, and a bar across them (the drawing's card). The
+ * bar may run past the legs: a real A's bar was a full letter wide (24 Nov).
+ */
 const A: CharacterCard = {
   char: "A",
   checks: [
@@ -22,8 +30,8 @@ const A: CharacterCard = {
       label: "two long legs, slanting opposite ways",
       weight: 25,
       tests: [
-        { test: "count", parts: leg("right"), min: 1 },
-        { test: "count", parts: leg("left"), min: 1 },
+        { test: "count", parts: steepLeg("right"), min: 1 },
+        { test: "count", parts: steepLeg("left"), min: 1 },
       ],
     },
     {
@@ -32,8 +40,8 @@ const A: CharacterCard = {
       tests: [
         {
           test: "join",
-          a: leg("right"),
-          b: leg("left"),
+          a: steepLeg("right"),
+          b: steepLeg("left"),
           how: "any",
           at: { y: [-0.2, 0.3] },
           min: 1,
@@ -41,14 +49,14 @@ const A: CharacterCard = {
       ],
     },
     {
-      label: "a short bar crosses both legs",
+      label: "a bar crosses both legs",
       weight: 25,
       tests: [
         {
           test: "join",
-          a: { slant: "flat", maxLength: 0.8 },
+          a: { slant: "flat" },
           b: { minLength: LONG },
-          how: "any",
+          how: "cross",
           min: 2,
         },
       ],
@@ -59,9 +67,9 @@ const A: CharacterCard = {
       tests: [
         {
           test: "join",
-          a: { slant: "flat", maxLength: 0.8 },
+          a: { slant: "flat" },
           b: { minLength: LONG },
-          how: "any",
+          how: "cross",
           at: { y: [0.35, 0.75] },
           min: 1,
         },
@@ -84,12 +92,12 @@ const H: CharacterCard = {
     {
       label: "the bar reaches both legs",
       weight: 25,
-      tests: [{ test: "join", a: bar, b: upright, how: "any", min: 2 }],
+      tests: [{ test: "join", a: bar, b: upright, how: "cross", min: 2 }],
     },
     {
       label: "the bar sits in the middle band",
       weight: 15,
-      tests: [{ test: "join", a: bar, b: upright, how: "any", at: { y: [0.25, 0.75] }, min: 1 }],
+      tests: [{ test: "join", a: bar, b: upright, how: "cross", at: { y: [0.25, 0.75] }, min: 1 }],
     },
     {
       label: "the legs stay apart",
@@ -99,27 +107,35 @@ const H: CharacterCard = {
   ],
 };
 
-/** E: an upright back with three bars off it, open on the right. */
+/** E: an upright back with three bars off it, each ending free on the right. */
 const E: CharacterCard = {
   char: "E",
   checks: [
     { label: "1 to 4 strokes", weight: 10, tests: [{ test: "strokes", min: 1, max: 4 }] },
     {
       label: "one upright back",
-      weight: 20,
+      weight: 15,
       tests: [{ test: "count", parts: upright, min: 1, max: 1 }],
     },
-    { label: "three bars", weight: 25, tests: [{ test: "count", parts: bar, min: 3, max: 3 }] },
+    { label: "three bars", weight: 20, tests: [{ test: "count", parts: bar, min: 3, max: 3 }] },
     {
       label: "the bars start at the back",
-      weight: 30,
+      weight: 25,
       tests: [{ test: "join", a: bar, b: upright, how: "any", at: { x: [-0.2, 0.35] }, min: 3 }],
     },
     {
       label: "open on the right",
-      weight: 15,
+      weight: 10,
       tests: [
         { test: "count", parts: { slant: "upright", at: { x: [0.6, 1.2] } }, min: 0, max: 0 },
+      ],
+    },
+    {
+      // A B's top bar runs on into its bowl; an E's bars stop (seen on a real B, 24 Nov).
+      label: "the bars end free on the right",
+      weight: 20,
+      tests: [
+        { test: "join", a: bar, b: anyPart, how: "any", at: { x: [0.5, 1.2] }, min: 0, max: 0 },
       ],
     },
   ],
@@ -169,25 +185,25 @@ const L: CharacterCard = {
   ],
 };
 
-/** O: one round closed loop that is the whole letter. */
+/** O: one closed loop that is the whole letter, round or drawn with four sides. */
 const O: CharacterCard = {
   char: "O",
   checks: [
     { label: "1 or 2 strokes", weight: 10, tests: [{ test: "strokes", min: 1, max: 2 }] },
-    { label: "a closed loop", weight: 40, tests: [{ test: "loops", min: 1, max: 1 }] },
+    { label: "a closed loop", weight: 45, tests: [{ test: "loops", min: 1, max: 1 }] },
     {
       label: "the loop is the whole letter",
-      weight: 20,
+      weight: 25,
       tests: [{ test: "loops", min: 1, minSize: 0.7 }],
     },
     {
       label: "round: no long straight lines",
-      weight: 15,
+      weight: 10,
       tests: [{ test: "count", parts: { kind: "line", minLength: 0.4 }, min: 0, max: 0 }],
     },
     {
       label: "drawn in curves",
-      weight: 15,
+      weight: 10,
       tests: [{ test: "count", parts: { kind: "curve", minLength: 0.5 }, min: 1 }],
     },
   ],

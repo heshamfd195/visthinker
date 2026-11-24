@@ -1,7 +1,7 @@
 import { CharacterCard, type Point2, type Stroke } from "@visthinker/contract";
 import { describe, expect, it } from "vitest";
 import hello from "./fixtures/hello.json" with { type: "json" };
-import { CARDS, letterFeatures, readLetter, readWord } from "./index.ts";
+import { CARDS, letterFeatures, readHandwriting, readLetter, readWord } from "./index.ts";
 
 let next = 0;
 const stroke = (points: Point2[]): Stroke => ({
@@ -41,6 +41,41 @@ describe("the character cards (D112 · T52)", () => {
       for (const l of readWord(strokes))
         expect(readLetter(l.features, CARDS).reading.clear).toBe(true);
     }
+  });
+});
+
+describe("your other letters (24 Nov)", () => {
+  const one = (strokes: Stroke[]) => readHandwriting(strokes)[0]!;
+
+  it("an A turned about 20° reads A once turned upright", () => {
+    const a = one(hello.tiltedA as Stroke[]);
+    expect(a.reading).toMatchObject({ label: "A", clear: true });
+    expect(a.turn?.deg).toBe(-20);
+  });
+
+  it("a four-sided O is a loop of straight lines and reads O", () => {
+    const o = readHandwriting(hello.fourth as Stroke[]).at(-1)!;
+    expect(o.features.loops).toHaveLength(1);
+    expect(o.reading).toMatchObject({ label: "O", score: 80, clear: true });
+  });
+
+  it("neither B passes for an E: the angular one's top bar runs into its bowl", () => {
+    for (const b of [hello.roundB, hello.angularB] as Stroke[][])
+      expect(one(b).reading.clear).toBe(false);
+  });
+
+  it("upright letters stay upright: your HELLOs are never turned", () => {
+    for (const word of [hello.first, hello.second, hello.third, hello.fourth] as Stroke[][])
+      expect(readHandwriting(word).every((l) => l.turn === undefined)).toBe(true);
+  });
+
+  it("ink a card can't explain costs 20 a part: an L with an extra bar on top", () => {
+    const l = letterFeatures([
+      stroke(path([0, 0], [0, 100], [55, 100])),
+      stroke(line([0, 0], [50, 0])),
+    ]);
+    const card = readLetter(l, CARDS).scores.find((s) => s.char === "L")!;
+    expect(card.unexplained).toBe(1);
   });
 });
 
@@ -93,7 +128,11 @@ describe("scoring (D113 · T53)", () => {
       CharacterCard.parse({
         char,
         checks: [
-          { label: "passes", weight: pass, tests: [{ test: "strokes", min: 0, max: 9 }] },
+          {
+            label: "passes",
+            weight: pass,
+            tests: [{ test: "count", parts: {}, min: 0 }], // explains every part
+          },
           { label: "fails", weight: 100 - pass, tests: [{ test: "strokes", min: 9, max: 9 }] },
         ],
       });

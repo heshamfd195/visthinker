@@ -17,7 +17,7 @@ import type {
   Stroke,
   VisEvent,
 } from "@visthinker/contract";
-import { CARDS, readLetter, readWord } from "../abilities/handwriting/index.ts";
+import { CARDS, readHandwriting, type ReadLetter } from "../abilities/handwriting/index.ts";
 import type { Clock } from "../ports/index.ts";
 import { strokeBox } from "../scene/strokes.ts";
 import type { SceneStore } from "../scene/store.ts";
@@ -50,6 +50,16 @@ export const GROUP_NEAR = 0.5;
  * it, and both are read again together (an X's second stroke can come late).
  */
 export const REJOIN_MS = 2_000;
+/**
+ * D169: a written word waits longer for its next letter: a stroke beside it (closer than half its
+ * height) joins it within this long. Writers pause between letters (2.4 s after a real H).
+ */
+export const WORD_REJOIN_MS = 5_000;
+/**
+ * A word's letters get their names once you pause this long or move on to another letter, so a
+ * letter you're still writing never flashes a wrong name (an E read as L after three strokes).
+ */
+export const SETTLE_MS = 1_500;
 
 export interface Comparator {
   /** Takes a recorded stroke: a line at once, or into a group read a moment later. */
@@ -140,9 +150,15 @@ export function createComparator({
 
   /** D110: a late stroke close by reopens a recent symbol. */
   const rejoins = (last: Omit<Group, "cancel">, stroke: Stroke) => {
-    if (!last.symbol || !scene.has(last.symbol) || stroke.t0 - last.lastEnd > REJOIN_MS)
-      return false;
+    if (!last.symbol || !scene.has(last.symbol)) return false;
     const box = strokeBox(stroke);
+    // A word waits longer, for a stroke beside it on its line (D169).
+    if (scene.get(last.symbol)!.kind === "word")
+      return (
+        stroke.t0 - last.lastEnd <= WORD_REJOIN_MS &&
+        gap(last.box, box) < GROUP_NEAR * Math.max(last.box[3], box[3])
+      );
+    if (stroke.t0 - last.lastEnd > REJOIN_MS) return false;
     return gap(last.box, box) < GROUP_NEAR * Math.max(size(last.box), size(box));
   };
 
@@ -219,19 +235,19 @@ export function createComparator({
     }
 
     const points = drawn.map((s) => s.points.map(([x, y]): Point2 => [x, y]));
-    // The handwriting ability splits the group into letters first (D114, T51). Two or more
-    // letters are a written word, read by its letters and never guessed as one symbol ($P
-    // against X and O only fits a lone mark); a lone letter is still a symbol.
-    const letters = (handwriting ? readWord(drawn) : []).map((l) => ({
-      ...l,
-      reading: readLetter(l.features, cards).reading,
-    }));
+    // The handwriting ability splits the group into letters, turns a tilted one upright and
+    // reads each by the cards (D114, T51–T53). Two or more letters, or one the cards read
+    // clearly, are a written word, never guessed as one symbol ($P against X and O only fits a
+    // lone mark).
+    const letters = handwriting ? readHandwriting(drawn, cards) : [];
     const ids = letters.map((l) => l.strokes.map((s) => s.id));
-    // A lone letter the cards read clearly is a word too (a one-letter "A"); a lone mark they
-    // don't know (an X) is still a symbol.
     const isWord = letters.length >= 2 || (letters.length === 1 && letters[0]!.reading.clear);
-    // The word as read, a ? for each unsure letter (D113 · D116).
-    const text = letters.map((l) => l.reading.label).join("");
+    // The letter you're still writing waits for its name until you pause or move on.
+    const newest = drawn.at(-1)!.id;
+    const settled = clock.now() - g.lastEnd >= SETTLE_MS;
+    const waiting = isWord && !settled ? ids.findIndex((l) => l.includes(newest)) : -1;
+    // The word as read: a ? for each unsure letter, … for the one still being written (D116).
+    const text = wordText(letters, waiting);
     const sets = isWord ? [] : symbolSetsFrom(packs());
     const result = sets.length
       ? createRecognizer(sets).recognize(points)
@@ -281,32 +297,81 @@ export function createComparator({
           },
       g.lastSeq,
     );
-    // Only letters that are new, or whose strokes changed, are sent again: an unchanged letter
-    // measures and reads the same, and the word's reading above lists them all.
+    sendLetters(symbol.id, letters, waiting, reading.seq);
+    if (waiting >= 0) settleLater(symbol.id, g.lastEnd);
+  };
+
+  /** "HELLO", with ? for an unsure letter and … for the one still being written. */
+  const wordText = (letters: readonly ReadLetter[], waiting: number) =>
+    letters.map((l, i) => (i === waiting ? "…" : l.reading.label)).join("");
+
+  /**
+   * A `letter` event for each letter that's new, whose strokes changed, or that just got its
+   * name: an unchanged letter measures and reads the same, and the word's reading lists them all.
+   */
+  const sendLetters = (
+    word: string,
+    letters: readonly ReadLetter[],
+    waiting: number,
+    cause: number,
+  ) => {
     const key = (strokeIds: readonly unknown[]) => [...strokeIds].map(String).sort().join(" ");
     const sent = new Set(
       story
         .all()
-        .filter((e) => e.type === "letter" && e.target === symbol.id && e.detail?.["reading"])
-        .map((e) => key(Array.isArray(e.detail?.["strokes"]) ? e.detail["strokes"] : [])),
+        .filter((e) => e.type === "letter" && e.target === word)
+        .map((e) => {
+          const ids = Array.isArray(e.detail?.["strokes"]) ? e.detail["strokes"] : [];
+          const state = e.detail?.["reading"] ? "named" : e.detail?.["waiting"] ? "waiting" : "";
+          return `${key(ids)}|${state}`;
+        }),
     );
-    letters.forEach(({ features, reading: read }, i) => {
-      if (sent.has(key(ids[i]!))) return;
+    letters.forEach(({ strokes: ink, features, reading, turn }, i) => {
+      const k = key(ink.map((s) => s.id));
+      if (sent.has(`${k}|named`) || (i === waiting && sent.has(`${k}|waiting`))) return;
       const detail: LetterEventDetail = {
         index: i + 1,
         of: letters.length,
-        strokes: ids[i]!,
+        strokes: ink.map((s) => s.id),
         features,
-        reading: read,
+        ...(i === waiting ? { waiting: true } : { reading }),
+        ...(turn ? { turn } : {}),
       };
-      story.append({
-        who: "fastbrain",
-        type: "letter",
-        target: symbol.id,
-        detail,
-        cause: reading.seq,
-      });
+      story.append({ who: "fastbrain", type: "letter", target: word, detail, cause });
     });
+  };
+
+  /** Names a word's last letter once you've paused (SETTLE_MS after its last stroke). */
+  const settling = new Map<string, () => void>();
+  const settleLater = (word: string, lastEnd: number) => {
+    settling.get(word)?.();
+    const wait = Math.max(0, lastEnd + SETTLE_MS - clock.now());
+    settling.set(
+      word,
+      clock.after(wait, () => settle(word)),
+    );
+  };
+  const settle = (word: string) => {
+    settling.delete(word);
+    // Still being written: the next reading names it.
+    if (group?.symbol === word) return;
+    const object = scene.get(word);
+    if (!object || object.kind !== "word") return;
+    const drawn = (object.strokes ?? [])
+      .map((id) => strokes.get(id))
+      .filter((s): s is Stroke => s !== undefined)
+      .sort((a, b) => a.t0 - b.t0);
+    const letters = readHandwriting(drawn, cards);
+    const ids = letters.map((l) => l.strokes.map((s) => s.id));
+    const text = wordText(letters, -1);
+    scene.update(word, (o) => ({ ...o, label: text }));
+    const last = recent.find((r) => r.symbol === word);
+    const reading = recognized(
+      word,
+      { kind: "word", letters: ids, text } satisfies WordReading,
+      last?.lastSeq ?? story.all().at(-1)!.seq,
+    );
+    sendLetters(word, letters, -1, reading.seq);
   };
 
   const close = () => {

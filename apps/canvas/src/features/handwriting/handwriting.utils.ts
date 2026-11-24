@@ -4,20 +4,26 @@ import {
   LetterEventDetail,
   WordReading,
   type Box,
-  type LetterFeatures,
-  type LetterReading,
   type Point2,
   type VisEvent,
 } from "@visthinker/contract";
-import { inWorld } from "@visthinker/core";
+import { inWorld, rotate } from "@visthinker/core";
 
 export interface LetterMarks {
   key: string;
   /** Its place in the word, from 1. */
   index: number;
+  /** Where to put its name: the box around it on the page. */
   box: Box;
-  /** What the cards read it as (D116): its name, "?" when unsure, or nothing before the cards. */
+  /** The box it was measured in, as drawn: four corners, turned with a tilted letter. */
+  outline: Point2[];
+  /**
+   * What the cards read it as (D116): its name, "?" when unsure, "…" while it's still being
+   * written, or nothing before the cards.
+   */
   name?: { label: string; score: number; clear: boolean };
+  /** How far it leans, degrees clockwise, when it was read turned upright. */
+  turn?: number;
   parts: { kind: "line" | "curve"; a: Point2; b: Point2; label: string; at: Point2 }[];
   meets: Point2[];
   crossings: Point2[];
@@ -72,21 +78,42 @@ export function latestLetters(
 const key = (strokes: readonly string[]) => [...strokes].sort().join(" ");
 
 /** One letter's measurements in world units, to draw over it. */
-export function marksOf(
-  key: string,
-  index: number,
-  f: LetterFeatures,
-  reading?: LetterReading,
-): LetterMarks {
-  const at = (p: Point2) => inWorld(f, p);
+export function marksOf(key: string, index: number, letter: LetterEventDetail): LetterMarks {
+  const { features: f, reading, waiting, turn } = letter;
+  // Measured upright; a tilted letter's marks turn back to where it was drawn.
+  const at = (p: Point2) => {
+    const world = inWorld(f, p);
+    return turn ? rotate(world, turn.about, turn.deg) : world;
+  };
   const size = Math.max(f.box[2], f.box[3]);
+  const [x, y, w, h] = f.box;
+  const corners: Point2[] = [
+    [x, y],
+    [x + w, y],
+    [x + w, y + h],
+    [x, y + h],
+  ];
+  const outline = turn ? corners.map((c) => rotate(c, turn.about, turn.deg)) : corners;
+  const xs = outline.map((c) => c[0]);
+  const ys = outline.map((c) => c[1]);
+  const box: Box = [
+    Math.min(...xs),
+    Math.min(...ys),
+    Math.max(...xs) - Math.min(...xs),
+    Math.max(...ys) - Math.min(...ys),
+  ];
+  const name = waiting
+    ? { label: "…", score: 0, clear: false }
+    : reading
+      ? { label: reading.label, score: reading.score, clear: reading.clear }
+      : undefined;
   return {
     key,
     index,
-    box: f.box,
-    ...(reading
-      ? { name: { label: reading.label, score: reading.score, clear: reading.clear } }
-      : {}),
+    box,
+    outline,
+    ...(name ? { name } : {}),
+    ...(turn ? { turn: turn.deg } : {}),
     parts: f.parts.map((p, i) => {
       const [a, b] = [at(p.a), at(p.b)];
       return {
@@ -113,6 +140,6 @@ export function letterMarks(
   onCanvas: ReadonlySet<string>,
 ): LetterMarks[] {
   return latestLetters(events, onCanvas).map(({ word, detail }) =>
-    marksOf(`${word}-${detail.index}`, detail.index, detail.features, detail.reading),
+    marksOf(`${word}-${detail.index}`, detail.index, detail),
   );
 }

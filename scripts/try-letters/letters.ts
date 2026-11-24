@@ -2,8 +2,8 @@
 // in plain words, what the ability measured in each. A dev tool only; the app never runs it. The
 // split and the words are the ability's own, so this shows what the canvas reads.
 import type { Snapshot, Stroke } from "../../packages/contract/src/index.ts";
-import { CARDS, letterBreakdown, readLetter, readWord } from "../../packages/core/src/index.ts";
-import type { WordLetter } from "../../packages/core/src/index.ts";
+import { letterBreakdown, readHandwriting } from "../../packages/core/src/index.ts";
+import type { ReadLetter } from "../../packages/core/src/index.ts";
 
 /** The strokes still on the canvas (not erased, cleared or undone). */
 export function visibleStrokes(snapshot: Snapshot): Stroke[] {
@@ -12,7 +12,8 @@ export function visibleStrokes(snapshot: Snapshot): Stroke[] {
 }
 
 /** Everything on the canvas, split into letters in reading order and measured. */
-export const lettersOf = (snapshot: Snapshot): WordLetter[] => readWord(visibleStrokes(snapshot));
+export const lettersOf = (snapshot: Snapshot): ReadLetter[] =>
+  readHandwriting(visibleStrokes(snapshot));
 
 /** How to read the numbers, printed once above the letters. */
 export const LEGEND = [
@@ -22,15 +23,15 @@ export const LEGEND = [
 ].join("\n");
 
 /** One letter in plain words. */
-export function describe({ features: f }: WordLetter, n: number): string {
+export function describe({ features: f, reading, turn }: ReadLetter, n: number): string {
   const shape = f.aspect >= 1.15 ? "tall" : f.aspect <= 0.85 ? "wide" : "about square";
   const strokes = `${f.strokes} stroke${f.strokes === 1 ? "" : "s"}`;
   const size = `${Math.round(f.box[2])} × ${Math.round(f.box[3])}`;
-  const { reading } = readLetter(f, CARDS);
   const guesses = reading.guesses.map((g) => `${g.char} ${g.score}`).join(", ");
   const name = reading.clear ? `${reading.label} ${reading.score}%` : `? (${guesses})`;
+  const tilted = turn ? ` · turned ${Math.round(-turn.deg)}° to read upright` : "";
   return [
-    `Letter ${n} · ${name} · ${strokes} · ${size}, ${shape}`,
+    `Letter ${n} · ${name}${tilted} · ${strokes} · ${size}, ${shape}`,
     ...letterBreakdown(f).map((l) => `  ${l}`),
   ].join("\n");
 }
