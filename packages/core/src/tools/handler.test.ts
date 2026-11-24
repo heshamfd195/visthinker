@@ -45,6 +45,25 @@ describe("get_events (D77)", () => {
   });
 });
 
+describe("release: the canvas moves to another project", () => {
+  it("ends every open wait at once, as a timeout, and Claude stops listening", async () => {
+    const { handle } = setup();
+    const waiting = handle("wait_for_event", { timeoutMs: 60_000 }) as Promise<{
+      events: unknown[];
+      timedOut: boolean;
+    }>;
+    expect(handle.listening()).toBe(true);
+    handle.release();
+    await expect(waiting).resolves.toEqual({ events: [], timedOut: true });
+    expect(handle.listening()).toBe(false);
+  });
+
+  it("does nothing when no one is waiting", () => {
+    const { handle } = setup();
+    expect(() => handle.release()).not.toThrow();
+  });
+});
+
 describe("wait_for_event (D25)", () => {
   const wait = (h: ReturnType<typeof setup>["handle"], args: Record<string, unknown> = {}) =>
     h("wait_for_event", args) as Promise<{

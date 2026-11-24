@@ -104,3 +104,42 @@ describe("projects (D142)", () => {
     expect(session.http).toBeDefined();
   });
 });
+
+describe("moving to another project", () => {
+  it("tells Claude first, and ends a wait still open on the old canvas", async () => {
+    const session = createSession({ clock: createManualClock() });
+    const old = session.canvas();
+    const waiting = old.handler("wait_for_event", { timeoutMs: 60_000 }) as Promise<{
+      timedOut: boolean;
+    }>;
+    const next = session.open(undefined, { id: "p2", name: "Hello" });
+
+    await expect(waiting).resolves.toMatchObject({ timedOut: true });
+    expect(next.story.unread()).toEqual([
+      expect.objectContaining({
+        type: "project",
+        detail: { id: "p2", name: "Hello", opened: "new", objects: 0 },
+      }),
+    ]);
+  });
+
+  it("a saved project's own events stay read; only the project event is new", () => {
+    const session = createSession({ clock: createManualClock() });
+    session.canvas().story.append({ who: "user", type: "stroke" });
+    const parts = {
+      events: session.canvas().story.all(),
+      strokes: [],
+      objects: [],
+      usedIds: [],
+      history: { hidden: [], saved: [] },
+    };
+    const next = session.open(parts, { id: "p1", name: "Old" });
+    expect(next.story.unread().map((e) => e.type)).toEqual(["project"]);
+    expect(next.story.unread()[0]?.detail).toMatchObject({ opened: "saved" });
+  });
+
+  it("without a project, nothing is sent (the canvas the page starts with)", () => {
+    const session = createSession({ clock: createManualClock() });
+    expect(session.open().story.unread()).toEqual([]);
+  });
+});
