@@ -1,4 +1,10 @@
-import { LetterEventDetail, SceneObject, type Point2, type Stroke } from "@visthinker/contract";
+import {
+  LetterEventDetail,
+  SceneObject,
+  WordReading,
+  type Point2,
+  type Stroke,
+} from "@visthinker/contract";
 import { describe, expect, it } from "vitest";
 import { STARTER_PACKS } from "../packs/index.ts";
 import { createManualClock } from "../ports/index.ts";
@@ -482,6 +488,83 @@ describe("grouping (D96 · D97)", () => {
         .filter((e) => e.type === "letter")
         .at(-1)?.detail?.["of"],
     ).toBe(1);
+  });
+
+  it("two or more letters are a written word: no X or O guess, its letters listed (T51)", () => {
+    const { clock, scene, story, draw } = setup();
+    const first = draw(
+      along([
+        [0, 0],
+        [0, 100],
+        [55, 100],
+      ]),
+    );
+    const second = draw(
+      along([
+        [80, -20],
+        [80, 80],
+        [135, 80],
+      ]),
+    );
+    clock.advance(700);
+    const [word] = scene.all();
+    expect(word).toMatchObject({ kind: "word", label: "2 letters", pack: "handwriting" });
+    const reading = story.all().findLast((e) => e.type === "recognized")!;
+    expect(WordReading.parse(reading.detail)).toEqual({
+      kind: "word",
+      letters: [[first.id], [second.id]],
+    });
+    expect(reading.detail).not.toHaveProperty("alternatives");
+  });
+
+  it("a lone letter is still a symbol, with its one letter listed", () => {
+    const { clock, scene, story, draw } = setup();
+    const l = draw(
+      along([
+        [0, 0],
+        [0, 100],
+        [55, 100],
+      ]),
+    );
+    clock.advance(700);
+    expect(scene.all()[0]).toMatchObject({ kind: "symbol" });
+    const reading = story.all().findLast((e) => e.type === "recognized")!;
+    expect(reading.detail).toMatchObject({ kind: "symbol", letters: [[l.id]] });
+  });
+
+  it("a word read again sends only the letters that are new or changed", () => {
+    const { clock, story, draw } = setup();
+    const sent = () =>
+      story
+        .all()
+        .filter((e) => e.type === "letter")
+        .map((e) => LetterEventDetail.parse(e.detail).strokes);
+    const first = draw(
+      along([
+        [0, 0],
+        [0, 100],
+        [55, 100],
+      ]),
+    );
+    clock.advance(700); // read alone
+    const second = draw(
+      along([
+        [80, 0],
+        [80, 100],
+      ]),
+    ); // rejoins: a new letter (D110)
+    clock.advance(700);
+    expect(sent()).toEqual([[first.id], [second.id]]);
+    const bar = draw(
+      along([
+        [78, 50],
+        [120, 50],
+      ]),
+    ); // joins the second letter: it changed
+    clock.advance(700);
+    expect(sent()).toEqual([[first.id], [second.id], [second.id, bar.id]]);
+    const reading = story.all().findLast((e) => e.type === "recognized")!;
+    expect(WordReading.parse(reading.detail).letters).toEqual([[first.id], [second.id, bar.id]]);
   });
 
   it("with the handwriting ability switched off, a word gets no letter events (D161)", () => {

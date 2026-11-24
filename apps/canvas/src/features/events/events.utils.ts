@@ -57,6 +57,10 @@ export function describe(e: VisEvent): string {
       return `stroke ${e.target ?? ""}`.trim();
     case "recognized": {
       const kind = str(d["kind"]) ?? "something";
+      if (kind === "word") {
+        const letters = Array.isArray(d["letters"]) ? d["letters"].length : 0;
+        return join("read a word", e.target, `${letters} letters`);
+      }
       if (kind !== "symbol") return join(`read ${kind}`, e.target);
       const label = str(d["label"]);
       const score = num(d["score"]);

@@ -30,7 +30,7 @@ const letter = (
   seq: number,
   word: string,
   cause: number,
-  index: number,
+  strokes: string[],
   features = A,
 ): VisEvent => ({
   seq,
@@ -39,25 +39,47 @@ const letter = (
   type: "letter",
   target: word,
   cause,
-  detail: { index, of: 2, strokes: ["s1"], features },
+  detail: { index: 1, of: 1, strokes, features },
+});
+const read = (seq: number, word: string, letters?: string[][]): VisEvent => ({
+  seq,
+  t: seq,
+  who: "fastbrain",
+  type: "recognized",
+  target: word,
+  detail: letters ? { kind: "word", letters } : { kind: "symbol", label: "?" },
 });
 
 describe("the handwriting debug view (T51)", () => {
-  it("draws each word's latest reading only, and only words still on the canvas", () => {
+  it("draws each word's letters as its latest reading lists them, unchanged ones kept", () => {
     const events = [
-      letter(2, "y1", 1, 1),
-      letter(3, "y1", 1, 2),
-      letter(5, "y1", 4, 1), // read again after a late stroke: replaces both above
-      letter(7, "y2", 6, 1, O),
-      letter(9, "y3", 8, 1), // undone: not on the canvas
-      { seq: 10, t: 10, who: "fastbrain", type: "letter", target: "y1", detail: { bad: true } },
-    ] as VisEvent[];
-    const found = latestLetters(events, new Set(["y1", "y2"]));
-    expect(found.map((l) => [l.word, l.detail.index])).toEqual([
-      ["y1", 1],
-      ["y2", 1],
+      read(1, "w1", [["s1"]]),
+      letter(2, "w1", 1, ["s1"]),
+      read(3, "w1", [["s1"], ["s2"]]),
+      letter(4, "w1", 3, ["s2"], O), // only the new letter was sent
+      read(5, "w1", [["s1"], ["s2", "s3"]]),
+      letter(6, "w1", 5, ["s3", "s2"]), // the second letter changed
+      read(7, "w9", [["s9"]]), // undone: not on the canvas
+      letter(8, "w9", 7, ["s9"]),
+    ];
+    const found = latestLetters(events, new Set(["w1"]));
+    expect(found.map((l) => [l.detail.index, l.detail.of, l.detail.strokes])).toEqual([
+      [1, 2, ["s1"]],
+      [2, 2, ["s3", "s2"]],
     ]);
-    expect(letterMarks(events, new Set(["y1", "y2"])).map((m) => m.key)).toEqual(["y1-1", "y2-1"]);
+    expect(found[1]!.detail.features).toEqual(A);
+    expect(letterMarks(events, new Set(["w1"])).map((m) => m.key)).toEqual(["w1-1", "w1-2"]);
+  });
+
+  it("a reading from an older build, with no letter list, shows the letters it caused", () => {
+    const events = [
+      read(1, "y1"),
+      letter(2, "y1", 1, ["s1"]),
+      read(3, "y1"),
+      letter(4, "y1", 3, ["s1"], O),
+      { seq: 5, t: 5, who: "fastbrain", type: "letter", target: "y1", detail: { bad: true } },
+    ] as VisEvent[];
+    expect(latestLetters(events, new Set(["y1"])).map((l) => l.detail.features)).toEqual([O]);
   });
 
   it("puts the parts, meets, crossings and loops back where you drew them", () => {

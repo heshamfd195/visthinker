@@ -237,6 +237,18 @@ group("letters from the handwriting ability (T51)", () => {
     expect(text).toContain('"type": "letter"');
   });
 
+  it("a written word says how many letters it has, and isn't a problem", () => {
+    const word = e({
+      seq: 3,
+      type: "recognized",
+      who: "fastbrain",
+      target: "w1",
+      detail: { kind: "word", letters: [["s1"], ["s2"], ["s3"]] },
+    });
+    expect(describe(word)).toBe("read a word · w1 · 3 letters");
+    expect(isProblem(row(word))).toBe(false);
+  });
+
   it("two words joined by a later stroke read as a merge", () => {
     expect(
       describe(

@@ -36,4 +36,16 @@ describe("symbol tags (D97)", () => {
       ["y3", "O 61% · X?"],
     ]);
   });
+
+  it("a written word shows how many letters it has (T51)", () => {
+    const word = {
+      seq: 2,
+      t: 0,
+      who: "fastbrain",
+      type: "recognized",
+      target: "w1",
+      detail: { kind: "word", letters: [["s1"], ["s2"]] },
+    } as const;
+    expect([...symbolTags([word])]).toEqual([["w1", "2 letters"]]);
+  });
 });

@@ -169,7 +169,7 @@ function ObjectShape(props: {
   const [x, y, w, h] = object.box;
   const style = { stroke: color, strokeWidth: 3, hitStrokeWidth: 14 };
   // What the comparator read from your ink: a light outline over it, so you see what it saw.
-  if (object.pack === SHAPES || object.kind === "symbol")
+  if (object.pack === SHAPES || object.kind === "symbol" || object.kind === "word")
     return <RecognizedShape object={object} tag={tag} onPress={onPress} />;
   // A box, circle, glyph or text turns around its centre (the handles rotate it).
   const turn = TURNS.has(object.kind) ? rotationOf(object) : 0;
@@ -314,6 +314,7 @@ function RecognizedShape({
         />
       ) : null;
     case "symbol":
+    case "word":
       return (
         <>
           <Rect

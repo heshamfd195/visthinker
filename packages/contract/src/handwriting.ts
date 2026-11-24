@@ -73,8 +73,10 @@ export const LetterFeatures = z.object({
 
 /**
  * The `detail` of a `letter` event: one letter of a word the comparator read, its `target` the
- * word's symbol and its `cause` that symbol's `recognized` event. A word read again (a late
- * stroke, D110) gets new letter events with the new cause; the latest ones count.
+ * word and its `cause` the word's `recognized` event. A word read again (a late stroke, D110)
+ * sends only the letters that are new or whose strokes changed; the word's `recognized` event
+ * lists all its letters, and each one's latest `letter` event with the same strokes holds its
+ * measurements. `index` and `of` are as they were when it was sent.
  */
 export const LetterEventDetail = z.object({
   /** Its place in the word, from 1, and how many letters the word has (D114). */
@@ -82,6 +84,16 @@ export const LetterEventDetail = z.object({
   of: z.number().int().positive(),
   strokes: z.array(Id).min(1),
   features: LetterFeatures,
+});
+
+/**
+ * The `detail` of a `recognized` event for written words (D114): what the comparator read and
+ * the word's letters as it splits them now, each a list of stroke ids, left to right. A group of
+ * two or more letters is a `word`, with no symbol guess; a lone letter stays a `symbol`.
+ */
+export const WordReading = z.object({
+  kind: z.enum(["word", "symbol"]),
+  letters: z.array(z.array(Id).min(1)),
 });
 
 export type PartEnd = z.infer<typeof PartEnd>;
@@ -93,3 +105,4 @@ export type PartCrossing = z.infer<typeof PartCrossing>;
 export type LetterLoop = z.infer<typeof LetterLoop>;
 export type LetterFeatures = z.infer<typeof LetterFeatures>;
 export type LetterEventDetail = z.infer<typeof LetterEventDetail>;
+export type WordReading = z.infer<typeof WordReading>;

@@ -3,11 +3,13 @@
 // a crossing. Every other stroke is grouped first (D96): strokes close in place and time form one
 // group, read about 0.6 s after the last one. A group is then a one-stroke box,
 // circle or arrow, or a symbol read by the cross rule and $P against the packs' templates (D97).
-// The handwriting ability then splits a symbol's strokes into letters, one `letter` event each (T51).
+// The handwriting ability splits a group into letters first: two or more are a written `word`,
+// not a symbol, and each new or changed letter gets a `letter` event (T51).
 import type {
   Box,
   LetterEventDetail,
   Pack,
+  WordReading,
   Point2,
   SceneObject,
   Stroke,
@@ -30,6 +32,8 @@ export * from "./shapes.ts";
 export * from "./symbols.ts";
 
 export const SHAPES_PACK = "shapes";
+/** What a written word is read by: the handwriting ability, not a pack (D161). */
+export const HANDWRITING = "handwriting";
 
 /** D109: a straight stroke at least this long is a line at once (D97 had 160). */
 export const INSTANT_LINE_LENGTH = 400;
@@ -210,23 +214,33 @@ export function createComparator({
     }
 
     const points = drawn.map((s) => s.points.map(([x, y]): Point2 => [x, y]));
-    const sets = symbolSetsFrom(packs());
+    // The handwriting ability splits the group into letters first (D114, T51). Two or more
+    // letters are a written word, read by its letters and never guessed as one symbol ($P
+    // against X and O only fits a lone mark); a lone letter is still a symbol.
+    const letters = handwriting ? readWord(drawn) : [];
+    const ids = letters.map((l) => l.strokes.map((s) => s.id));
+    const isWord = letters.length >= 2;
+    const sets = isWord ? [] : symbolSetsFrom(packs());
     const result = sets.length
       ? createRecognizer(sets).recognize(points)
       : { label: "?", score: 0, alternatives: [], pack: undefined };
     const fields = {
-      kind: "symbol",
-      label: result.label,
-      pack: result.pack ?? SHAPES_PACK,
+      kind: isWord ? "word" : "symbol",
+      // A word's letters get names with the cards (T52, T53); until then it says how many.
+      label: isWord ? `${letters.length} letters` : result.label,
+      pack: isWord ? HANDWRITING : (result.pack ?? SHAPES_PACK),
       relations: [],
       box: boxOf(points.flat()),
-      confidence: result.score,
+      // Splitting a word is certain; reading its letters is the cards' job.
+      confidence: isWord ? 1 : result.score,
       strokes: drawn.map((s) => s.id),
     };
     // A late stroke re-reads the same symbol, so its id stays and the earlier reading is replaced.
     const again = g.symbol && scene.has(g.symbol) ? g.symbol : undefined;
     if (again) scene.update(again, (o) => ({ ...o, ...fields }));
-    const symbol = again ? scene.get(again)! : add({ id: scene.nextId("y"), ...fields });
+    const symbol = again
+      ? scene.get(again)!
+      : add({ id: scene.nextId(isWord ? "w" : "y"), ...fields });
     for (const id of g.absorbed ?? []) {
       if (id === symbol.id || !scene.has(id)) continue;
       scene.remove(id);
@@ -245,32 +259,42 @@ export function createComparator({
     ];
     const reading = recognized(
       symbol.id,
-      {
-        kind: "symbol",
-        label: result.label,
-        score: result.score,
-        alternatives: result.alternatives,
-      },
+      isWord
+        ? ({ kind: "word", letters: ids } satisfies WordReading)
+        : {
+            kind: "symbol",
+            label: result.label,
+            score: result.score,
+            alternatives: result.alternatives,
+            ...(handwriting ? { letters: ids } : {}),
+          },
       g.lastSeq,
     );
-    if (handwriting) {
-      const letters = readWord(drawn);
-      letters.forEach(({ strokes: ink, features }, i) => {
-        const detail: LetterEventDetail = {
-          index: i + 1,
-          of: letters.length,
-          strokes: ink.map((s) => s.id),
-          features,
-        };
-        story.append({
-          who: "fastbrain",
-          type: "letter",
-          target: symbol.id,
-          detail,
-          cause: reading.seq,
-        });
+    // Only letters that are new, or whose strokes changed, are sent again: an unchanged letter
+    // measures the same, and the word's reading above lists them all.
+    const key = (strokeIds: readonly unknown[]) => [...strokeIds].map(String).sort().join(" ");
+    const sent = new Set(
+      story
+        .all()
+        .filter((e) => e.type === "letter" && e.target === symbol.id)
+        .map((e) => key(Array.isArray(e.detail?.["strokes"]) ? e.detail["strokes"] : [])),
+    );
+    letters.forEach(({ features }, i) => {
+      if (sent.has(key(ids[i]!))) return;
+      const detail: LetterEventDetail = {
+        index: i + 1,
+        of: letters.length,
+        strokes: ids[i]!,
+        features,
+      };
+      story.append({
+        who: "fastbrain",
+        type: "letter",
+        target: symbol.id,
+        detail,
+        cause: reading.seq,
       });
-    }
+    });
   };
 
   const close = () => {

@@ -2,6 +2,7 @@
 // events of each word still on the canvas, turned back into world units.
 import {
   LetterEventDetail,
+  WordReading,
   type Box,
   type LetterFeatures,
   type Point2,
@@ -21,28 +22,51 @@ export interface LetterMarks {
 }
 
 /**
- * Each word's letters from its latest reading: a word read again (a late stroke, D110) gets new
- * letter events with a newer cause, and those replace the old ones. Words no longer on the canvas
- * (undone, erased, cleared) are left out.
+ * Each word's letters as its latest reading splits them (D114). A reading lists the letters' strokes,
+ * and only new or changed letters get a `letter` event, so each letter's measurements are the
+ * latest `letter` event with the same strokes. A reading from before the list (an older build)
+ * shows the letters it caused. Words no longer on the canvas (undone, erased, cleared) are left out.
  */
 export function latestLetters(
   events: readonly VisEvent[],
   onCanvas: ReadonlySet<string>,
 ): { word: string; detail: LetterEventDetail }[] {
-  const latest = new Map<string, number>();
-  const letters: { word: string; cause: number; detail: LetterEventDetail }[] = [];
+  const reading = new Map<string, { seq: number; letters?: string[][] }>();
+  const sent = new Map<string, Map<string, { cause: number; detail: LetterEventDetail }>>();
   for (const e of events) {
-    if (e.type !== "letter" || !e.target || !onCanvas.has(e.target)) continue;
-    const parsed = LetterEventDetail.safeParse(e.detail);
-    if (!parsed.success) continue;
-    const cause = e.cause ?? 0;
-    latest.set(e.target, Math.max(latest.get(e.target) ?? 0, cause));
-    letters.push({ word: e.target, cause, detail: parsed.data });
+    if (!e.target || !onCanvas.has(e.target)) continue;
+    if (e.type === "recognized") {
+      const listed = WordReading.safeParse(e.detail);
+      reading.set(e.target, {
+        seq: e.seq,
+        ...(listed.success ? { letters: listed.data.letters } : {}),
+      });
+    }
+    if (e.type !== "letter") continue;
+    const letter = LetterEventDetail.safeParse(e.detail);
+    if (!letter.success) continue;
+    const word = sent.get(e.target) ?? new Map();
+    word.set(key(letter.data.strokes), { cause: e.cause ?? 0, detail: letter.data });
+    sent.set(e.target, word);
   }
-  return letters
-    .filter((l) => l.cause === latest.get(l.word))
-    .map(({ word, detail }) => ({ word, detail }));
+  const out: { word: string; detail: LetterEventDetail }[] = [];
+  for (const [word, read] of reading) {
+    const letters = sent.get(word);
+    if (!letters) continue;
+    if (read.letters)
+      read.letters.forEach((strokes, i) => {
+        const found = letters.get(key(strokes));
+        if (found)
+          out.push({ word, detail: { ...found.detail, index: i + 1, of: read.letters!.length } });
+      });
+    else
+      for (const { cause, detail } of letters.values())
+        if (cause === read.seq) out.push({ word, detail });
+  }
+  return out;
 }
+
+const key = (strokes: readonly string[]) => [...strokes].sort().join(" ");
 
 /** One letter's measurements in world units, to draw over it. */
 export function marksOf(key: string, index: number, f: LetterFeatures): LetterMarks {
