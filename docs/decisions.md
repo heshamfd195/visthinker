@@ -157,6 +157,7 @@ Only this repo's decisions are listed, so the numbers have gaps. When a later de
 | D42  | 🛡️ `main` is protected: changes only through pull requests with passing tests, no force-push or delete.                                                                                                 |
 | D99  | 🌿 A branch per task, named `type/short-name`; a release is a tag, not a branch.                                                                                                                        |
 | D147 | 🌿 The first UI (T37–T50) went in one branch and one PR, a commit per task, as an exception to D99.                                                                                                     |
+| D166 | 🌿 The handwriting ability is built and tested locally, a commit per step, and goes in as one PR only once it works end to end; an exception to D99, like D147.                                         |
 | D100 | ✍️ Conventional Commits, squash merge only, and the PR title checked in CI.                                                                                                                             |
 | D101 | 🤖 Commits keep Claude's `Co-Authored-By` line.                                                                                                                                                         |
 | D102 | 🔀 Each PR follows a template (What, Why, How tested, Screenshot or GIF) and merges with passing CI after the diff is read.                                                                             |
