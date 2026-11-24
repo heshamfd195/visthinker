@@ -3,7 +3,17 @@
 // a crossing. Every other stroke is grouped first (D96): strokes close in place and time form one
 // group, read about 0.6 s after the last one. A group is then a one-stroke box,
 // circle or arrow, or a symbol read by the cross rule and $P against the packs' templates (D97).
-import type { Box, Pack, Point2, SceneObject, Stroke, VisEvent } from "@visthinker/contract";
+// The handwriting ability then splits a symbol's strokes into letters, one `letter` event each (T51).
+import type {
+  Box,
+  LetterEventDetail,
+  Pack,
+  Point2,
+  SceneObject,
+  Stroke,
+  VisEvent,
+} from "@visthinker/contract";
+import { readWord } from "../abilities/handwriting/index.ts";
 import type { Clock } from "../ports/index.ts";
 import { strokeBox } from "../scene/strokes.ts";
 import type { SceneStore } from "../scene/store.ts";
@@ -51,11 +61,18 @@ export interface ComparatorDeps {
   clock: Clock;
   /** The installed packs, read at each group for their symbol templates. */
   packs: () => readonly Pack[];
+  /**
+   * The handwriting ability (D161): on by default, it splits each word into letters and adds a
+   * `letter` event per letter with what it measured (T51).
+   */
+  handwriting?: boolean;
 }
 
 interface Group {
   /** The symbol this group reads again, when a late stroke rejoined it (D110). */
   symbol?: string;
+  /** Other recent symbols this group took in, removed once it is read (an H's legs read apart). */
+  absorbed?: string[];
   strokes: string[];
   box: Box;
   lastEnd: number;
@@ -84,10 +101,11 @@ export function createComparator({
   strokes,
   clock,
   packs,
+  handwriting = true,
 }: ComparatorDeps): Comparator {
   let group: Group | undefined;
   /** The last symbol read, which a late stroke may still rejoin (D110). */
-  let lastRead: Omit<Group, "cancel"> | undefined;
+  let recent: Omit<Group, "cancel">[] = [];
   const isLine = (o: SceneObject) => o.kind === "line" && o.pack === SHAPES_PACK;
   const ends = (o: SceneObject) => o.geom as { a: Point2; b: Point2 };
   const strokeEnd = (s: Stroke) => s.t0 + (s.points.at(-1)?.[3] ?? 0);
@@ -111,7 +129,7 @@ export function createComparator({
     );
   };
 
-  /** D110: a late stroke close by reopens the last symbol. */
+  /** D110: a late stroke close by reopens a recent symbol. */
   const rejoins = (last: Omit<Group, "cancel">, stroke: Stroke) => {
     if (!last.symbol || !scene.has(last.symbol) || stroke.t0 - last.lastEnd > REJOIN_MS)
       return false;
@@ -167,9 +185,11 @@ export function createComparator({
 
   /** Reads a closed group: a one-stroke shape, else a symbol. */
   const read = (g: Group) => {
+    // In drawing order, also when recent symbols were merged in (D110).
     const drawn = g.strokes
       .map((id) => strokes.get(id))
-      .filter((s): s is Stroke => s !== undefined);
+      .filter((s): s is Stroke => s !== undefined)
+      .sort((a, b) => a.t0 - b.t0);
     if (drawn.length === 0) return;
 
     if (drawn.length === 1) {
@@ -207,8 +227,23 @@ export function createComparator({
     const again = g.symbol && scene.has(g.symbol) ? g.symbol : undefined;
     if (again) scene.update(again, (o) => ({ ...o, ...fields }));
     const symbol = again ? scene.get(again)! : add({ id: scene.nextId("y"), ...fields });
-    lastRead = { ...g, symbol: symbol.id, strokes: drawn.map((s) => s.id), box: symbol.box };
-    recognized(
+    for (const id of g.absorbed ?? []) {
+      if (id === symbol.id || !scene.has(id)) continue;
+      scene.remove(id);
+      story.append({
+        who: "fastbrain",
+        type: "remove",
+        target: id,
+        detail: { into: symbol.id },
+        cause: g.lastSeq,
+      });
+    }
+    const gone = new Set([symbol.id, ...(g.absorbed ?? [])]);
+    recent = [
+      ...recent.filter((r) => !gone.has(r.symbol!)),
+      { ...g, absorbed: [], symbol: symbol.id, strokes: drawn.map((s) => s.id), box: symbol.box },
+    ];
+    const reading = recognized(
       symbol.id,
       {
         kind: "symbol",
@@ -218,6 +253,24 @@ export function createComparator({
       },
       g.lastSeq,
     );
+    if (handwriting) {
+      const letters = readWord(drawn);
+      letters.forEach(({ strokes: ink, features }, i) => {
+        const detail: LetterEventDetail = {
+          index: i + 1,
+          of: letters.length,
+          strokes: ink.map((s) => s.id),
+          features,
+        };
+        story.append({
+          who: "fastbrain",
+          type: "letter",
+          target: symbol.id,
+          detail,
+          cause: reading.seq,
+        });
+      });
+    }
   };
 
   const close = () => {
@@ -236,9 +289,23 @@ export function createComparator({
         return addLine(stroke, verdict.fit, strokeEvent.seq);
       }
       if (group && !joins(group, stroke)) close();
-      if (!group && lastRead && rejoins(lastRead, stroke)) {
-        group = { ...lastRead, strokes: [...lastRead.strokes], cancel: () => {} };
+      // D110: a late stroke close by reopens a symbol read in the last 2 s. One that reaches
+      // several (an H's bar after its legs were read apart) brings them all into one group, read
+      // again as one; the first keeps its id and the others are removed when it is read.
+      recent = recent.filter((r) => r.symbol && scene.has(r.symbol));
+      const reached = recent.filter((r) => r.symbol !== group?.symbol && rejoins(r, stroke));
+      if (!group && reached.length > 0) {
+        const [first] = reached;
+        group = { ...first!, strokes: [...first!.strokes], absorbed: [], cancel: () => {} };
       }
+      if (group)
+        for (const r of reached) {
+          if (r.symbol === group.symbol) continue;
+          group.strokes.unshift(...r.strokes.filter((id) => !group!.strokes.includes(id)));
+          group.box = union(group.box, r.box);
+          if (group.symbol) group.absorbed = [...(group.absorbed ?? []), r.symbol!];
+          else group.symbol = r.symbol;
+        }
       const box = strokeBox(stroke);
       if (group) {
         group.cancel();

@@ -1,4 +1,4 @@
-import { SceneObject, type Point2, type Stroke } from "@visthinker/contract";
+import { LetterEventDetail, SceneObject, type Point2, type Stroke } from "@visthinker/contract";
 import { describe, expect, it } from "vitest";
 import { STARTER_PACKS } from "../packs/index.ts";
 import { createManualClock } from "../ports/index.ts";
@@ -312,7 +312,7 @@ describe("replay (moved from T08)", () => {
 });
 
 describe("grouping (D96 · D97)", () => {
-  function setup() {
+  function setup(options: { handwriting?: boolean } = {}) {
     const clock = createManualClock();
     const story = createStory(clock);
     const scene = createSceneStore();
@@ -323,6 +323,7 @@ describe("grouping (D96 · D97)", () => {
       strokes: strokesStore,
       clock,
       packs: () => STARTER_PACKS,
+      ...options,
     });
     /** Draws a stroke that starts now and takes 80 ms. */
     const draw = (pts: Point2[]) => {
@@ -364,7 +365,7 @@ describe("grouping (D96 · D97)", () => {
       label: "X",
       strokes: [expect.any(String), second.id],
     });
-    const event = story.all().at(-1)!;
+    const event = story.all().findLast((e) => e.type === "recognized")!;
     expect(event).toMatchObject({
       type: "recognized",
       target: symbol.id,
@@ -372,6 +373,129 @@ describe("grouping (D96 · D97)", () => {
     });
     expect(story.get(event.cause!)?.target).toBe(second.id);
     expect(symbol.confidence).toBeGreaterThan(0.6);
+  });
+
+  it("the handwriting ability adds a letter event per letter, caused by the word's reading (T51)", () => {
+    const { clock, scene, story, draw } = setup();
+    const first = draw(
+      along([
+        [0, 0],
+        [0, 100],
+        [55, 100],
+      ]),
+    );
+    clock.advance(200);
+    const second = draw(
+      along([
+        [80, -20],
+        [80, 80],
+        [135, 80],
+      ]),
+    );
+    clock.advance(600);
+    const word = scene.all()[0]!;
+    const reading = story.all().findLast((e) => e.type === "recognized")!;
+    const letters = story.all().filter((e) => e.type === "letter");
+    expect(letters.map((e) => [e.target, e.cause, e.detail?.["index"], e.detail?.["of"]])).toEqual([
+      [word.id, reading.seq, 1, 2],
+      [word.id, reading.seq, 2, 2],
+    ]);
+    expect(letters.map((e) => LetterEventDetail.parse(e.detail).strokes)).toEqual([
+      [first.id],
+      [second.id],
+    ]);
+    expect(LetterEventDetail.parse(letters[0]!.detail).features.parts).toHaveLength(2);
+  });
+
+  it("a wide H whose legs are read apart comes back together when its bar joins them (D110)", () => {
+    const { clock, scene, story, draw } = setup();
+    const left = draw(
+      along([
+        [0, 0],
+        [0, 120],
+      ]),
+    );
+    clock.advance(200);
+    // 70 apart: further than half the letter's height, so the right leg starts a new group.
+    const right = draw(
+      along([
+        [70, 0],
+        [70, 120],
+      ]),
+    );
+    clock.advance(200);
+    const bar = draw(
+      along([
+        [-2, 60],
+        [72, 60],
+      ]),
+    );
+    clock.advance(600);
+    const symbols = scene.all().filter((o) => o.kind === "symbol");
+    expect(symbols).toHaveLength(1);
+    expect(symbols[0]!.strokes).toEqual([left.id, right.id, bar.id]);
+    const reading = story.all().findLast((e) => e.type === "recognized")!;
+    const letters = story.all().filter((e) => e.type === "letter" && e.cause === reading.seq);
+    expect(letters.map((e) => LetterEventDetail.parse(e.detail).features.parts.length)).toEqual([
+      3,
+    ]);
+  });
+
+  it("a slow H: each leg already read on its own, the bar merges both into one word (D110)", () => {
+    const { clock, scene, story, draw } = setup();
+    const left = draw(
+      along([
+        [0, 0],
+        [0, 120],
+      ]),
+    );
+    clock.advance(700);
+    const right = draw(
+      along([
+        [70, 0],
+        [70, 120],
+      ]),
+    );
+    clock.advance(700);
+    expect(scene.all().filter((o) => o.kind === "symbol")).toHaveLength(2);
+    const [first, second] = scene.all().filter((o) => o.kind === "symbol");
+    const bar = draw(
+      along([
+        [-2, 60],
+        [72, 60],
+      ]),
+    );
+    clock.advance(700);
+    const symbols = scene.all().filter((o) => o.kind === "symbol");
+    expect(symbols.map((o) => [o.id, o.strokes])).toEqual([
+      [first!.id, [left.id, right.id, bar.id]],
+    ]);
+    expect(story.all().find((e) => e.type === "remove")).toMatchObject({
+      who: "fastbrain",
+      type: "remove",
+      target: second!.id,
+      detail: { into: first!.id },
+    });
+    expect(
+      story
+        .all()
+        .filter((e) => e.type === "letter")
+        .at(-1)?.detail?.["of"],
+    ).toBe(1);
+  });
+
+  it("with the handwriting ability switched off, a word gets no letter events (D161)", () => {
+    const { clock, story, draw } = setup({ handwriting: false });
+    draw(
+      along([
+        [0, 0],
+        [0, 100],
+        [55, 100],
+      ]),
+    );
+    clock.advance(700);
+    expect(story.all().some((e) => e.type === "recognized")).toBe(true);
+    expect(story.all().some((e) => e.type === "letter")).toBe(false);
   });
 
   it("a stroke far away, or much later, starts a new group", () => {
