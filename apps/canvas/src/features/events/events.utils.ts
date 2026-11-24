@@ -1,7 +1,7 @@
 // The events box in plain words (D127): every story event and every Claude call as one short
 // line, raw JSON only on a click.
-import type { VisEvent } from "@visthinker/contract";
-import type { CallRecord } from "@visthinker/core";
+import { LetterEventDetail, type VisEvent } from "@visthinker/contract";
+import { letterBreakdown, letterSummary, type CallRecord } from "@visthinker/core";
 
 export type EventsFilter = "all" | "you" | "claude" | "read" | "problems";
 
@@ -63,6 +63,13 @@ export function describe(e: VisEvent): string {
       if (!label || label === "?") return join("couldn't read", e.target);
       return join(`read ${label}`, e.target, score !== undefined && pct(score));
     }
+    case "letter": {
+      // One letter of a word, with what the handwriting ability measured (T51).
+      const letter = LetterEventDetail.safeParse(d);
+      if (!letter.success) return join("letter", e.target);
+      const { index, of, features } = letter.data;
+      return join(`letter ${index} of ${of}`, e.target, letterSummary(features));
+    }
     case "place": {
       const kind = str(d["kind"]) ?? "object";
       return join(`placed ${kind}`, e.target, where(d), byClaude(e) && "by Claude");
@@ -71,8 +78,12 @@ export function describe(e: VisEvent): string {
       return join(`moved ${e.target ?? ""}`.trim(), where(d), byClaude(e) && "by Claude");
     case "label":
       return join(`labelled ${e.target ?? ""}`.trim(), text && `“${quote(text)}”`);
-    case "remove":
+    case "remove": {
+      // Two words the Fast Brain read apart, joined by a later stroke (D110).
+      const into = str(d["into"]);
+      if (into && e.who === "fastbrain") return `merged ${e.target ?? ""} into ${into}`;
       return join(`removed ${e.target ?? ""}`.trim(), e.who !== "user" && `by ${who}`);
+    }
     case "undo":
     case "redo":
       return join(
@@ -159,7 +170,7 @@ export function isProblem(row: Row): boolean {
   return d["label"] === "?" || (score !== undefined && score < LOW_CONFIDENCE);
 }
 
-const READ_TYPES = new Set(["recognized", "place"]);
+const READ_TYPES = new Set(["recognized", "letter", "place"]);
 
 /** Whether a row shows under a filter chip. */
 export function matches(row: Row, filter: EventsFilter): boolean {
@@ -202,6 +213,16 @@ export function rowTarget(row: Row): string | undefined {
 /** The raw JSON shown under a clicked row. */
 export function rowJson(row: Row): string {
   return JSON.stringify(row.kind === "call" ? row.call : row.event, null, 2);
+}
+
+/** What a clicked row opens to: a letter's measurements in plain words, then the raw JSON. */
+export function rowDetail(row: Row): string {
+  if (row.kind === "event" && row.event.type === "letter") {
+    const letter = LetterEventDetail.safeParse(row.event.detail);
+    if (letter.success)
+      return `${letterBreakdown(letter.data.features).join("\n")}\n\n${rowJson(row)}`;
+  }
+  return rowJson(row);
 }
 
 /**

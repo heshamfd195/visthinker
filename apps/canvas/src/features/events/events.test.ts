@@ -8,6 +8,7 @@ import {
   matches,
   mergeRows,
   mmss,
+  rowDetail,
   rowTarget,
   status,
   statusText,
@@ -190,5 +191,62 @@ group("time", () => {
     expect(statusText(status(false, undefined))).toBe("Claude is connected, not watching");
     expect(statusText(status(false, undefined, false))).toBe("Not connected to Claude");
     expect(statusText(status(true, 1000, false))).toBe("Not connected to Claude");
+  });
+});
+
+group("letters from the handwriting ability (T51)", () => {
+  const letter = e({
+    seq: 9,
+    type: "letter",
+    who: "fastbrain",
+    target: "y3",
+    cause: 8,
+    detail: {
+      index: 1,
+      of: 5,
+      strokes: ["s1", "s2", "s3"],
+      features: {
+        strokes: 3,
+        box: [0, 0, 60, 80],
+        aspect: 1.33,
+        parts: [
+          { kind: "line", stroke: 0, a: [0, 0], b: [0, 1], length: 1, angle: 90 },
+          { kind: "line", stroke: 1, a: [1, 0], b: [1, 1], length: 1, angle: 90 },
+          { kind: "line", stroke: 2, a: [0, 0.5], b: [1, 0.5], length: 0.75, angle: 0 },
+        ],
+        meets: [],
+        crossings: [
+          { parts: [0, 2], t: 0.5, u: 0, at: [0, 0.5], angle: 90 },
+          { parts: [1, 2], t: 0.5, u: 1, at: [1, 0.5], angle: 90 },
+        ],
+        loops: [],
+      },
+    },
+  });
+
+  it("says which letter of the word it is and what was measured, in one line", () => {
+    expect(describe(letter)).toBe(
+      "letter 1 of 5 · y3 · 3 lines | | — · no meets · 2 crossings · no loops",
+    );
+  });
+
+  it("opens to the full breakdown, then the raw event", () => {
+    const text = rowDetail(row(letter));
+    expect(text).toContain("parts      1  line  | 90°");
+    expect(text).toContain("crossings  1 and 3 touch at (0.00, 0.50) middle left");
+    expect(text).toContain('"type": "letter"');
+  });
+
+  it("two words joined by a later stroke read as a merge", () => {
+    expect(
+      describe(
+        e({ seq: 4, type: "remove", who: "fastbrain", target: "y2", detail: { into: "y1" } }),
+      ),
+    ).toBe("merged y2 into y1");
+  });
+
+  it("shows under Read, and a broken one still gets a line", () => {
+    expect(matches(row(letter), "read")).toBe(true);
+    expect(describe({ ...letter, detail: { index: "x" } })).toBe("letter · y3");
   });
 });

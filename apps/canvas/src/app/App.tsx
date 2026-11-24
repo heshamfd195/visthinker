@@ -33,6 +33,7 @@ import { Stage } from "react-konva";
 import { bridgeUrlFromPage } from "../adapters/ws-transport/index.ts";
 import { ChatPanel, ReplyDots } from "../features/chat/index.ts";
 import { EventsBox } from "../features/events/index.ts";
+import { letterMarks, LettersLayer } from "../features/handwriting/index.ts";
 import { canSnap, GuidesControl, GuidesLayer, snapPoint } from "../features/guides/index.ts";
 import {
   InkLayer,
@@ -251,6 +252,11 @@ function Workspace({
   const strokes = useMemo(() => canvas.strokes.all(), [canvas, version]);
   const colors = useMemo(() => colorsFromStory(events), [events]);
   const tags = useMemo(() => (ui.showRead ? symbolTags(events) : new Map()), [events, ui.showRead]);
+  // What the handwriting ability measured in each letter still on the canvas (T51).
+  const letters = useMemo(
+    () => (ui.showLetterParts ? letterMarks(events, new Set(objects.map((o) => o.id))) : []),
+    [events, objects, ui.showLetterParts],
+  );
 
   const snap = useCallback(
     (p: Point2): Point2 => (canSnap(ui.guides) ? snapPoint(p, ui.guides.size) : p),
@@ -543,6 +549,7 @@ function Workspace({
                 });
             }}
           />
+          <LettersLayer letters={letters} scale={zoom} />
           <ReplyDots events={events} objects={objects} />
           {tool === "select" && (
             <TransformLayer

@@ -33,6 +33,8 @@ export interface Look {
   claudeSerif: boolean;
   showRead: boolean;
   showScore: boolean;
+  /** The handwriting ability's debug view over each letter (T51). */
+  showLetterParts: boolean;
   penSize: number;
   smoothing: number;
   guides: Guides;
@@ -61,6 +63,7 @@ export const DEFAULT_LOOK: Look = {
   claudeSerif: true,
   showRead: true,
   showScore: true,
+  showLetterParts: true,
   penSize: 4,
   smoothing: 0.5,
   guides: { kind: "none", size: 24, snap: false, opacity: "soft", dotted: false, writing: false },

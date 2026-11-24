@@ -13,7 +13,7 @@ import {
   matches,
   mergeRows,
   mmss,
-  rowJson,
+  rowDetail,
   rowTarget,
   rowText,
   status,
@@ -215,7 +215,7 @@ export function EventsBox({
               </button>
               {expanded && (
                 <pre className="mx-3 mb-1 overflow-x-auto rounded-md bg-muted p-2 text-[10px] leading-snug text-muted-foreground">
-                  {rowJson(row)}
+                  {rowDetail(row)}
                 </pre>
               )}
             </li>
