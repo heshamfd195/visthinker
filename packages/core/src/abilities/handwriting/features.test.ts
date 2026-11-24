@@ -60,7 +60,7 @@ function readA(f: LetterFeatures) {
   const crossings = f.crossings.filter(
     (c) => c.parts.includes(bar) && isLeg(c.parts[0] === bar ? c.parts[1] : c.parts[0]),
   );
-  const round = (n: number) => Math.round(n * 10) / 10;
+  const round = (n: number) => Math.round(n * 10) / 10 || 0;
   return {
     legs: legs.length,
     bars: bars.length,
@@ -121,6 +121,22 @@ describe("letter features: an A (T51 · D112)", () => {
 
   it("order and direction never count: bar first, legs drawn downward", () => {
     expect(readA(read(line(BAR[1], BAR[0]), line(APEX, BR), line(APEX, BL)))).toEqual(A_READ);
+  });
+
+  it("a ∧ with a rounded top and a left leg that bows (as real writing does) still has two legs", () => {
+    // The left leg bows 6% of its length to the left, then rounds over the top.
+    const bowed = Array.from({ length: 25 }, (_, i): Point2 => {
+      const s = i / 24;
+      return [30 * s - 0.06 * 85 * 4 * s * (1 - s), 80 - 76 * s];
+    });
+    const top: Point2[] = [
+      [31, 1],
+      [33, 0],
+      [35, 1],
+    ];
+    const f = read([...bowed, ...top, ...line([36, 2], BR).slice(1)], line(...BAR));
+    expect(f.parts.map((p) => p.kind)).toEqual(["line", "line", "line"]);
+    expect(readA(f)).toEqual(A_READ);
   });
 
   it("legs that almost meet still meet, and a bar that stops short still crosses", () => {

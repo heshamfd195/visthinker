@@ -36,6 +36,13 @@ export const FEATURE_TOLERANCES = {
   loopMin: 0.2,
   /** Room for the pen's wobble when fitting a short line. */
   lineWobble: 0.03,
+  /**
+   * A hand-drawn leg may bow this share of its length and still be a line (a real A's left leg
+   * bowed 6%; the comparator's straight-line test allows 4%)…
+   */
+  lineBow: 0.08,
+  /** …and stray this share of its length from the fitted line. */
+  lineDeviation: 0.1,
 } as const;
 
 export type FeatureTolerances = Record<keyof typeof FEATURE_TOLERANCES, number>;
@@ -147,6 +154,8 @@ export function letterFeatures(
 
   const lineTol: LineTolerances = {
     ...LINE_TOLERANCES,
+    maxBowRatio: tol.lineBow,
+    maxDeviationRatio: tol.lineDeviation,
     minLength: tol.minPart * size,
     minDeviation: Math.max(0.5, tol.lineWobble * size),
     minBow: Math.max(0.5, 0.75 * tol.lineWobble * size),
