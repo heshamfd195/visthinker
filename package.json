@@ -16,7 +16,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "build": "pnpm -r --if-present build",
-    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build"
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build",
+    "try:letters": "node scripts/try-letters/index.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
