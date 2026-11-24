@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 400" width="1080" height="400">
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8e8e8"/></marker></defs>
+<rect width="1080" height="400" rx="12" fill="#121212"/>
+<text x="40" y="38" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="600" fill="#e8e8e8">How a stroke reaches Claude, and back</text>
+<rect x="40" y="60" width="200" height="90" rx="12" fill="#3a3320" stroke="#e8e8e8" stroke-width="2"/>
+<text x="140.0" y="100" font-family="Helvetica, Arial, sans-serif" font-size="19" font-weight="600" text-anchor="middle" fill="#e8e8e8">You draw</text>
+<text x="140.0" y="124" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" fill="#a3a3a3">the canvas: ink, shapes</text>
+<rect x="300" y="60" width="200" height="90" rx="12" fill="#1b2a38" stroke="#e8e8e8" stroke-width="2"/>
+<text x="400.0" y="100" font-family="Helvetica, Arial, sans-serif" font-size="19" font-weight="600" text-anchor="middle" fill="#e8e8e8">Story</text>
+<text x="400.0" y="124" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" fill="#a3a3a3">a stroke event</text>
+<rect x="560" y="60" width="220" height="90" rx="12" fill="#1b2a38" stroke="#e8e8e8" stroke-width="2"/>
+<text x="670.0" y="100" font-family="Helvetica, Arial, sans-serif" font-size="19" font-weight="600" text-anchor="middle" fill="#e8e8e8">Fast Brain</text>
+<text x="670.0" y="124" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" fill="#a3a3a3">lines, shapes, symbols</text>
+<rect x="840" y="60" width="200" height="90" rx="12" fill="#1c3122" stroke="#e8e8e8" stroke-width="2"/>
+<text x="940.0" y="100" font-family="Helvetica, Arial, sans-serif" font-size="19" font-weight="600" text-anchor="middle" fill="#e8e8e8">Bridge</text>
+<text x="940.0" y="124" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" fill="#a3a3a3">local MCP server</text>
+<rect x="840" y="250" width="200" height="90" rx="12" fill="#29243d" stroke="#e8e8e8" stroke-width="2"/>
+<text x="940.0" y="290" font-family="Helvetica, Arial, sans-serif" font-size="19" font-weight="600" text-anchor="middle" fill="#e8e8e8">Claude Code</text>
+<text x="940.0" y="314" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" fill="#a3a3a3">wait_for_event</text>
+<path d="M240,105.0 L300,105.0" fill="none" stroke="#e8e8e8" stroke-width="2" marker-end="url(#head)"/>
+<text x="270.0" y="97.0" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#a3a3a3">records</text>
+<path d="M500,105.0 L560,105.0" fill="none" stroke="#e8e8e8" stroke-width="2" marker-end="url(#head)"/>
+<text x="530.0" y="97.0" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#a3a3a3">reads</text>
+<path d="M780,105.0 L840,105.0" fill="none" stroke="#e8e8e8" stroke-width="2" marker-end="url(#head)"/>
+<text x="810.0" y="97.0" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#a3a3a3">events</text>
+<path d="M940.0,150 L940.0,250" fill="none" stroke="#e8e8e8" stroke-width="2" marker-end="url(#head)"/>
+<text x="952.0" y="205.0" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="start" fill="#a3a3a3">events</text>
+<path d="M840,295.0 L140.0,295.0 L140.0,150" fill="none" stroke="#e8e8e8" stroke-width="2" marker-end="url(#head)"/>
+<text x="490.0" y="287.0" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#a3a3a3">act, say, ask (by id)</text>
+</svg>

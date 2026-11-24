@@ -14,4 +14,4 @@ Then ask Claude to open the canvas. You draw, place shapes or play a game, and C
 
 One command that runs the Visthinker bridge, a local MCP server. It serves the canvas on `127.0.0.1` only, with a secret token per session and one canvas tab per Claude session. Packs you or Claude write are saved in `~/.visthinker/packs`.
 
-Source and docs: [github.com/heshamfd195/visthinker](https://github.com/heshamfd195/visthinker). MIT licence.
+Source and docs: [github.com/heshamfd195/visual-thinker](https://github.com/heshamfd195/visual-thinker). MIT licence.
