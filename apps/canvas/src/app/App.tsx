@@ -252,10 +252,13 @@ function Workspace({
   const strokes = useMemo(() => canvas.strokes.all(), [canvas, version]);
   const colors = useMemo(() => colorsFromStory(events), [events]);
   const tags = useMemo(() => (ui.showRead ? symbolTags(events) : new Map()), [events, ui.showRead]);
-  // What the handwriting ability measured in each letter still on the canvas (T51).
+  // What the handwriting ability read in each letter still on the canvas (T51 · D116).
   const letters = useMemo(
-    () => (ui.showLetterParts ? letterMarks(events, new Set(objects.map((o) => o.id))) : []),
-    [events, objects, ui.showLetterParts],
+    () =>
+      ui.showRead || ui.showLetterParts
+        ? letterMarks(events, new Set(objects.map((o) => o.id)))
+        : [],
+    [events, objects, ui.showRead, ui.showLetterParts],
   );
 
   const snap = useCallback(
@@ -549,7 +552,13 @@ function Workspace({
                 });
             }}
           />
-          <LettersLayer letters={letters} scale={zoom} />
+          <LettersLayer
+            letters={letters}
+            scale={zoom}
+            names={ui.showRead}
+            scores={ui.showScore}
+            parts={ui.showLetterParts}
+          />
           <ReplyDots events={events} objects={objects} />
           {tool === "select" && (
             <TransformLayer

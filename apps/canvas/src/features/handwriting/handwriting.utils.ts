@@ -1,10 +1,11 @@
-// What the handwriting ability measured, ready to draw over each letter (T51): the latest `letter`
-// events of each word still on the canvas, turned back into world units.
+// What the handwriting ability read, ready to draw over each letter (T51 · D116): each letter's
+// name and score, and what it measured, from the `letter` events of the words still on the canvas.
 import {
   LetterEventDetail,
   WordReading,
   type Box,
   type LetterFeatures,
+  type LetterReading,
   type Point2,
   type VisEvent,
 } from "@visthinker/contract";
@@ -15,6 +16,8 @@ export interface LetterMarks {
   /** Its place in the word, from 1. */
   index: number;
   box: Box;
+  /** What the cards read it as (D116): its name, "?" when unsure, or nothing before the cards. */
+  name?: { label: string; score: number; clear: boolean };
   parts: { kind: "line" | "curve"; a: Point2; b: Point2; label: string; at: Point2 }[];
   meets: Point2[];
   crossings: Point2[];
@@ -69,13 +72,21 @@ export function latestLetters(
 const key = (strokes: readonly string[]) => [...strokes].sort().join(" ");
 
 /** One letter's measurements in world units, to draw over it. */
-export function marksOf(key: string, index: number, f: LetterFeatures): LetterMarks {
+export function marksOf(
+  key: string,
+  index: number,
+  f: LetterFeatures,
+  reading?: LetterReading,
+): LetterMarks {
   const at = (p: Point2) => inWorld(f, p);
   const size = Math.max(f.box[2], f.box[3]);
   return {
     key,
     index,
     box: f.box,
+    ...(reading
+      ? { name: { label: reading.label, score: reading.score, clear: reading.clear } }
+      : {}),
     parts: f.parts.map((p, i) => {
       const [a, b] = [at(p.a), at(p.b)];
       return {
@@ -102,6 +113,6 @@ export function letterMarks(
   onCanvas: ReadonlySet<string>,
 ): LetterMarks[] {
   return latestLetters(events, onCanvas).map(({ word, detail }) =>
-    marksOf(`${word}-${detail.index}`, detail.index, detail.features),
+    marksOf(`${word}-${detail.index}`, detail.index, detail.features, detail.reading),
   );
 }

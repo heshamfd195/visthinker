@@ -82,6 +82,12 @@ describe("the handwriting debug view (T51)", () => {
     expect(latestLetters(events, new Set(["y1"])).map((l) => l.detail.features)).toEqual([O]);
   });
 
+  it("carries each letter's name and score for the label under it (D116)", () => {
+    const reading = { label: "A", score: 100, clear: true, guesses: [{ char: "A", score: 100 }] };
+    expect(marksOf("y1-1", 1, A, reading).name).toEqual({ label: "A", score: 100, clear: true });
+    expect(marksOf("y1-1", 1, A).name).toBeUndefined();
+  });
+
   it("puts the parts, meets, crossings and loops back where you drew them", () => {
     const a = marksOf("y1-1", 1, A);
     expect(a.parts[0]).toMatchObject({ kind: "line", a: [100, 280], b: [130, 200], label: "1" });

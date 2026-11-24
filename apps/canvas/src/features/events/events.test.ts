@@ -249,6 +249,59 @@ group("letters from the handwriting ability (T51)", () => {
     expect(isProblem(row(word))).toBe(false);
   });
 
+  it("a named letter says its name and score; an unsure one its two best guesses, under Problems", () => {
+    const named = {
+      ...letter,
+      detail: {
+        ...letter.detail,
+        reading: {
+          label: "H",
+          score: 100,
+          clear: true,
+          guesses: [
+            { char: "H", score: 100 },
+            { char: "A", score: 50 },
+          ],
+        },
+      },
+    };
+    expect(describe(named)).toBe(
+      "letter 1 of 5 · H 100% · y3 · 3 lines | | — · no meets · 2 crossings · no loops",
+    );
+    expect(isProblem(row(named))).toBe(false);
+    const unsure = {
+      ...letter,
+      detail: {
+        ...letter.detail,
+        reading: {
+          label: "?",
+          score: 60,
+          clear: false,
+          guesses: [
+            { char: "L", score: 60 },
+            { char: "E", score: 41 },
+          ],
+        },
+      },
+    };
+    expect(describe(unsure)).toContain("letter 1 of 5 · ? (L 60 · E 41) · y3");
+    expect(isProblem(row(unsure))).toBe(true);
+  });
+
+  it("a word read by its letters says the word; one with an unsure letter is a problem", () => {
+    const word = (text: string) =>
+      e({
+        seq: 3,
+        type: "recognized",
+        who: "fastbrain",
+        target: "w1",
+        detail: { kind: "word", letters: [["s1"], ["s2"]], text },
+      });
+    expect(describe(word("HELLO"))).toBe("read HELLO · w1");
+    expect(isProblem(row(word("HELLO")))).toBe(false);
+    expect(isProblem(row(word("HE?LO")))).toBe(true);
+  });
+
   it("two words joined by a later stroke read as a merge", () => {
     expect(
       describe(

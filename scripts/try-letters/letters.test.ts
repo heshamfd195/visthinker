@@ -52,7 +52,7 @@ suite("try-letters (T51)", () => {
   it("says what was measured in plain words", () => {
     const [a, h] = lettersOf(snapshot([...A, ...H]));
     const textA = describe(a!, 1);
-    expect(textA).toContain("Letter 1 · 3 strokes · 60 × 80, tall");
+    expect(textA).toContain("Letter 1 · A 100% · 3 strokes · 60 × 80, tall");
     expect(textA).toContain("1b and 2a meet at (0.50, 0.00) top centre");
     expect(textA).toContain("1 and 3 touch at (0.20, 0.60) middle left");
     expect(textA).toContain("loops      none");

@@ -3,10 +3,12 @@
 // a crossing. Every other stroke is grouped first (D96): strokes close in place and time form one
 // group, read about 0.6 s after the last one. A group is then a one-stroke box,
 // circle or arrow, or a symbol read by the cross rule and $P against the packs' templates (D97).
-// The handwriting ability splits a group into letters first: two or more are a written `word`,
-// not a symbol, and each new or changed letter gets a `letter` event (T51).
+// The handwriting ability splits a group into letters first and reads each by the character
+// cards (D112 · D113): two or more letters, or one clear letter, are a written `word` such as
+// "HELLO", not a symbol, and each new or changed letter gets a `letter` event (T51–T53).
 import type {
   Box,
+  CharacterCard,
   LetterEventDetail,
   Pack,
   WordReading,
@@ -15,7 +17,7 @@ import type {
   Stroke,
   VisEvent,
 } from "@visthinker/contract";
-import { readWord } from "../abilities/handwriting/index.ts";
+import { CARDS, readLetter, readWord } from "../abilities/handwriting/index.ts";
 import type { Clock } from "../ports/index.ts";
 import { strokeBox } from "../scene/strokes.ts";
 import type { SceneStore } from "../scene/store.ts";
@@ -70,6 +72,8 @@ export interface ComparatorDeps {
    * `letter` event per letter with what it measured (T51).
    */
   handwriting?: boolean;
+  /** The character cards it reads letters with (D112); the built-in ones by default. */
+  cards?: readonly CharacterCard[];
 }
 
 interface Group {
@@ -106,6 +110,7 @@ export function createComparator({
   clock,
   packs,
   handwriting = true,
+  cards = CARDS,
 }: ComparatorDeps): Comparator {
   let group: Group | undefined;
   /** The last symbol read, which a late stroke may still rejoin (D110). */
@@ -217,22 +222,28 @@ export function createComparator({
     // The handwriting ability splits the group into letters first (D114, T51). Two or more
     // letters are a written word, read by its letters and never guessed as one symbol ($P
     // against X and O only fits a lone mark); a lone letter is still a symbol.
-    const letters = handwriting ? readWord(drawn) : [];
+    const letters = (handwriting ? readWord(drawn) : []).map((l) => ({
+      ...l,
+      reading: readLetter(l.features, cards).reading,
+    }));
     const ids = letters.map((l) => l.strokes.map((s) => s.id));
-    const isWord = letters.length >= 2;
+    // A lone letter the cards read clearly is a word too (a one-letter "A"); a lone mark they
+    // don't know (an X) is still a symbol.
+    const isWord = letters.length >= 2 || (letters.length === 1 && letters[0]!.reading.clear);
+    // The word as read, a ? for each unsure letter (D113 · D116).
+    const text = letters.map((l) => l.reading.label).join("");
     const sets = isWord ? [] : symbolSetsFrom(packs());
     const result = sets.length
       ? createRecognizer(sets).recognize(points)
       : { label: "?", score: 0, alternatives: [], pack: undefined };
     const fields = {
       kind: isWord ? "word" : "symbol",
-      // A word's letters get names with the cards (T52, T53); until then it says how many.
-      label: isWord ? `${letters.length} letters` : result.label,
+      label: isWord ? text : result.label,
       pack: isWord ? HANDWRITING : (result.pack ?? SHAPES_PACK),
       relations: [],
       box: boxOf(points.flat()),
-      // Splitting a word is certain; reading its letters is the cards' job.
-      confidence: isWord ? 1 : result.score,
+      // A word is as sure as its least sure letter.
+      confidence: isWord ? Math.min(...letters.map((l) => l.reading.score)) / 100 : result.score,
       strokes: drawn.map((s) => s.id),
     };
     // A late stroke re-reads the same symbol, so its id stays and the earlier reading is replaced.
@@ -260,7 +271,7 @@ export function createComparator({
     const reading = recognized(
       symbol.id,
       isWord
-        ? ({ kind: "word", letters: ids } satisfies WordReading)
+        ? ({ kind: "word", letters: ids, text } satisfies WordReading)
         : {
             kind: "symbol",
             label: result.label,
@@ -271,21 +282,22 @@ export function createComparator({
       g.lastSeq,
     );
     // Only letters that are new, or whose strokes changed, are sent again: an unchanged letter
-    // measures the same, and the word's reading above lists them all.
+    // measures and reads the same, and the word's reading above lists them all.
     const key = (strokeIds: readonly unknown[]) => [...strokeIds].map(String).sort().join(" ");
     const sent = new Set(
       story
         .all()
-        .filter((e) => e.type === "letter" && e.target === symbol.id)
+        .filter((e) => e.type === "letter" && e.target === symbol.id && e.detail?.["reading"])
         .map((e) => key(Array.isArray(e.detail?.["strokes"]) ? e.detail["strokes"] : [])),
     );
-    letters.forEach(({ features }, i) => {
+    letters.forEach(({ features, reading: read }, i) => {
       if (sent.has(key(ids[i]!))) return;
       const detail: LetterEventDetail = {
         index: i + 1,
         of: letters.length,
         strokes: ids[i]!,
         features,
+        reading: read,
       };
       story.append({
         who: "fastbrain",

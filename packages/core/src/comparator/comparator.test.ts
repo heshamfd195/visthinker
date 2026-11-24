@@ -437,9 +437,10 @@ describe("grouping (D96 · D97)", () => {
       ]),
     );
     clock.advance(600);
-    const symbols = scene.all().filter((o) => o.kind === "symbol");
-    expect(symbols).toHaveLength(1);
-    expect(symbols[0]!.strokes).toEqual([left.id, right.id, bar.id]);
+    const words = scene.all().filter((o) => o.kind === "word" || o.kind === "symbol");
+    expect(words).toHaveLength(1);
+    expect(words[0]).toMatchObject({ kind: "word", label: "H" });
+    expect(words[0]!.strokes).toEqual([left.id, right.id, bar.id]);
     const reading = story.all().findLast((e) => e.type === "recognized")!;
     const letters = story.all().filter((e) => e.type === "letter" && e.cause === reading.seq);
     expect(letters.map((e) => LetterEventDetail.parse(e.detail).features.parts.length)).toEqual([
@@ -472,9 +473,9 @@ describe("grouping (D96 · D97)", () => {
       ]),
     );
     clock.advance(700);
-    const symbols = scene.all().filter((o) => o.kind === "symbol");
-    expect(symbols.map((o) => [o.id, o.strokes])).toEqual([
-      [first!.id, [left.id, right.id, bar.id]],
+    const words = scene.all().filter((o) => o.kind === "word" || o.kind === "symbol");
+    expect(words.map((o) => [o.id, o.kind, o.label, o.strokes])).toEqual([
+      [first!.id, "word", "H", [left.id, right.id, bar.id]],
     ]);
     expect(story.all().find((e) => e.type === "remove")).toMatchObject({
       who: "fastbrain",
@@ -508,16 +509,22 @@ describe("grouping (D96 · D97)", () => {
     );
     clock.advance(700);
     const [word] = scene.all();
-    expect(word).toMatchObject({ kind: "word", label: "2 letters", pack: "handwriting" });
+    expect(word).toMatchObject({ kind: "word", label: "LL", pack: "handwriting" });
     const reading = story.all().findLast((e) => e.type === "recognized")!;
     expect(WordReading.parse(reading.detail)).toEqual({
       kind: "word",
       letters: [[first.id], [second.id]],
+      text: "LL",
     });
+    const letters = story.all().filter((e) => e.type === "letter");
+    expect(letters.map((e) => LetterEventDetail.parse(e.detail).reading)).toMatchObject([
+      { label: "L", clear: true },
+      { label: "L", clear: true },
+    ]);
     expect(reading.detail).not.toHaveProperty("alternatives");
   });
 
-  it("a lone letter is still a symbol, with its one letter listed", () => {
+  it("a lone letter the cards read clearly is a word; a mark they don't know is a symbol", () => {
     const { clock, scene, story, draw } = setup();
     const l = draw(
       along([
@@ -527,9 +534,30 @@ describe("grouping (D96 · D97)", () => {
       ]),
     );
     clock.advance(700);
-    expect(scene.all()[0]).toMatchObject({ kind: "symbol" });
-    const reading = story.all().findLast((e) => e.type === "recognized")!;
-    expect(reading.detail).toMatchObject({ kind: "symbol", letters: [[l.id]] });
+    expect(scene.all()[0]).toMatchObject({ kind: "word", label: "L" });
+    expect(story.all().findLast((e) => e.type === "recognized")?.detail).toMatchObject({
+      kind: "word",
+      letters: [[l.id]],
+      text: "L",
+    });
+    const x = draw(
+      along([
+        [300, 0],
+        [360, 60],
+      ]),
+    );
+    draw(
+      along([
+        [360, 0],
+        [300, 60],
+      ]),
+    );
+    clock.advance(700);
+    expect(scene.all()[1]).toMatchObject({ kind: "symbol", label: "X" });
+    expect(story.all().findLast((e) => e.type === "recognized")?.detail).toMatchObject({
+      kind: "symbol",
+      letters: [[x.id, expect.any(String)]],
+    });
   });
 
   it("a word read again sends only the letters that are new or changed", () => {

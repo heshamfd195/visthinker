@@ -1,7 +1,9 @@
-// The handwriting ability's debug view (T51): over each letter, what was measured. Its box and
-// number, each part (a line solid, a curve dashed from end to end) with its number, a dot where
-// ends meet, a ring where lines cross or touch, and each loop; the letter's number (#1) below it. All in recognized blue, the colour
-// of what the canvas read, and in screen pixels so it looks the same at any zoom. Never listening.
+// What the handwriting ability read, over each letter (T51 · D116). Its name under it ("H 92%",
+// "?" when unsure), and in the debug view what was measured: its box and number (#1), each part
+// (a line solid, a curve dashed from end to end) with its number, a dot where ends meet, a ring
+// where lines cross or touch, and each loop. All in recognized blue, the colour of what the canvas
+// read, and in screen pixels so it looks the same at any zoom. Never listening.
+import { Fragment } from "react";
 import { Circle, Ellipse, Layer, Line, Rect, Text } from "react-konva";
 import type { LetterMarks } from "./handwriting.utils.ts";
 
@@ -11,20 +13,50 @@ export interface LettersLayerProps {
   letters: readonly LetterMarks[];
   /** Stage scale, so lines and labels stay the same size on screen. */
   scale: number;
+  /** Each letter's name under it (D116): "H 92%", or "?" when unsure. */
+  names: boolean;
+  /** Its score beside the name. */
+  scores: boolean;
+  /** What was measured, drawn over it (the debug view). */
+  parts: boolean;
 }
 
-export function LettersLayer({ letters, scale }: LettersLayerProps) {
+export function LettersLayer({ letters, scale, names, scores, parts }: LettersLayerProps) {
   const px = 1 / (scale > 0 ? scale : 1);
   return (
     <Layer listening={false}>
       {letters.map((l) => (
-        <LetterView key={l.key} letter={l} px={px} />
+        <Fragment key={l.key}>
+          {parts && <LetterParts letter={l} px={px} />}
+          {names && l.name && <LetterName letter={l} px={px} score={scores} />}
+        </Fragment>
       ))}
     </Layer>
   );
 }
 
-function LetterView({ letter, px }: { letter: LetterMarks; px: number }) {
+/** "H 92%" centred under the letter; "?" when the cards aren't sure (D115 · D116). */
+function LetterName({ letter, px, score }: { letter: LetterMarks; px: number; score: boolean }) {
+  const [x, y, w, h] = letter.box;
+  const name = letter.name!;
+  const text = name.clear && score ? `${name.label} ${Math.round(name.score)}%` : name.label;
+  const width = 120 * px;
+  return (
+    <Text
+      x={x + w / 2 - width / 2}
+      y={y + h + 6 * px}
+      width={width}
+      align="center"
+      text={text}
+      fontSize={13 * px}
+      fontStyle="bold"
+      fill={SEEN}
+      opacity={name.clear ? 1 : 0.7}
+    />
+  );
+}
+
+function LetterParts({ letter, px }: { letter: LetterMarks; px: number }) {
   const [x, y, w, h] = letter.box;
   return (
     <>
@@ -39,12 +71,12 @@ function LetterView({ letter, px }: { letter: LetterMarks; px: number }) {
         opacity={0.6}
       />
       <Text
-        x={x}
-        y={y + h + 6 * px}
+        x={x + 2 * px}
+        y={y + 2 * px}
         text={`#${letter.index}`}
-        fontSize={12 * px}
-        fontStyle="bold"
+        fontSize={10 * px}
         fill={SEEN}
+        opacity={0.8}
       />
       {letter.parts.map((p) => (
         <Line

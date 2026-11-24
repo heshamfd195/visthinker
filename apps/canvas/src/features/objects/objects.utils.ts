@@ -22,16 +22,17 @@ export const CLAUDE_COLOR = "#7048e8";
 
 /**
  * What each symbol was read as, from its recognized event (D97): "X 87%", "?", and the runner-up
- * when it came close, e.g. "O 61% · 0?". A written word says how many letters it has.
+ * when it came close, e.g. "O 61% · 0?". A written word shows the word, e.g. "HELLO".
  */
 export function symbolTags(events: readonly VisEvent[]): Map<string, string> {
   const tags = new Map<string, string>();
   for (const e of events) {
     const d = e.detail;
     if (e.type !== "recognized" || !e.target) continue;
-    // A written word: how many letters, until the cards name them (T51).
+    // A written word: the word as read, once above it (D116), e.g. "HELLO" or "HE?LO".
     if (d?.["kind"] === "word" && Array.isArray(d["letters"])) {
-      tags.set(e.target, `${d["letters"].length} letters`);
+      const text = typeof d["text"] === "string" ? d["text"] : undefined;
+      tags.set(e.target, text ?? `${d["letters"].length} letters`);
       continue;
     }
     if (d?.["kind"] !== "symbol") continue;

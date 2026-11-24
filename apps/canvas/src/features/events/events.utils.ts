@@ -1,6 +1,6 @@
 // The events box in plain words (D127): every story event and every Claude call as one short
 // line, raw JSON only on a click.
-import { LetterEventDetail, type VisEvent } from "@visthinker/contract";
+import { LetterEventDetail, type LetterReading, type VisEvent } from "@visthinker/contract";
 import { letterBreakdown, letterSummary, type CallRecord } from "@visthinker/core";
 
 export type EventsFilter = "all" | "you" | "claude" | "read" | "problems";
@@ -47,6 +47,12 @@ const join = (...bits: (string | undefined | false)[]) => bits.filter(Boolean).j
 /** Claude's change, made directly or through `act` (the Fast Brain applies it, naming Claude in `by`). */
 const byClaude = (e: VisEvent) => e.who === "claude" || e.detail?.["by"] === "claude";
 
+/** "H 92%", or "? (L 60 · E 41)" with its two best guesses when unsure (D115). */
+function named(r: LetterReading): string {
+  if (r.clear) return `${r.label} ${Math.round(r.score)}%`;
+  return `? (${r.guesses.map((g) => `${g.char} ${Math.round(g.score)}`).join(" · ")})`;
+}
+
 /** What an event says, in plain words: "stroke s14", "read X · y3 · 92%", "you said: …". */
 export function describe(e: VisEvent): string {
   const d = e.detail ?? {};
@@ -59,6 +65,8 @@ export function describe(e: VisEvent): string {
       const kind = str(d["kind"]) ?? "something";
       if (kind === "word") {
         const letters = Array.isArray(d["letters"]) ? d["letters"].length : 0;
+        const text = str(d["text"]);
+        if (text) return join(`read ${text}`, e.target);
         return join("read a word", e.target, `${letters} letters`);
       }
       if (kind !== "symbol") return join(`read ${kind}`, e.target);
@@ -71,8 +79,13 @@ export function describe(e: VisEvent): string {
       // One letter of a word, with what the handwriting ability measured (T51).
       const letter = LetterEventDetail.safeParse(d);
       if (!letter.success) return join("letter", e.target);
-      const { index, of, features } = letter.data;
-      return join(`letter ${index} of ${of}`, e.target, letterSummary(features));
+      const { index, of, features, reading } = letter.data;
+      return join(
+        `letter ${index} of ${of}`,
+        reading && named(reading),
+        e.target,
+        letterSummary(features),
+      );
     }
     case "place": {
       const kind = str(d["kind"]) ?? "object";
@@ -169,6 +182,13 @@ export function isProblem(row: Row): boolean {
   if (row.kind === "call") return !row.call.ok;
   const d = row.event.detail ?? {};
   if (d["error"] !== undefined) return true;
+  // A letter the cards weren't sure of, or a word with one (D113).
+  if (row.event.type === "letter")
+    return (
+      d["reading"] !== undefined && LetterEventDetail.safeParse(d).data?.reading?.clear === false
+    );
+  if (row.event.type === "recognized" && d["kind"] === "word")
+    return String(d["text"] ?? "").includes("?");
   if (row.event.type !== "recognized") return false;
   const score = num(d["score"]);
   return d["label"] === "?" || (score !== undefined && score < LOW_CONFIDENCE);

@@ -37,7 +37,7 @@ describe("symbol tags (D97)", () => {
     ]);
   });
 
-  it("a written word shows how many letters it has (T51)", () => {
+  it("a written word shows the word as read, or how many letters before the cards (T51 · D116)", () => {
     const word = {
       seq: 2,
       t: 0,
@@ -47,5 +47,7 @@ describe("symbol tags (D97)", () => {
       detail: { kind: "word", letters: [["s1"], ["s2"]] },
     } as const;
     expect([...symbolTags([word])]).toEqual([["w1", "2 letters"]]);
+    const read = { ...word, detail: { ...word.detail, text: "HE" } };
+    expect([...symbolTags([read])]).toEqual([["w1", "HE"]]);
   });
 });
