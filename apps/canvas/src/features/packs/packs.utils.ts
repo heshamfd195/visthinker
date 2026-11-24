@@ -12,7 +12,7 @@ export type PackRow = {
   note?: string;
 };
 
-export type PackIcon = "grid" | "pen" | "shapes" | "modes" | "package";
+export type PackIcon = "pen" | "shapes" | "modes" | "package";
 
 /** A pack that switches modes rather than reading a drawing. */
 export function isMode(name: string): boolean {
@@ -40,7 +40,6 @@ export function splitPacks(rows: readonly PackRow[]): { installed: PackRow[]; ca
 
 /** Which picture a pack gets. */
 export function packIcon(name: string): PackIcon {
-  if (name.includes("tic-tac-toe")) return "grid";
   if (isMode(name)) return "modes";
   if (name.includes("shape")) return "shapes";
   if (/hand|draw|sketch|ink/.test(name)) return "pen";

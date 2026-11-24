@@ -33,7 +33,6 @@ export const SceneObject = z.object({
   strokes: z.array(Id).optional(),
   geom: Geom.optional(),
 });
-// A mark such as "X" or "O" is its own object: kind "mark", label "O", relation inside its cell.
 
 export type Relation = z.infer<typeof Relation>;
 export type LineGeom = z.infer<typeof LineGeom>;

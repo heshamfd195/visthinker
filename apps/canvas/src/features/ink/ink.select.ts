@@ -59,9 +59,9 @@ const corners = ([x, y, w, h]: readonly number[]): Point[] => [
 
 /**
  * What a region selects: whatever lies wholly inside it. An object counts when its box does; a
- * loose stroke when all its points do. Ink that made an object (a recognized symbol, a drawn X)
- * is selected through that object, as a click would; a part of something selected (a board's
- * cell) goes with its whole instead of being listed twice.
+ * loose stroke when all its points do. Ink that made an object (a recognized symbol or shape)
+ * is selected through that object, as a click would; a part of something selected goes with its
+ * whole instead of being listed twice.
  */
 export function selectInRegion(
   region: Region,

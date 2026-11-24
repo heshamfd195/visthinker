@@ -118,22 +118,6 @@ function Item({
           <Chips ids={[item.target, ...item.refs]} />
         </Mine>
       );
-    case "takeback":
-      return (
-        <Mine>
-          {item.text}
-          <Chips ids={[item.target]} />
-        </Mine>
-      );
-    case "verdict":
-      return (
-        <ClaudeLine from="claude" serif={serif}>
-          <span className="font-sans text-xs text-muted-foreground">
-            Claude {item.agreed ? "agreed" : "declined"}
-          </span>
-          {item.text && <div>{item.text}</div>}
-        </ClaudeLine>
-      );
     case "propose":
       return (
         <div className="rounded-md border p-2 text-sm">

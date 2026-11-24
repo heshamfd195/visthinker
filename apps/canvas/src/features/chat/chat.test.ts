@@ -71,7 +71,7 @@ describe("the thread", () => {
       seq: 5,
       who: "fastbrain",
       type: "ask",
-      detail: { text: "Tic-tac-toe? Shall I build it and continue?", choices: ["yes", "no"] },
+      detail: { text: "Is this an A? Shall I label it?", choices: ["yes", "no"] },
     });
     expect(threadFor([ask], "a")[0]).toMatchObject({
       kind: "claude",
@@ -101,24 +101,6 @@ describe("the thread", () => {
       answered: true,
       answer: "accept",
     });
-  });
-
-  it("a take-back and Claude's reply to it (D131)", () => {
-    const events = [
-      e({
-        seq: 7,
-        who: "user",
-        type: "takeback",
-        cause: 6,
-        target: "c5",
-        detail: { text: "Can I take back my move?" },
-      }),
-      e({ seq: 8, type: "answer", cause: 7, detail: { choice: "yes", text: "Sure." } }),
-    ];
-    expect(threadFor(events, "a")).toEqual([
-      { kind: "takeback", seq: 7, text: "Can I take back my move?", target: "c5" },
-      { kind: "verdict", seq: 8, agreed: true, text: "Sure." },
-    ]);
   });
 });
 

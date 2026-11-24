@@ -11,12 +11,11 @@ export const TOOLS: { tool: Tool; label: string; key: string }[] = [
   { tool: "box", label: "Box", key: "b" },
   { tool: "circle", label: "Circle", key: "o" },
   { tool: "arrow", label: "Arrow", key: "a" },
-  { tool: "board", label: "Tic-tac-toe board", key: "g" },
   { tool: "text", label: "Text", key: "t" },
 ];
 
 /** The shapes behind the one "shapes" button. */
-export const SHAPE_TOOLS: Tool[] = ["box", "circle", "arrow", "board"];
+export const SHAPE_TOOLS: Tool[] = ["box", "circle", "arrow"];
 
 /** "ink" follows the canvas (light on dark, dark on paper); the rest stay as they are. */
 export const COLORS: { color: string; label: string }[] = [

@@ -70,14 +70,14 @@ describe("relations (T32)", () => {
   });
 
   it("keeps the relations the store holds, never twice, and leaves the store's objects untouched", () => {
-    const cell = o("c5", "cell", [100, 100, 100, 100]);
-    const mark = o("m1", "mark", [100, 100, 100, 100], {
-      relations: [{ type: "inside", to: "c5" }],
+    const inner = o("b5", "box", [100, 100, 100, 100]);
+    const symbol = o("y1", "symbol", [120, 120, 60, 60], {
+      relations: [{ type: "inside", to: "b5" }],
     });
-    const input = [o("board1", "board", [0, 0, 300, 300]), cell, mark];
+    const input = [o("b0", "box", [0, 0, 300, 300]), inner, symbol];
     const scene = describeScene(input);
-    expect(rel(scene, "m1")).toEqual([{ type: "inside", to: "c5" }]);
-    expect(rel(scene, "c5")).toEqual([{ type: "inside", to: "board1" }]);
+    expect(rel(scene, "y1")).toEqual([{ type: "inside", to: "b5" }]);
+    expect(rel(scene, "b5")).toEqual([{ type: "inside", to: "b0" }]);
     expect(input[1]!.relations).toEqual([]);
     for (const x of scene) expect(SceneObject.parse(x)).toEqual(x);
   });

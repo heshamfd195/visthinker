@@ -140,7 +140,7 @@ describe("open_canvas (T17)", () => {
 
 describe("pack tools (T24)", () => {
   const pack = (name: string, version = "0.1.0") => ({
-    "pack.json": { name, version, contract: "0", match: {}, blocks: ["grid"] },
+    "pack.json": { name, version, contract: "0", match: {}, blocks: ["symbol"] },
     "README.md": "# A pack",
   });
 
@@ -152,7 +152,6 @@ describe("pack tools (T24)", () => {
       packs: [
         { name: "modes", version: "0.1.0", source: "starter" },
         { name: "shapes", version: "0.1.0", source: "starter" },
-        { name: "tic-tac-toe", version: "0.1.0", source: "starter" },
         { name: "noughts", version: "0.1.0", source: "local" },
       ],
     });
@@ -160,11 +159,11 @@ describe("pack tools (T24)", () => {
 
   it("read_pack reads a starter pack, and an unknown name says so", async () => {
     const client = await connect();
-    const result = await call(client, "read_pack", { name: "tic-tac-toe" });
+    const result = await call(client, "read_pack", { name: "shapes" });
     expect(
       (result.structuredContent as { pack: { "pack.json": { name: string } } }).pack["pack.json"]
         .name,
-    ).toBe("tic-tac-toe");
+    ).toBe("shapes");
     expect(text(await call(client, "read_pack", { name: "chess" }))).toMatch(/^unknown_target:/);
   });
 
@@ -197,11 +196,11 @@ describe("pack tools (T24)", () => {
   it("refuses a pack that breaks the contract, and saves nothing", async () => {
     const packs = await tempPacks();
     const bad = {
-      "pack.json": { name: "noughts", version: "1", contract: "0", match: {}, blocks: ["grid"] },
+      "pack.json": { name: "noughts", version: "1", contract: "0", match: {}, blocks: ["symbol"] },
     };
     const result = await call(await connect(undefined, packs), "write_pack", { pack: bad });
     expect(result.isError).toBe(true);
-    expect(await packs.list()).toHaveLength(3);
+    expect(await packs.list()).toHaveLength(2);
   });
 
   it("install_pack needs the API, and says to write the pack instead", async () => {
@@ -213,7 +212,7 @@ describe("pack tools (T24)", () => {
 
 describe("pack tools with the API (T34)", () => {
   const chess = {
-    "pack.json": { name: "chess", version: "0.3.0", contract: "0", match: {}, blocks: ["grid"] },
+    "pack.json": { name: "chess", version: "0.3.0", contract: "0", match: {}, blocks: ["symbol"] },
     "README.md": "# Chess",
   };
   const api = (packs: Record<string, unknown> = { chess }, down = false): PackApi => ({
@@ -246,7 +245,7 @@ describe("pack tools with the API (T34)", () => {
   it("an API that's down never hides the packs on this machine", async () => {
     const result = await call(await connect(undefined, undefined, api({}, true)), "list_packs");
     expect(result.isError).toBeFalsy();
-    expect((result.structuredContent as { packs: unknown[] }).packs).toHaveLength(3);
+    expect((result.structuredContent as { packs: unknown[] }).packs).toHaveLength(2);
   });
 
   it("read_pack falls back to the API for a pack this machine doesn't have", async () => {
@@ -290,7 +289,7 @@ describe("pack tools with the API (T34)", () => {
       { name: "chess" },
     );
     expect(text(result)).toMatch(/^bad_contract:/);
-    expect(await packs.list()).toHaveLength(3);
+    expect(await packs.list()).toHaveLength(2);
   });
 });
 

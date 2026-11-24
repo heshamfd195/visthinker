@@ -243,13 +243,6 @@ const svg = {
 
 function Preview({ item }: { item: LibraryItem }) {
   switch (item.kind) {
-    case "board":
-      return (
-        <svg {...svg}>
-          <rect x="4" y="4" width="24" height="24" rx="1" />
-          <path d="M12 4v24M20 4v24M4 12h24M4 20h24" />
-        </svg>
-      );
     case "box":
       return (
         <svg {...svg}>

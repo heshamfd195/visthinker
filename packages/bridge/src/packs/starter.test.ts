@@ -20,56 +20,20 @@ async function readPack(name: string): Promise<Record<string, unknown>> {
 }
 
 describe("starter packs (D74)", () => {
-  it("ships tic-tac-toe and shapes, each folder named after its pack", async () => {
+  it("ships shapes and modes, each folder named after its pack", async () => {
     const folders = (await readdir(PACKS, { withFileTypes: true }))
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
-    expect(folders.sort()).toEqual(["modes", "shapes", "tic-tac-toe"]);
+    expect(folders.sort()).toEqual(["modes", "shapes"]);
     for (const name of folders) {
       expect(Pack.parse(await readPack(name))["pack.json"].name).toBe(name);
     }
   });
 
   it("every pack explains itself in a README", async () => {
-    for (const name of ["modes", "shapes", "tic-tac-toe"]) {
+    for (const name of ["modes", "shapes"]) {
       expect(String((await readPack(name))["README.md"]).length).toBeGreaterThan(200);
     }
-  });
-});
-
-describe("tic-tac-toe (D80 · D92)", () => {
-  it("is found by 4 lines and 4 crossings in a two-by-two layout (D68)", async () => {
-    const pack = Pack.parse(await readPack("tic-tac-toe"));
-    expect(pack["pack.json"].match).toEqual({ lines: 4, crossings: 4, layout: "two-by-two" });
-    expect(pack["pack.json"].blocks).toEqual(["grid", "turns", "line-of"]);
-  });
-
-  it("you play X and go first; Claude plays O", async () => {
-    const turns = Pack.parse(await readPack("tic-tac-toe"))["rules.json"]!.turns!;
-    expect(turns).toEqual({ order: ["user", "claude"], marks: { user: "X", claude: "O" } });
-  });
-
-  it("lists all 8 win lines exactly once, each over cells 1–9", async () => {
-    const lineOf = Pack.parse(await readPack("tic-tac-toe"))["rules.json"]!["line-of"]!;
-    const lines = lineOf.win.map((l) => [...l].sort().join(","));
-    expect(new Set(lines).size).toBe(8);
-    for (const l of lineOf.win) {
-      expect(l).toHaveLength(lineOf.length);
-      expect(l.every((n) => n >= 1 && n <= 9)).toBe(true);
-    }
-    // 3 rows, 3 columns, 2 diagonals.
-    expect(lines).toEqual(
-      expect.arrayContaining([
-        "1,2,3",
-        "4,5,6",
-        "7,8,9",
-        "1,4,7",
-        "2,5,8",
-        "3,6,9",
-        "1,5,9",
-        "3,5,7",
-      ]),
-    );
   });
 });
 

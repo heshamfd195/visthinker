@@ -1,13 +1,12 @@
 // The app (D119): Konva draws only the drawing, everything else is HTML on top (D144), in seven
 // places that open, collapse or hide together (D121). This file wires the features to the core.
-import type { Box, Mode, Point2, Stroke } from "@visthinker/contract";
+import type { Mode, Point2, Stroke } from "@visthinker/contract";
 import { MODES } from "@visthinker/contract";
 import {
   currentMode,
   modeInfo,
   placeObject,
   recordStroke,
-  requestTakeBack,
   sendMessage,
   setMode,
   moveObject,
@@ -44,13 +43,12 @@ import {
 } from "../features/ink/index.ts";
 import { LIBRARY_DRAG_TYPE, LibraryPanel, type LibraryItem } from "../features/library/index.ts";
 import { ModeButton, ModeNote } from "../features/modes/index.ts";
-import { markColors, ObjectsLayer, symbolTags } from "../features/objects/index.ts";
+import { ObjectsLayer, symbolTags } from "../features/objects/index.ts";
 import { PacksPanel, type PackRow } from "../features/packs/index.ts";
 import { ProjectsMenu } from "../features/projects/index.ts";
 import { TransformLayer } from "../features/transform/index.ts";
 import { SettingsDialog } from "../features/settings/index.ts";
 import { useUi } from "../features/shell/index.ts";
-import { winningLine } from "../features/talk/index.ts";
 import { Toolbar, useShortcuts, useToolbar } from "../features/toolbar/index.ts";
 import { applyTheme, paint } from "../shared/theme.ts";
 import { cn } from "../shared/cn.ts";
@@ -249,18 +247,9 @@ function Workspace({
   }, [session, listing, events.length]);
 
   // What's drawn: visible ink, objects, colours.
-  const hidden = useMemo(() => {
-    const out = new Set(canvas.history.hiddenStrokes());
-    // Ink that gave way to a clean mark (a drawn X played as a move, T31).
-    for (const o of objects) if (o.kind === "mark") for (const s of o.strokes ?? []) out.add(s);
-    return out;
-  }, [canvas, objects, version]);
+  const hidden = useMemo(() => new Set(canvas.history.hiddenStrokes()), [canvas, version]);
   const strokes = useMemo(() => canvas.strokes.all(), [canvas, version]);
-  const colors = useMemo(
-    () => new Map([...colorsFromStory(events), ...markColors(events)]),
-    [events],
-  );
-  const highlight = useMemo(() => winningLine(events), [events]);
+  const colors = useMemo(() => colorsFromStory(events), [events]);
   const tags = useMemo(() => (ui.showRead ? symbolTags(events) : new Map()), [events, ui.showRead]);
 
   const snap = useCallback(
@@ -268,15 +257,8 @@ function Workspace({
     [ui.guides],
   );
 
-  // Undo (D130 · D131): after Claude answered a game move, undo asks for a take-back first.
-  const undo = useCallback(() => {
-    if (canvas.history.takeBack()) {
-      requestTakeBack(canvas.story, canvas.history);
-      useUi.getState().set({ chatOpen: true });
-      return;
-    }
-    canvas.history.undo();
-  }, [canvas]);
+  // Undo takes back your own latest action (D130).
+  const undo = useCallback(() => canvas.history.undo(), [canvas]);
   const redo = useCallback(() => canvas.history.redo(), [canvas]);
   const clear = useCallback(() => canvas.history.clear(), [canvas]);
   // Delete takes the selection away as one undoable erase; a recognized letter or shape takes the
@@ -317,16 +299,6 @@ function Workspace({
   );
   const onPlace = useCallback(
     (input: PlaceInput) => placeObject(canvas.story, canvas.scene, input),
-    [canvas],
-  );
-  const onPlaceBoard = useCallback(
-    (box: Box) => {
-      try {
-        canvas.games.placeBoard("tic-tac-toe", box);
-      } catch (error) {
-        console.warn(error instanceof Error ? error.message : error); // e.g. a board is already there
-      }
-    },
     [canvas],
   );
   const pick = useCallback((id: string | undefined, add: boolean) => {
@@ -390,7 +362,6 @@ function Workspace({
   const placeItem = useCallback(
     (item: LibraryItem, at?: Point2) => {
       const [cx, cy] = snap(at ?? [view.x + view.width / 2, view.y + view.height / 2]);
-      if (item.kind === "board") return onPlaceBoard([cx - 120, cy - 120, 240, 240]);
       if (item.kind === "box" || item.kind === "circle")
         return void onPlace({ kind: item.kind, box: [cx - 60, cy - 40, 120, 80], color });
       if (item.kind === "arrow")
@@ -422,19 +393,7 @@ function Workspace({
         });
       }
     },
-    [
-      canvas,
-      color,
-      now,
-      onPlace,
-      onPlaceBoard,
-      onStroke,
-      snap,
-      view.x,
-      view.y,
-      view.width,
-      view.height,
-    ],
+    [canvas, color, now, onPlace, onStroke, snap, view.x, view.y, view.width, view.height],
   );
 
   const addSelection = useCallback((): LibraryItem | undefined => {
@@ -551,7 +510,6 @@ function Workspace({
             smoothing={ui.smoothing}
             canvas={ui.canvas}
             mode={inkMode}
-            onTap={(at) => canvas.games.tap(at)}
             onErase={(ids) => canvas.history.erase(ids)}
             onPick={pick}
             onSelect={selectRegion}
@@ -566,10 +524,8 @@ function Workspace({
             colors={colors}
             tool={tool}
             color={color}
-            highlight={highlight}
             tags={ui.showScore ? tags : new Map([...tags].map(([k, v]) => [k, v.split(" ")[0]!]))}
             onPlace={onPlace}
-            onPlaceBoard={onPlaceBoard}
             onMove={(id, dx, dy) => moveObject(canvas.story, canvas.scene, id, { dx, dy })}
             selection={ui.selection}
             pointAt={ui.pointAt}

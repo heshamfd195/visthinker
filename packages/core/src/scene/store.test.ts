@@ -34,17 +34,17 @@ describe("scene store (D79)", () => {
     const store = createSceneStore();
     store.add(line("l1"), "user");
     store.add({ ...line("l2"), relations: [{ type: "crosses", to: "l1" }] }, "user");
-    store.add({ ...line("b1"), kind: "board", parts: ["l1", "l2"] }, "fastbrain");
+    store.add({ ...line("g1"), kind: "group", parts: ["l1", "l2"] }, "fastbrain");
     store.remove("l1");
     expect(store.get("l2")?.relations).toEqual([]);
-    expect(store.get("b1")?.parts).toEqual(["l2"]);
+    expect(store.get("g1")?.parts).toEqual(["l2"]);
   });
 
   it("remembers who made each object", () => {
     const store = createSceneStore();
     store.add(line("l1"), "user");
-    store.add({ ...line("m1"), kind: "mark", label: "O" }, "claude");
-    expect([store.owner("l1"), store.owner("m1")]).toEqual(["user", "claude"]);
+    store.add({ ...line("n1"), kind: "note", label: "hi" }, "claude");
+    expect([store.owner("l1"), store.owner("n1")]).toEqual(["user", "claude"]);
   });
 
   it("updates through a copy and refuses to change an id", () => {

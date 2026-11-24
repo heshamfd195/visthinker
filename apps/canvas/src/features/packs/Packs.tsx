@@ -1,6 +1,5 @@
 // The packs panel, beside the right-hand side bar (D122): switch packs on or off, install more.
 import {
-  Grid3x3,
   Package,
   PenLine,
   Plus,
@@ -33,7 +32,6 @@ export interface PacksPanelProps {
 }
 
 const ICONS: Record<PackIcon, LucideIcon> = {
-  grid: Grid3x3,
   pen: PenLine,
   shapes: Shapes,
   modes: ToggleRight,

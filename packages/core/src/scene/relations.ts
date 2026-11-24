@@ -1,6 +1,6 @@
 // The scene described (T32): each object's relations, derived from geometry, so Claude reads the
-// layout, not just a list. Relations the store already holds (a mark inside its cell, a crossing
-// on its lines, lines that cross) are kept; derived ones are added, never duplicated.
+// layout, not just a list. Relations the store already holds (a crossing on its lines, lines
+// that cross) are kept; derived ones are added, never duplicated.
 import type { Box, Point2, Relation, SceneObject } from "@visthinker/contract";
 
 /** How close counts, in world units. */
@@ -16,9 +16,9 @@ export const RELATION_TOLERANCES = {
 } as const;
 
 /** Kinds that can hold other objects. */
-const CONTAINERS = new Set(["box", "circle", "board", "cell", "note"]);
+const CONTAINERS = new Set(["box", "circle", "note"]);
 /** Kinds that are parts of a structure, not free objects that touch things. */
-const STRUCTURAL = new Set(["line", "crossing", "cell", "board", "mark", "arrow"]);
+const STRUCTURAL = new Set(["line", "crossing", "arrow"]);
 
 const area = (b: Box) => b[2] * b[3];
 const grow = (b: Box, d: number): Box => [b[0] - d, b[1] - d, b[2] + 2 * d, b[3] + 2 * d];

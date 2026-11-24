@@ -13,7 +13,6 @@ import type { StrokeStore } from "../scene/strokes.ts";
 import type { Story } from "../scene/story.ts";
 import { describeScene } from "../scene/relations.ts";
 import type { PackRegistry } from "../packs/loader.ts";
-import { createGames, type Games } from "../game/games.ts";
 import { setMode } from "../modes/modes.ts";
 import { createHistory, type History, type HistoryState } from "../scene/history.ts";
 import { createActor, type Actor } from "./act.ts";
@@ -44,8 +43,6 @@ const COMING: Partial<Record<BrowserCall, string>> = {};
 export interface ToolHandler extends CallHandler {
   /** The same actor the act tool uses, for the canvas to send the user's answers to. */
   actor: Actor;
-  /** The games on the canvas: the canvas places boards and sends the user's taps here. */
-  games: Games;
   /** Undo, redo and clear for the canvas (D130–D133). */
   history: History;
   /** True while Claude waits for events, so a message reaches it at once (D134). */
@@ -62,8 +59,7 @@ export function createToolHandler({
   strokes,
   history: historyState,
 }: ToolDeps): ToolHandler {
-  const games = createGames({ story, scene, packs });
-  const actor = createActor({ story, scene, games });
+  const actor = createActor({ story, scene });
   const history = createHistory({
     story,
     scene,
@@ -143,28 +139,6 @@ export function createToolHandler({
       }).seq,
     }),
 
-    /** Claude answers a request of the person's; an accepted take-back undoes both moves (D131). */
-    answer: async ({ cause, accept, text }) => {
-      const request = story.get(cause);
-      if (!request || request.who !== "user" || request.type !== "takeback") {
-        throw new ContractError("unknown_target", `event ${cause} is not a request to answer`);
-      }
-      if (story.all().some((e) => e.type === "answer" && e.cause === cause)) {
-        throw new ContractError("not_allowed", `request ${cause} is already answered`);
-      }
-      const reply = story.append({
-        who: "claude",
-        type: "answer",
-        cause,
-        detail: { choice: accept ? "yes" : "no", ...(text ? { text } : {}) },
-      });
-      const theirs = request.detail?.["theirs"];
-      if (accept && typeof theirs === "number" && request.cause !== undefined) {
-        history.undoEvent(theirs, "claude", cause);
-        history.undoEvent(request.cause, "user", cause);
-      }
-      return { seq: reply.seq };
-    },
     /** Claude switches the mode with a reason; refused while the person holds one by hand (D129). */
     set_mode: async ({ mode, reason }) => {
       const event = setMode(story, packs, { mode, manual: false, by: "claude", reason });
@@ -221,7 +195,6 @@ export function createToolHandler({
   };
   return Object.assign(handle, {
     actor,
-    games,
     history,
     listening: () => waiters.size > 0,
     onActivity(listener: (record: CallRecord | undefined) => void) {

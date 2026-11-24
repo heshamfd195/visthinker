@@ -1,7 +1,7 @@
 // Undo, redo and clear that change the canvas too, not only the story (D130–D133 · D141).
 // The story says what happened; the history keeps the scene and the visible ink in step with it:
-// an undone stroke hides its ink and the objects read only from it, an undone mark or placed
-// object leaves the scene, an undone move goes back, and a clear hides everything before it.
+// an undone stroke hides its ink and the objects read only from it, an undone placed object
+// leaves the scene, an undone move goes back, and a clear hides everything before it.
 import type { Point2, SceneObject, Stroke, VisEvent, Who } from "@visthinker/contract";
 import type { SceneStore } from "./store.ts";
 import type { Story } from "./story.ts";
@@ -41,15 +41,10 @@ export interface History {
    * `transform` event. Ids that aren't on the canvas are skipped.
    */
   reshape(after: Shape, who?: Who): VisEvent | undefined;
-  /** Takes back one given event, e.g. Claude's move in an accepted take-back (D131). */
+  /** Takes back one given event, e.g. one of Claude's changes from the chat (D130). */
   undoEvent(seq: number, who: Who, cause?: number): VisEvent | undefined;
   canUndo(): boolean;
   canRedo(): boolean;
-  /**
-   * In a game, once Claude has answered the user's move, undo becomes a take-back that asks
-   * Claude first (D131): the user's mark and Claude's answer to it.
-   */
-  takeBack(): { mine: VisEvent; theirs: VisEvent } | undefined;
   /** Strokes whose ink is hidden by an undo or a clear. */
   hiddenStrokes(): ReadonlySet<string>;
   state(): HistoryState;
@@ -109,35 +104,11 @@ export function createHistory({
     saved.delete(seq);
   };
 
-  /**
-   * What a `mark` or `place` event put on the canvas. A move names its cell, and the mark itself
-   * comes in the Fast Brain's `place` that answers it; a board brings its cells along.
-   */
+  /** What a `place` event put on the canvas: the object and its parts. */
   const objectsOf = (event: VisEvent): SceneObject[] => {
-    if (event.type === "mark") {
-      const placed = story
-        .all()
-        .find((e) => e.type === "place" && e.cause === event.seq && e.detail?.["mark"]);
-      const id = placed?.detail?.["mark"];
-      const mark = typeof id === "string" ? scene.get(id) : undefined;
-      return mark ? [mark] : [];
-    }
-    // A mark placed into a cell (Claude's move): the mark, never the cell it names.
-    const markId = event.detail?.["mark"];
-    if (typeof markId === "string") {
-      const mark = scene.get(markId);
-      return mark ? [mark] : [];
-    }
     const object = event.target ? scene.get(event.target) : undefined;
     if (!object) return [];
-    const parts = scene
-      .all()
-      .filter(
-        (o) =>
-          object.parts.includes(o.id) ||
-          o.relations.some((r) => r.type === "inside" && r.to === object.id && o.kind === "cell"),
-      );
-    return [object, ...parts];
+    return [object, ...scene.all().filter((o) => object.parts.includes(o.id))];
   };
 
   /** Objects read only from strokes that are now all hidden. */
@@ -166,7 +137,6 @@ export function createHistory({
         if (event.target) hidden.add(event.target);
         save(event.seq, orphans());
         break;
-      case "mark":
       case "place":
         save(event.seq, objectsOf(event));
         break;
@@ -194,7 +164,6 @@ export function createHistory({
         if (event.target) hidden.delete(event.target);
         restore(event.seq);
         break;
-      case "mark":
       case "place":
         restore(event.seq);
         break;
@@ -300,22 +269,6 @@ export function createHistory({
     },
     canUndo: () => findUndoable(story.all()) !== undefined,
     canRedo: () => findRedoable(story.all()) !== undefined,
-    takeBack() {
-      const events = story.all();
-      const mine = findUndoable(events);
-      if (mine?.type !== "mark") return undefined;
-      const undone = undoneSeqs(events);
-      // Claude's move is the Fast Brain placing its mark "by claude" (act → placeMark).
-      const theirs = events.find(
-        (e) =>
-          e.seq > mine.seq &&
-          e.type === "place" &&
-          e.detail?.["by"] === "claude" &&
-          typeof e.detail?.["mark"] === "string" &&
-          !undone.has(e.seq),
-      );
-      return theirs ? { mine, theirs } : undefined;
-    },
     hiddenStrokes: () => hidden,
     state: () => ({
       hidden: [...hidden],

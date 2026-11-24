@@ -5,7 +5,6 @@ import {
   Circle,
   Download,
   Eraser,
-  Grid3x3,
   Hand,
   LassoSelect,
   MousePointer2,
@@ -58,7 +57,6 @@ const ICONS: Record<Tool, LucideIcon> = {
   box: Square,
   circle: Circle,
   arrow: ArrowRight,
-  board: Grid3x3,
   text: Type,
 };
 

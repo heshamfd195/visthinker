@@ -18,12 +18,6 @@ const roundPoint = (p: Point2): Point2 => [round(p[0]), round(p[1])];
 /** Kinds drawn as a box that turns around its centre: rotation lives in `geom.rotation`. */
 const BOXED = new Set(["box", "circle", "glyph", "text"]);
 
-/** Game pieces stay as they are: a board's cells must keep their grid. */
-export const FIXED_KINDS: ReadonlySet<string> = new Set(["board", "cell", "mark"]);
-
-/** Whether the handles can resize and rotate this object. */
-export const canTransform = (o: SceneObject): boolean => !FIXED_KINDS.has(o.kind);
-
 /** An object's rotation in degrees, for the kinds that turn around their centre. */
 export function rotationOf(o: SceneObject): number {
   const r = (o.geom as { rotation?: unknown } | undefined)?.rotation;
@@ -149,8 +143,6 @@ export function selectionParts(
 ): { strokes: Stroke[]; objects: SceneObject[] } | undefined {
   const chosen = new Set(ids);
   const picked = objects.filter((o) => chosen.has(o.id));
-  // A game piece in the selection: no handles at all, so nothing half-moves.
-  if (picked.some((o) => !canTransform(o))) return undefined;
   const inkIds = new Set([...ids, ...picked.flatMap((o) => o.strokes ?? [])]);
   const ink = strokes.filter((s) => inkIds.has(s.id));
   if (!picked.length && !ink.length) return undefined;

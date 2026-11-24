@@ -29,10 +29,10 @@ const ids = () => {
 };
 
 describe("built-in items (D123)", () => {
-  it("has four artifacts and eight symbols, ids unique", () => {
+  it("has three artifacts and eight symbols, ids unique", () => {
     const artifacts = BUILT_IN.filter((i) => i.group === "artifacts");
     const symbols = BUILT_IN.filter((i) => i.group === "symbols");
-    expect(artifacts.map((a) => a.kind)).toEqual(["board", "arrow", "box", "circle"]);
+    expect(artifacts.map((a) => a.kind)).toEqual(["arrow", "box", "circle"]);
     expect(symbols.map((s) => s.glyph)).toEqual(["π", "∑", "√", "∞", "±", "Δ", "θ", "→"]);
     expect(symbols.every((s) => s.kind === "symbol")).toBe(true);
     expect(new Set(BUILT_IN.map((i) => i.id)).size).toBe(BUILT_IN.length);
