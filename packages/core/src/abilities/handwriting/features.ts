@@ -4,7 +4,16 @@
 // box, never pixels, so a tiny A and a huge A read the same. Order never counts: a ∧ drawn in one
 // stroke gives the same two legs as two strokes. Works on copies of the points, never the raw
 // stroke (D88). Measured on the page's axes for now; a tilted word's own baseline comes later.
-import type { Box, Point2, Stroke } from "@visthinker/contract";
+import type {
+  LetterFeatures,
+  LetterLoop,
+  LetterPart,
+  PartCrossing,
+  PartEnd,
+  PartMeet,
+  Point2,
+  Stroke,
+} from "@visthinker/contract";
 import { crossingPoint, fitLine, LINE_TOLERANCES } from "../../comparator/geometry.ts";
 import type { LineTolerances } from "../../comparator/geometry.ts";
 import { simplify } from "../../comparator/shapes.ts";
@@ -37,83 +46,15 @@ export const FEATURE_TOLERANCES = {
   /** Room for the pen's wobble when fitting a short line. */
   lineWobble: 0.03,
   /**
-   * A hand-drawn leg may bow this share of its length and still be a line (a real A's left leg
-   * bowed 6%; the comparator's straight-line test allows 4%)…
+   * A hand-drawn leg may bow this share of its length and still be a line: a real A's left leg
+   * bowed 6%, a real L's foot 10%; the comparator's straight-line test allows 4%…
    */
-  lineBow: 0.08,
+  lineBow: 0.12,
   /** …and stray this share of its length from the fitted line. */
   lineDeviation: 0.1,
 } as const;
 
 export type FeatureTolerances = Record<keyof typeof FEATURE_TOLERANCES, number>;
-
-export type PartEnd = "a" | "b";
-
-interface PartBase {
-  /** Which stroke of the group it came from, in drawing order. */
-  stroke: number;
-  /** Its ends in the letter's box (0–1, top left is 0, y grows down); `a` was drawn first. */
-  a: Point2;
-  b: Point2;
-  /** A share of the letter's size: a line end to end, a curve along its path. */
-  length: number;
-}
-
-export interface LinePart extends PartBase {
-  kind: "line";
-  /** Degrees from flat, 0–180 with y up: 90 is upright, under 90 leans right (/), over leans left (\). */
-  angle: number;
-}
-
-export interface CurvePart extends PartBase {
-  kind: "curve";
-}
-
-export type LetterPart = LinePart | CurvePart;
-
-/** Two parts whose ends land close together, like the top of an A. */
-export interface PartMeet {
-  /** Indexes into `parts`, the lower first. */
-  parts: [number, number];
-  ends: [PartEnd, PartEnd];
-  at: Point2;
-  /** How far apart the two ends are, a share of the letter's size. */
-  gap: number;
-}
-
-/** Two lines that cross, or one that touches the other's body (a T, an H's bar). */
-export interface PartCrossing {
-  /** Indexes into `parts`, the lower first; both are lines. */
-  parts: [number, number];
-  /** How far along the first line it is (0 at its `a`, 1 at its `b`); near 0 or 1 is a touch. */
-  t: number;
-  /** The same along the second line. */
-  u: number;
-  at: Point2;
-  /** The smaller angle between the two lines, 0–90. */
-  angle: number;
-}
-
-/** A stroke that closes on itself around a curve, like an O or the bowl of a P drawn in one go. */
-export interface LetterLoop {
-  stroke: number;
-  center: Point2;
-  /** Its size, each a share of the letter's size. */
-  width: number;
-  height: number;
-}
-
-export interface LetterFeatures {
-  strokes: number;
-  /** The letter's box in world units; everything else is measured against it. */
-  box: Box;
-  /** Height over width. */
-  aspect: number;
-  parts: LetterPart[];
-  meets: PartMeet[];
-  crossings: PartCrossing[];
-  loops: LetterLoop[];
-}
 
 /** A part while it is still being read, in world units. */
 interface WorldPart {
@@ -162,7 +103,9 @@ export function letterFeatures(
   };
   const world = paths.flatMap((path, i) =>
     mergeRetraces(
-      piecesOf(path, size, tol).map((piece) => partOf(piece, i, strokes[i]!, lineTol)),
+      piecesOf(path, size, tol).flatMap((piece) =>
+        kneeCut(piece, i, strokes[i]!, lineTol, tol.minPart * size),
+      ),
       size,
       tol,
     ),
@@ -217,6 +160,13 @@ export function letterFeatures(
   return { strokes: strokes.length, box, aspect, parts, meets, crossings, loops };
 }
 
+/** A place measured in the letter's box, back in world units (to draw what was measured). */
+export function inWorld(f: Pick<LetterFeatures, "box">, [x, y]: Point2): Point2 {
+  const [bx, by, w, h] = f.box;
+  const size = Math.max(w, h);
+  return [bx + x * Math.max(w, 0.05 * size), by + y * Math.max(h, 0.05 * size)];
+}
+
 /** Splits a stroke at its sharp corners and drops the tiny pieces (hooks, rounded corners). */
 function piecesOf(path: Point2[], size: number, tol: FeatureTolerances): Point2[][] {
   if (path.length < 2) return [];
@@ -234,6 +184,32 @@ function piecesOf(path: Point2[], size: number, tol: FeatureTolerances): Point2[
     if (cum[to]! - cum[from]! >= tol.minPart * size) pieces.push(path.slice(from, to + 1));
   }
   return pieces;
+}
+
+/**
+ * A piece that isn't a line may be two lines joined by a gentle bend (a knee), like a rounded L
+ * corner that turns too softly to count as a corner. Cut it once where it strays furthest from
+ * the line between its ends, and keep the cut only if both halves are lines: an O, a C, a P's
+ * bowl or an S stays one curve, since their halves are still curves.
+ */
+function kneeCut(
+  piece: Point2[],
+  stroke: number,
+  source: Stroke,
+  lineTol: LineTolerances,
+  minLength: number,
+): WorldPart[] {
+  const whole = partOf(piece, stroke, source, lineTol);
+  if (whole.kind === "line" || piece.length < 5) return [whole];
+  const chord = { a: piece[0]!, b: piece.at(-1)! };
+  let at = 0;
+  piece.forEach((p, i) => {
+    if (offLine(chord, p) > offLine(chord, piece[at]!)) at = i;
+  });
+  const halves = [piece.slice(0, at + 1), piece.slice(at)];
+  if (halves.some((h) => cumulative(h).at(-1)! < minLength)) return [whole];
+  const parts = halves.map((h) => partOf(h, stroke, source, lineTol));
+  return parts.every((p) => p.kind === "line") ? parts : [whole];
 }
 
 /** A piece is a line if it fits one, otherwise a curve. */

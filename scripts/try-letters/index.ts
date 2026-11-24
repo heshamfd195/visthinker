@@ -5,7 +5,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { Project } from "../../packages/contract/src/index.ts";
-import { LEGEND, describe, lettersOf, read } from "./letters.ts";
+import { LEGEND, describe, lettersOf } from "./letters.ts";
 
 const args = process.argv.slice(2);
 const json = args.includes("--json");
@@ -36,11 +36,11 @@ async function main() {
   const parsed = Project.safeParse(JSON.parse(await readFile(file, "utf8")));
   if (!parsed.success) throw new Error(`${file} is not a saved project: ${parsed.error.message}`);
   const { meta, snapshot } = parsed.data;
-  const readings = read(lettersOf(snapshot));
+  const readings = lettersOf(snapshot);
 
   if (json) {
     const out = readings.map((r) => ({
-      strokeIds: r.letter.strokes.map((s) => s.id),
+      strokeIds: r.strokes.map((s) => s.id),
       ...r.features,
     }));
     console.log(JSON.stringify({ project: meta.id, name: meta.name, letters: out }, null, 2));

@@ -1,7 +1,7 @@
 import type { Point2, Stroke } from "@visthinker/contract";
 import { describe, expect, it } from "vitest";
+import type { LetterFeatures } from "@visthinker/contract";
 import { letterFeatures } from "./index.ts";
-import type { LetterFeatures } from "./index.ts";
 
 /** A hand-drawn line: evenly spaced points with a small steady wobble across it. */
 const line = (a: Point2, b: Point2, n = 16, wobble = 0.8): Point2[] => {
@@ -218,6 +218,28 @@ describe("letter features: H, O and the rest", () => {
     expect(f.meets).toMatchObject([{ parts: [0, 1], ends: ["b", "a"], gap: 0 }]);
     expect(f.meets[0]!.at[0]).toBeCloseTo(0, 1);
     expect(f.meets[0]!.at[1]).toBeCloseTo(1, 1);
+  });
+
+  it("a gentle knee between two straight runs is two lines, not a curve", () => {
+    // Down, then bending only 35° into a diagonal: too soft for a corner.
+    const f = read(path([0, 0], [0, 60], [40, 117]));
+    expect(f.parts.map((p) => p.kind)).toEqual(["line", "line"]);
+  });
+
+  it("round letters stay curves when the knee cut tries them: P's bowl, S, U", () => {
+    const half = (cx: number, cy: number, r: number, from: number, turns: number) =>
+      ring(cx, cy, r, r, turns).map(([x, y]): Point2 => {
+        const t = Math.atan2(y - cy, x - cx) + from;
+        return [cx + r * Math.cos(t), cy + r * Math.sin(t)];
+      });
+    const bowl = half(0, 20, 20, -Math.PI / 2, 0.5);
+    expect(read(line([0, 0], [0, 80]), bowl).parts.map((p) => p.kind)).toEqual(["line", "curve"]);
+    const s = [...half(30, 20, 20, -0.3, -0.75), ...half(30, 60, 20, -Math.PI / 2, 0.75).slice(1)];
+    expect(read(s).parts.every((p) => p.kind === "curve")).toBe(true);
+    const u = [...line([0, 0], [0, 50]), ...half(25, 50, 25, Math.PI, -0.5).slice(1)];
+    expect(
+      read([...u, ...line([50, 50], [50, 0]).slice(1)]).parts.some((p) => p.kind === "curve"),
+    ).toBe(true);
   });
 
   it("a little hook at the end of a stroke is dropped", () => {

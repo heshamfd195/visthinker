@@ -7,3 +7,5 @@ test-results
 packages/visthinker/canvas
 packages/visthinker/packs
 packages/visthinker/LICENSE
+# saved drawings, kept byte for byte as test fixtures
+**/fixtures/*.json

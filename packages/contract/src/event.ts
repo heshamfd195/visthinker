@@ -23,6 +23,7 @@ export const KNOWN_EVENT_TYPES = [
   "pack",
   "message",
   "mode",
+  "letter",
 ] as const;
 export const EventType = z.string().min(1).max(32);
 

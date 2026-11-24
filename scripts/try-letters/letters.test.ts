@@ -1,6 +1,6 @@
 import type { Point2, Snapshot, Stroke } from "../../packages/contract/src/index.ts";
 import { describe as suite, expect, it } from "vitest";
-import { describe, lettersOf, read } from "./letters.ts";
+import { describe, lettersOf } from "./letters.ts";
 
 const line = (a: Point2, b: Point2, n = 12): Point2[] =>
   Array.from({ length: n + 1 }, (_, i) => [
@@ -42,7 +42,7 @@ const L = [stroke("l1", [...line([0, 150], [0, 230]), ...line([0, 230], [45, 230
 suite("try-letters (T51)", () => {
   it("splits the canvas into letters in reading order, leaving out what was undone", () => {
     const letters = lettersOf(snapshot([...H, ...A, undone, ...L], ["gone"]));
-    expect(letters.map((l) => l.strokes.map((s) => s.id))).toEqual([
+    expect(letters.map((l) => l.strokes.map((s) => s.id).sort())).toEqual([
       ["a1", "a2", "a3"],
       ["h1", "h2", "h3"],
       ["l1"],
@@ -50,7 +50,7 @@ suite("try-letters (T51)", () => {
   });
 
   it("says what was measured in plain words", () => {
-    const [a, h] = read(lettersOf(snapshot([...A, ...H])));
+    const [a, h] = lettersOf(snapshot([...A, ...H]));
     const textA = describe(a!, 1);
     expect(textA).toContain("Letter 1 · 3 strokes · 60 × 80, tall");
     expect(textA).toContain("1b and 2a meet at (0.50, 0.00) top centre");
