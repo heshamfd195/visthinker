@@ -83,19 +83,21 @@ Only this repo's decisions are listed, so the numbers have gaps. When a later de
 
 ## ⚡ Fast Brain & comparator
 
-| ID   | decision                                                                                                                                                                  |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D23  | ⚡ The Fast Brain is code, not an LLM.                                                                                                                                    |
-| D60  | ⚡ The Fast Brain draws, listens, sends events, and asks Claude only when it must think.                                                                                  |
-| D63  | 🌐 The Fast Brain lives in the browser.                                                                                                                                   |
-| D24  | 🧭 Claude decides what to do; the Fast Brain works out the exact placement.                                                                                               |
-| D64  | 🧭 The comparator is the generic core of the Fast Brain: it recognizes what is drawn and keeps a scene description Claude reads.                                          |
-| D96  | ✂️ Strokes are grouped into one symbol before anything is recognized, so an X is one symbol, not two lines.                                                               |
-| D97  | 🔤 Grouping works anywhere on the canvas; a group is read about 0.6 s after its last stroke, and every symbol shows a label with its score (line length changed by D109). |
-| D109 | 📏 A straight stroke of 400+ units is a line at once, for now.                                                                                                            |
-| D110 | ⏱️ A stroke that lands close by within 2 s rejoins the last symbol, and both are read again together.                                                                     |
+| ID   | decision                                                                                                                                                                                                        |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D23  | ⚡ The Fast Brain is code, not an LLM.                                                                                                                                                                          |
+| D60  | ⚡ The Fast Brain draws, listens, sends events, and asks Claude only when it must think.                                                                                                                        |
+| D63  | 🌐 The Fast Brain lives in the browser.                                                                                                                                                                         |
+| D24  | 🧭 Claude decides what to do; the Fast Brain works out the exact placement.                                                                                                                                     |
+| D64  | 🧭 The comparator is the generic core of the Fast Brain: it recognizes what is drawn and keeps a scene description Claude reads.                                                                                |
+| D96  | ✂️ Strokes are grouped into one symbol before anything is recognized, so an X is one symbol, not two lines.                                                                                                     |
+| D97  | 🔤 Grouping works anywhere on the canvas; a group is read about 0.6 s after its last stroke, and every symbol shows a label with its score (line length changed by D109).                                       |
+| D109 | 📏 A straight stroke of 400+ units is a line at once, for now.                                                                                                                                                  |
+| D110 | ⏱️ A stroke that lands close by within 2 s rejoins the last symbol, and both are read again together.                                                                                                           |
+| D167 | ⏱️ A stroke can join several recent words: every word read in the last 2 s counts, and a stroke that reaches more than one (an H's bar after its legs were read apart) merges them into one word. Extends D110. |
+| D168 | 🔤 A lone letter the cards read clearly is a word (a one-letter `A`); a lone mark no card knows (an X) stays a symbol.                                                                                          |
 
-## ✍️ Handwriting ability (next, not built yet)
+## ✍️ Handwriting ability (being built)
 
 | ID   | decision                                                                                                                                                                            |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
