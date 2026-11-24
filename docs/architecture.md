@@ -6,14 +6,14 @@ How Visual Thinker (code name `visthinker`) is put together: what lives where, h
 
 ## 🗂️ What lives where
 
-| part          | path                  | what it is                                                                                                                        |
-| ------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| 📜 contract   | `packages/contract`   | the shared shapes as Zod schemas: events, scene objects, strokes, `act`, packs, projects, MCP tools, bridge messages              |
-| 🧠 core       | `packages/core`       | the Fast Brain, pure TypeScript: the story, scene store, history (undo), transform, comparator, packs loader, modes, tool handler |
-| 🔌 bridge     | `packages/bridge`     | the MCP server over stdio, plus a localhost WebSocket and HTTP server for the canvas tab; saves projects and packs on disk        |
-| 📦 visthinker | `packages/visthinker` | the npm package: the bridge bundled with the built canvas and the starter packs                                                   |
-| 🖼️ canvas     | `apps/canvas`         | the React 19 + Konva app in your browser; it runs the core                                                                        |
-| 🧩 packs      | `packs/`              | the starter packs, data only: `shapes` and `modes`                                                                                |
+| part          | path                  | what it is                                                                                                                                   |
+| ------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| 📜 contract   | `packages/contract`   | the shared shapes as Zod schemas: events, scene objects, strokes, `act`, packs, projects, MCP tools, bridge messages                         |
+| 🧠 core       | `packages/core`       | the Fast Brain, pure TypeScript: the story, scene store, history (undo), transform, comparator, abilities, packs loader, modes, tool handler |
+| 🔌 bridge     | `packages/bridge`     | the MCP server over stdio, plus a localhost WebSocket and HTTP server for the canvas tab; saves projects and packs on disk                   |
+| 📦 visthinker | `packages/visthinker` | the npm package: the bridge bundled with the built canvas and the starter packs                                                              |
+| 🖼️ canvas     | `apps/canvas`         | the React 19 + Konva app in your browser; it runs the core                                                                                   |
+| 🧩 packs      | `packs/`              | the starter packs, data only: `shapes` and `modes`                                                                                           |
 
 ### 🖼️ Inside the canvas
 
@@ -112,7 +112,7 @@ The HTTP API follows the same rules, with the token as a `Bearer` header. More i
 | 🗂️ project        | what you're doing: one canvas with many chats                                                               | ✅ saved on disk, reopened, many chats · 💭 planned: **the project decides which knowledge runs**. Today the starter packs load for every project.                                                   |
 | 📦 knowledge pack | rules and facts as data: `pack.json`, `rules.json`, `README.md`, checked before anything is read            | ✅ `shapes` (lines, crossings, X and O templates) and `modes` (Claude's card for each mode) · your own packs on disk · Claude can write one with `write_pack` · switch a pack off in the packs panel |
 | 📚 library        | things you put on the canvas                                                                                | ✅ artifacts (box, circle, arrow), symbols, and drawings you saved ("Yours", kept in this browser)                                                                                                   |
-| ✋ abilities      | how the canvas reads your input, e.g. handwriting, smart selection; on by default, each can be switched off | 💭 planned. Today the reading is built into the core's comparator.                                                                                                                                   |
+| ✋ abilities      | how the canvas reads your input, e.g. handwriting, smart selection; on by default, each can be switched off | 🧪 started: `core/abilities/handwriting` measures a letter's parts (legs, meets, crossings, loops), not wired in yet (T51). Today the reading is built into the core's comparator.                   |
 
 - 🧩 A pack wires **building blocks** the core ships (`line`, `crossing`, `symbol`, `modes`). A block the core doesn't know loads and does nothing.
 - ☁️ An optional hosted pack API can add packs later.

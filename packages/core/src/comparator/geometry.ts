@@ -26,6 +26,10 @@ export const CROSSING_TOLERANCES = {
   endGapRatio: 0.05,
 } as const;
 
+/** The same knobs with any values, so a caller can scale them to what it reads (T51). */
+export type LineTolerances = Record<keyof typeof LINE_TOLERANCES, number>;
+export type CrossingTolerances = Record<keyof typeof CROSSING_TOLERANCES, number>;
+
 export interface LineFit {
   /** The end nearest the first point drawn. */
   a: Point2;
@@ -50,7 +54,7 @@ const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n
  * Is this stroke a straight line? Total least squares (the principal axis of the points),
  * then three checks: every point near the axis, no steady bow, no doubling back.
  */
-export function fitLine(stroke: Stroke, tol = LINE_TOLERANCES): LineVerdict {
+export function fitLine(stroke: Stroke, tol: LineTolerances = LINE_TOLERANCES): LineVerdict {
   const pts = dedupe(stroke.points.map((p): Point2 => [p[0], p[1]]));
   if (pts.length < 2) return { line: false, reason: "fewer than two distinct points" };
 
@@ -117,7 +121,7 @@ export function fitLine(stroke: Stroke, tol = LINE_TOLERANCES): LineVerdict {
 export function crossingPoint(
   l1: { a: Point2; b: Point2 },
   l2: { a: Point2; b: Point2 },
-  tol = CROSSING_TOLERANCES,
+  tol: CrossingTolerances = CROSSING_TOLERANCES,
 ): Point2 | null {
   const d1: Point2 = [l1.b[0] - l1.a[0], l1.b[1] - l1.a[1]];
   const d2: Point2 = [l2.b[0] - l2.a[0], l2.b[1] - l2.a[1]];
