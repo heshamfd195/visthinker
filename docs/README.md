@@ -15,7 +15,7 @@ How Visual Thinker is built, why, and where it's going. These docs cover this re
 
 ## ✏️ Drawings
 
-Each drawing is two files with the same name:
+Each drawing is two files with the same name, and **always dark** (D165): save it in Excalidraw's dark theme and export the SVG with dark mode on.
 
 | file              | what it is                                                          |
 | ----------------- | ------------------------------------------------------------------- |

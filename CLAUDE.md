@@ -39,7 +39,7 @@ Agent commits end with a `Co-Authored-By:` line naming the agent.
 ## 📖 Docs rules (D164)
 
 - 🎞️ **A change you can see gets a GIF**: add it to `docs/images/changes/YYYY-MM-DD-what.gif` (under ~3 MB), add an entry at the top of [docs/changes.md](docs/changes.md), and put it at the top of the README.
-- ✏️ **Drawings are two files** in `docs/drawings/`: `name.excalidraw` (the source) and `name.svg` (the export), kept in step.
+- ✏️ **Drawings are two files** in `docs/drawings/`: `name.excalidraw` (the source) and `name.svg` (the export), kept in step. **Always dark** (D165): save the source in Excalidraw's dark theme, and export the SVG with dark mode on.
 - ⭐ **A new decision** goes in [docs/decisions.md](docs/decisions.md) with its number.
 - 👤 **A story that changes** is updated in [docs/user-stories.md](docs/user-stories.md).
 - Docs cover this repo only. Short, plain English, tables over paragraphs.

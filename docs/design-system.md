@@ -134,6 +134,10 @@ One guide at a time, background only: the Fast Brain never reads it.
 | colour        | the ink colour                                                                     |
 | snap          | placed things snap to dots or grid crossings                                       |
 
+## ✏️ Drawings in the docs
+
+Every drawing in `docs/drawings/` is dark (D165), to match the app: Excalidraw's dark theme for the `.excalidraw` source, and dark mode on when exporting the `.svg`.
+
 ## 🚧 Open work
 
 | issue                                                          | what                                              |

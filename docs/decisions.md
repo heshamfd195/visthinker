@@ -22,6 +22,7 @@ Only this repo's decisions are listed, so the numbers have gaps. When a later de
 | D52  | 🏷️ The code and package name is `visthinker` (the public name changed by D163).                                                                                                                                                                             |
 | D163 | 🏷️ The repo is `visual-thinker` and the README title is Visual Thinker; the npm package, the install command and the code's package names stay `visthinker`.                                                                                                |
 | D164 | 📖 This repo documents itself only: README, CLAUDE.md, and `docs/` with architecture, decisions, journey, design system, user stories, changes, drawings and images.                                                                                        |
+| D165 | 🌙 Every drawing in the docs is dark: Excalidraw's dark theme for the source, and a dark export for the SVG.                                                                                                                                                |
 
 ## 🖼️ Canvas & UI
 
