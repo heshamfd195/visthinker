@@ -9,7 +9,7 @@ A shared canvas where Claude sees your drawing as data, not pixels.
 [![CI](https://github.com/heshamfd195/visual-thinker/actions/workflows/ci.yml/badge.svg)](https://github.com/heshamfd195/visual-thinker/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-![Writing an X, drawing a circle, lasso-selecting both and rotating them](docs/images/changes/2026-11-24-select-transform.gif)
+![Writing H and I, teaching a new letter t in the chat, then writing t again and it is read alone](docs/images/changes/2026-11-25-teach-by-example.gif)
 
 </div>
 
@@ -19,7 +19,22 @@ A shared canvas where Claude sees your drawing as data, not pixels.
 
 You draw on a canvas, and every stroke reaches Claude as structured events instead of a screenshot: the ink, and what the canvas read from it (a line, a circle, an X). Claude answers on the same canvas, by object id, never by pixels.
 
-Next up: handwriting, so you and Claude can write to each other.
+## ✍️ Teach it your handwriting
+
+Handwriting is the first **ability**: the canvas reads your letters, and you teach it the ones it doesn't know.
+
+| step         | what happens                                                                                   |
+| ------------ | ---------------------------------------------------------------------------------------------- |
+| ✏️ you write | each letter's strokes are measured: its lines, curves, where they meet and cross, its loops    |
+| 🔎 it reads  | your own saved examples first, then built-in character cards, then Claude when nothing is sure |
+| 💬 you teach | say "it's t" in the chat; Claude labels the letter and it's saved as one of your examples      |
+| 🔁 it learns | next time that letter is read alone, from your example, often from just one                    |
+
+Your examples are kept with the ability, in [`abilities/handwriting/data/examples.json`](packages/core/src/abilities/handwriting/data/examples.json). The ability has its own [README](packages/core/src/abilities/handwriting/README.md).
+
+![The canvas after a teaching session: capitals A–Z and digits, each labelled with its score and who taught it](docs/images/teach-by-example.jpg)
+
+Taught so far, in one sitting: all capitals but Q and the digits 0–9, 60 examples. Next: lowercase, then sentences, then Claude writing back through the same examples.
 
 ## Try it
 
@@ -63,7 +78,7 @@ Then ask Claude to open the canvas, draw something, and talk about it in the cha
 | ⚡ Core        | pure TypeScript: the event story, the scene, undo, and the Fast Brain that reads your strokes | ✅ working     |
 | 🔌 Bridge      | a local MCP server that connects the canvas to Claude Code                                    | ✅ working     |
 | 📦 Packs       | knowledge as small data packs, not code changes                                               | ✅ working     |
-| ✍️ Handwriting | an ability: you write, Claude reads, and Claude writes back                                   | 🔜 next        |
+| ✍️ Handwriting | an ability: you write, it reads, you teach it in the chat; Claude writing back is next        | ✅ first cut   |
 
 More in [docs/architecture.md](docs/architecture.md).
 
