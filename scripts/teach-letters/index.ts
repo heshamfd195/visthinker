@@ -1,18 +1,23 @@
 // `pnpm teach:letters <project id> <text>`: teaches the handwriting ability the letters written on
 // a saved canvas (D174), until "it's A" is on the canvas itself. The letters are read left to right
 // and named by <text> in order ("HELLO", or "HELLO HELLO" for two words; spaces are skipped), then
-// added to ~/.visthinker/abilities/handwriting/examples.json, keeping the last 10 per letter.
+// added to the ability's data in the repo, packages/core/src/abilities/handwriting/data/examples.json
+// (D178), keeping the last 10 per letter.
 // A dev tool only. Close the canvas first: an open canvas saves its own copy over this one.
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { examplesFile, linePerExample } from "../../packages/bridge/src/abilities/examples.ts";
 import { HandwritingExamples, Project } from "../../packages/contract/src/index.ts";
 import { exampleFrom, keepNewest } from "../../packages/core/src/index.ts";
 import { lettersOf } from "../try-letters/letters.ts";
 
 const [id, ...words] = process.argv.slice(2);
 const home = process.env.VISTHINKER_HOME || join(homedir(), ".visthinker");
-const file = join(home, "abilities", "handwriting", "examples.json");
+const file = examplesFile(
+  fileURLToPath(new URL("../../packages/core/src/abilities/", import.meta.url)),
+);
 
 async function main() {
   const text = words.join("").replace(/\s+/g, "");
@@ -37,7 +42,7 @@ async function main() {
   const examples = keepNewest([...saved, ...taught]);
   await mkdir(dirname(file), { recursive: true });
   const temp = `${file}.tmp-${stamp}`;
-  await writeFile(temp, `${JSON.stringify({ version: 1, examples })}\n`);
+  await writeFile(temp, linePerExample({ version: 1, examples }));
   await rename(temp, file);
   const counts = new Map<string, number>();
   for (const e of examples) counts.set(e.label, (counts.get(e.label) ?? 0) + 1);

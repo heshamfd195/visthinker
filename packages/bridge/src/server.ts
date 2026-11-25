@@ -89,6 +89,11 @@ export interface MainOptions {
   canvasDir?: string;
   /** The starter packs. Default: the repo's packs/ folder. */
   starterDir?: string;
+  /**
+   * The repo's `packages/core/src/abilities`, where each ability keeps its data (D178). Default:
+   * VISTHINKER_ABILITIES_DIR, else found from the bridge's source.
+   */
+  abilitiesDir?: string;
 }
 
 /** Starts the session and the MCP server on stdio: what `visthinker` runs. */
@@ -108,7 +113,8 @@ export async function main(options: MainOptions = {}): Promise<void> {
     // VISTHINKER_NO_OPEN logs the link instead of opening a browser (tests, headless use).
     ...(process.env.VISTHINKER_NO_OPEN ? { openBrowser: (url: string) => log(`open ${url}`) } : {}),
   });
-  session.useApi(createHttpApi(bridge.ctx, visthinkerHome()));
+  const abilitiesDir = process.env.VISTHINKER_ABILITIES_DIR || options.abilitiesDir;
+  session.useApi(createHttpApi(bridge.ctx, visthinkerHome(), abilitiesDir));
   const shutdown = () =>
     void Promise.all([bridge.close(), session.close()]).finally(() => process.exit(0));
   process.stdin.on("close", shutdown);

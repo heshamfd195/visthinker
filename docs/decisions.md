@@ -100,21 +100,21 @@ Only this repo's decisions are listed, so the numbers have gaps. When a later de
 
 ## ✍️ Handwriting ability (being built)
 
-| ID   | decision                                                                                                                                                                                                                                      |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D111 | ✍️ Handwriting reads each character by its structure (strokes, crossings, corners, loops), block capitals A–Z and digits 0–9 first; it is an ability, not a pack (changed by D161).                                                           |
-| D112 | 🃏 A character card lists what a computer can check: stroke count, where lines meet or cross, angles, and closed loops.                                                                                                                       |
-| D113 | 🏆 Each passing check on a card earns points, the best card wins with its score, and a low or near-tied score goes to Claude.                                                                                                                 |
-| D114 | 📝 Word first, then letters: strokes close together form a word, and a clear gap starts the next letter.                                                                                                                                      |
-| D115 | 🐢 When unsure, the Fast Brain shows `?` at once and sends Claude an event with its two best guesses and the word around it; Claude's answer replaces the label.                                                                              |
-| D116 | 🖼️ Each letter gets a small label with its score, the word shows once above it, and you can tap a label to fix it.                                                                                                                            |
-| D117 | 🔁 A letter you fix, or one Claude read that you leave, is saved as your own example, so the Fast Brain learns your writing.                                                                                                                  |
-| D118 | 🧬 `$P` also matches your saved examples, keeping about the last 10 per letter.                                                                                                                                                               |
-| D174 | 📊 Your examples live in a folder for the ability, `~/.visthinker/abilities/handwriting/examples.json`: label, raw strokes with their timing, who taught it and when. They name a letter first when one is sure; then the cards, then Claude. |
-| D175 | 💬 You teach it in the chat: say "it's A", Claude labels the letter, and each letter is saved as an example. Handwriting is a core ability with its own storage.                                                                              |
-| D176 | ⏱️ With handwriting on, a lone mark waits 5 s for its next stroke, like a word (D169): a slow H's second leg came 2.4 s after the first. Changes D110 for handwriting.                                                                        |
-| D177 | 🎯 A match with no other letter near enough to compare is sure only when very close: with only a 2 and a B taught, an untaught H came within 1.2 of a B.                                                                                      |
-| D179 | 🃏 The cards win on a letter you never taught: when your examples are sure of one letter but the cards clearly read another with no examples, the cards name it.                                                                              |
+| ID   | decision                                                                                                                                                                                                               |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D111 | ✍️ Handwriting reads each character by its structure (strokes, crossings, corners, loops), block capitals A–Z and digits 0–9 first; it is an ability, not a pack (changed by D161).                                    |
+| D112 | 🃏 A character card lists what a computer can check: stroke count, where lines meet or cross, angles, and closed loops.                                                                                                |
+| D113 | 🏆 Each passing check on a card earns points, the best card wins with its score, and a low or near-tied score goes to Claude.                                                                                          |
+| D114 | 📝 Word first, then letters: strokes close together form a word, and a clear gap starts the next letter.                                                                                                               |
+| D115 | 🐢 When unsure, the Fast Brain shows `?` at once and sends Claude an event with its two best guesses and the word around it; Claude's answer replaces the label.                                                       |
+| D116 | 🖼️ Each letter gets a small label with its score, the word shows once above it, and you can tap a label to fix it.                                                                                                     |
+| D117 | 🔁 A letter you fix, or one Claude read that you leave, is saved as your own example, so the Fast Brain learns your writing.                                                                                           |
+| D118 | 🧬 `$P` also matches your saved examples, keeping about the last 10 per letter.                                                                                                                                        |
+| D174 | 📊 Your examples live in a folder for the ability (moved into the repo by D178): label, raw strokes with their timing, who taught it and when. They name a letter first when one is sure; then the cards, then Claude. |
+| D175 | 💬 You teach it in the chat: say "it's A", Claude labels the letter, and each letter is saved as an example. Handwriting is a core ability with its own storage.                                                       |
+| D176 | ⏱️ With handwriting on, a lone mark waits 5 s for its next stroke, like a word (D169): a slow H's second leg came 2.4 s after the first. Changes D110 for handwriting.                                                 |
+| D177 | 🎯 A match with no other letter near enough to compare is sure only when very close: with only a 2 and a B taught, an untaught H came within 1.2 of a B.                                                               |
+| D179 | 🃏 The cards win on a letter you never taught: when your examples are sure of one letter but the cards clearly read another with no examples, the cards name it.                                                       |
 
 ## 🔌 Bridge & security
 

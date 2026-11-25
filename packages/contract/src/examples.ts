@@ -1,7 +1,7 @@
 // Your handwriting examples (D117 · D118 · D174): each letter you confirm or fix is kept as one
 // example, its label and the strokes as you wrote them, so the Fast Brain can match your next
-// letter against them, and later write in your hand by playing them back (D172). They live in a
-// folder for the ability, `~/.visthinker/abilities/handwriting/examples.json`, never in a pack.
+// letter against them, and later write in your hand by playing them back (D172). They live with
+// the ability in the repo, `packages/core/src/abilities/handwriting/data/examples.json` (D178).
 import { z } from "zod";
 import { Id } from "./common.ts";
 import { StrokePoint } from "./stroke.ts";
