@@ -19,6 +19,7 @@ Only this repo's decisions are listed, so the numbers have gaps. When a later de
 | D160 | 🧱 Four layers stay apart: the **project** (what you're doing) picks which **knowledge packs** are in play, the **library** holds things you put on the canvas, and **abilities** handle your input; a pack may suggest itself but never starts on its own. |
 | D161 | ✋ Abilities are how the canvas reads your input (handwriting, smart selection): built in, on by default, each can be switched off, and you can build your own.                                                                                             |
 | D162 | 🧹 Tic-tac-toe is removed for now, to be rebuilt later around projects; the modes, the pack format, the `$P` reader and the reading of lines, crossings and shapes stay.                                                                                    |
+| D170 | 🌐 The handwriting ability is built in today's structure; how anyone builds and shares their own abilities, packs and plugins (an open contribution layer on a cloud server) comes in the next version.                                                     |
 | D52  | 🏷️ The code and package name is `visthinker` (the public name changed by D163).                                                                                                                                                                             |
 | D163 | 🏷️ The repo is `visual-thinker` and the README title is Visual Thinker; the npm package, the install command and the code's package names stay `visthinker`.                                                                                                |
 | D164 | 📖 This repo documents itself only: README, CLAUDE.md, and `docs/` with architecture, decisions, journey, design system, user stories, changes, drawings and images.                                                                                        |
@@ -100,16 +101,18 @@ Only this repo's decisions are listed, so the numbers have gaps. When a later de
 
 ## ✍️ Handwriting ability (being built)
 
-| ID   | decision                                                                                                                                                                            |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D111 | ✍️ Handwriting reads each character by its structure (strokes, crossings, corners, loops), block capitals A–Z and digits 0–9 first; it is an ability, not a pack (changed by D161). |
-| D112 | 🃏 A character card lists what a computer can check: stroke count, where lines meet or cross, angles, and closed loops.                                                             |
-| D113 | 🏆 Each passing check on a card earns points, the best card wins with its score, and a low or near-tied score goes to Claude.                                                       |
-| D114 | 📝 Word first, then letters: strokes close together form a word, and a clear gap starts the next letter.                                                                            |
-| D115 | 🐢 When unsure, the Fast Brain shows `?` at once and sends Claude an event with its two best guesses and the word around it; Claude's answer replaces the label.                    |
-| D116 | 🖼️ Each letter gets a small label with its score, the word shows once above it, and you can tap a label to fix it.                                                                  |
-| D117 | 🔁 A letter you fix, or one Claude read that you leave, is saved as your own example, so the Fast Brain learns your writing.                                                        |
-| D118 | 🧬 `$P` also matches your saved examples, keeping about the last 10 per letter.                                                                                                     |
+| ID   | decision                                                                                                                                                                                                                                            |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D111 | ✍️ Handwriting reads each character by its structure (strokes, crossings, corners, loops), block capitals A–Z and digits 0–9 first; it is an ability, not a pack (changed by D161).                                                                 |
+| D112 | 🃏 A character card lists what a computer can check: stroke count, where lines meet or cross, angles, and closed loops.                                                                                                                             |
+| D113 | 🏆 Each passing check on a card earns points, the best card wins with its score, and a low or near-tied score goes to Claude.                                                                                                                       |
+| D114 | 📝 Word first, then letters: strokes close together form a word, and a clear gap starts the next letter.                                                                                                                                            |
+| D115 | 🐢 When unsure, the Fast Brain shows `?` at once and sends Claude an event with its two best guesses and the word around it; Claude's answer replaces the label.                                                                                    |
+| D116 | 🖼️ Each letter gets a small label with its score, the word shows once above it, and you can tap a label to fix it.                                                                                                                                  |
+| D117 | 🔁 A letter you fix, or one Claude read that you leave, is saved as your own example, so the Fast Brain learns your writing.                                                                                                                        |
+| D118 | 🧬 `$P` also matches your saved examples, keeping about the last 10 per letter.                                                                                                                                                                     |
+| D171 | ✍️ English handwriting goes step by step: capitals A–Z, then lowercase a–z, then digits 0–9, then sentences (words, spaces, lines) with basic punctuation. No cursive for now; basic maths is a separate ability later.                             |
+| D172 | 🔁 Claude writes back only through the Fast Brain, never painting on the canvas: it says what to write, and the handwriting ability runs in reverse, placing your saved examples on a line and replaying them with their real timing. Adds to D136. |
 
 ## 🔌 Bridge & security
 
@@ -161,6 +164,7 @@ Only this repo's decisions are listed, so the numbers have gaps. When a later de
 | D99  | 🌿 A branch per task, named `type/short-name`; a release is a tag, not a branch.                                                                                                                        |
 | D147 | 🌿 The first UI (T37–T50) went in one branch and one PR, a commit per task, as an exception to D99.                                                                                                     |
 | D166 | 🌿 The handwriting ability is built and tested locally, a commit per step, and goes in as one PR only once it works end to end; an exception to D99, like D147.                                         |
+| D173 | 🧑‍💻 Not fully vibe-coded: Hesham writes core feature blocks himself and Claude assists. Coding rules, a testing layer and a review pipeline come after handwriting.                                      |
 | D100 | ✍️ Conventional Commits, squash merge only, and the PR title checked in CI.                                                                                                                             |
 | D101 | 🤖 Commits keep Claude's `Co-Authored-By` line.                                                                                                                                                         |
 | D102 | 🔀 Each PR follows a template (What, Why, How tested, Screenshot or GIF) and merges with passing CI after the diff is read.                                                                             |
