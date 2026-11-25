@@ -2,10 +2,11 @@
 // it stays fast as the examples grow: a prefilter on cheap measures (stroke count, shape, loops)
 // drops examples that can't be the same letter, then $P compares the point clouds of the rest. Each
 // example's cloud and measures are worked out once and kept until the examples change.
-import type { HandwritingExample, LetterFeatures, Stroke } from "@visthinker/contract";
+import type { HandwritingExample, LetterFeatures, Point2, Stroke } from "@visthinker/contract";
 import { greedyCloudMatch, normalize, type CloudPoint } from "../../comparator/symbols.ts";
 import { examplePoints, exampleStrokes, type ExampleBook } from "./examples.ts";
 import { letterFeatures } from "./features.ts";
+import { rotate } from "./read.ts";
 
 export const MATCH = {
   /** Points each cloud is resampled to ($P's usual 32). */
@@ -31,6 +32,14 @@ export const MATCH = {
   aspect: 2,
   /** …and closed loops by this many. */
   loops: 1,
+  /**
+   * Turns tried when a letter isn't sure as drawn: $P doesn't allow for rotation, and a 20° tilted
+   * M was nearest a G upright but an M turned back (25 Nov). The first each way, then the rest on
+   * the side that came nearer: four tries, not six.
+   */
+  turns: [20, 10, 30],
+  /** …against only the letters this near as drawn (twice the sure limit). */
+  near: 2.4,
   /** A distance this far scores 0; nearer scores up to 100 (the sure limit scores 60). */
   far: 3,
 } as const;
@@ -53,6 +62,8 @@ export interface ExampleMatch {
   /** How many examples the prefilter let through to $P, and how many there are. */
   compared: number;
   of: number;
+  /** Degrees clockwise on the page it was turned back by to match; missing when matched as drawn. */
+  turn?: number;
 }
 
 export interface ExampleMatcher {
@@ -66,6 +77,13 @@ interface Entry {
   strokes: number;
   aspect: number;
   loops: number;
+}
+
+/** The middle of a letter's box, to turn it about. */
+function centre(strokes: readonly Stroke[]): Point2 {
+  const xs = strokes.flatMap((s) => s.points.map((p) => p[0]));
+  const ys = strokes.flatMap((s) => s.points.map((p) => p[1]));
+  return [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
 }
 
 const toScore = (d: number) => Math.round(100 * Math.max(0, 1 - d / MATCH.far));
@@ -105,48 +123,99 @@ export function createExampleMatcher(book: ExampleBook): ExampleMatcher {
     for (const e of entries) counts.set(e.example.label, (counts.get(e.example.label) ?? 0) + 1);
   };
 
+  /** One try: the letter as given, or turned by `turn` degrees. */
+  /**
+   * `cutoff`: $P stops on an example past it, and a letter none of whose examples came nearer is
+   * ranked at the cutoff, a floor. With the cutoff at MATCH.sure × MATCH.lead, which letters come
+   * out sure is the same, and a turned try costs a fraction of a full one.
+   */
+  const matchOnce = (
+    strokes: readonly Stroke[],
+    loops: number,
+    turn: number,
+    cutoff = Infinity,
+    only?: ReadonlySet<string>,
+  ) => {
+    const about = centre(strokes);
+    const points = strokes.map((s) =>
+      s.points.map(([x, y]): Point2 => (turn ? rotate([x, y], about, -turn) : [x, y])),
+    );
+    const aspect = aspectOf(points.flat());
+    const cloud = normalize(points, MATCH.points);
+
+    // Each letter once, by its nearest example.
+    const best = new Map<string, { d: number; id: string }>();
+    let compared = 0;
+    for (const e of entries) {
+      if (Math.abs(e.strokes - strokes.length) > MATCH.strokes) continue;
+      if (Math.max(e.aspect / aspect, aspect / e.aspect) > MATCH.aspect) continue;
+      if (Math.abs(e.loops - loops) > MATCH.loops) continue;
+      if (only && !only.has(e.example.label)) continue;
+      compared++;
+      const sofar = Math.min(best.get(e.example.label)?.d ?? Infinity, cutoff);
+      const d = greedyCloudMatch(cloud, e.cloud, sofar);
+      if (d < sofar) best.set(e.example.label, { d, id: e.example.id });
+      else if (!best.has(e.example.label))
+        best.set(e.example.label, { d: cutoff, id: e.example.id });
+    }
+    const ranked = [...best.entries()].sort((a, b) => a[1].d - b[1].d);
+    const [top, next] = ranked;
+    if (!top) return undefined;
+    const [char, { d, id }] = top;
+    const sure = next ? d <= MATCH.sure && next[1].d >= MATCH.lead * d : d <= MATCH.alone;
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    const match: ExampleMatch = {
+      label: sure ? char : "?",
+      sure,
+      score: toScore(d),
+      distance: round2(d),
+      example: id,
+      count: counts.get(char) ?? 0,
+      guesses: ranked.slice(0, 2).map(([c, m]) => ({
+        char: c,
+        score: toScore(m.d),
+        distance: round2(m.d),
+      })),
+      compared,
+      of: entries.length,
+      ...(turn ? { turn } : {}),
+    };
+    return { match, d, ranked };
+  };
+
   return {
     match(strokes, features) {
       rebuild();
       if (entries.length === 0 || strokes.length === 0) return undefined;
-      const points = strokes.map((s) => s.points.map(([x, y]): [number, number] => [x, y]));
-      const aspect = aspectOf(points.flat());
       const loops = (features ?? letterFeatures(strokes)).loops.length;
-      const cloud = normalize(points, MATCH.points);
-
-      // Each letter once, by its nearest example.
-      const best = new Map<string, { d: number; id: string }>();
-      let compared = 0;
-      for (const e of entries) {
-        if (Math.abs(e.strokes - strokes.length) > MATCH.strokes) continue;
-        if (Math.max(e.aspect / aspect, aspect / e.aspect) > MATCH.aspect) continue;
-        if (Math.abs(e.loops - loops) > MATCH.loops) continue;
-        compared++;
-        const sofar = best.get(e.example.label)?.d ?? Infinity;
-        const d = greedyCloudMatch(cloud, e.cloud, sofar);
-        if (d < sofar) best.set(e.example.label, { d, id: e.example.id });
-      }
-      const ranked = [...best.entries()].sort((a, b) => a[1].d - b[1].d);
-      const [top, next] = ranked;
-      if (!top) return undefined;
-      const [char, { d, id }] = top;
-      const sure = next ? d <= MATCH.sure && next[1].d >= MATCH.lead * d : d <= MATCH.alone;
-      const round2 = (n: number) => Math.round(n * 100) / 100;
-      return {
-        label: sure ? char : "?",
-        sure,
-        score: toScore(d),
-        distance: round2(d),
-        example: id,
-        count: counts.get(char) ?? 0,
-        guesses: ranked.slice(0, 2).map(([c, m]) => ({
-          char: c,
-          score: toScore(m.d),
-          distance: round2(m.d),
-        })),
-        compared,
-        of: entries.length,
+      const upright = matchOnce(strokes, loops, 0);
+      if (upright?.match.sure) return upright.match;
+      // Not sure as drawn: a tilted letter may be sure turned back a little, as the cards do.
+      // A turn counts only if it's sure by the same rules; else the nearest guess is kept.
+      let best = upright;
+      // Only letters already near as drawn: a small turn doesn't bring a far one close.
+      const near = new Set(
+        (upright?.ranked ?? []).filter(([, m]) => m.d <= MATCH.near).map(([c]) => c),
+      );
+      if (near.size === 0) return upright?.match;
+      const tryTurn = (turn: number) => {
+        const tried = matchOnce(strokes, loops, turn, MATCH.sure * MATCH.lead, near);
+        if (!tried) return Infinity;
+        if (tried.match.sure && !best?.match.sure) best = tried;
+        // An unsure turn replaces the guess only when nearer than the cutoff (its distance is exact).
+        else if (
+          tried.match.sure === !!best?.match.sure &&
+          tried.d < MATCH.sure * MATCH.lead &&
+          tried.d < (best?.d ?? Infinity)
+        )
+          best = tried;
+        return tried.d;
       };
+      // Coarse, then fine: 20° each way, then 10° and 30° on the side that came nearer.
+      const [mid, ...side] = MATCH.turns;
+      const way = tryTurn(mid) <= tryTurn(-mid) ? 1 : -1;
+      for (const deg of side) tryTurn(way * deg);
+      return best?.match;
     },
   };
 }

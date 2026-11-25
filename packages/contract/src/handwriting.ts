@@ -194,6 +194,8 @@ export const LetterReading = z.object({
       /** How many examples the prefilter let through, of how many. */
       compared: z.number().int().nonnegative(),
       of: z.number().int().nonnegative(),
+      /** Degrees clockwise it was turned back by to match; missing when matched as drawn. */
+      turn: z.number().min(-45).max(45).optional(),
     })
     .optional(),
 });

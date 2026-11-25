@@ -67,6 +67,7 @@ function nameLetter(read: ReadLetter, examples: ExampleMatcher | undefined): Rea
     guesses: match.guesses,
     compared: match.compared,
     of: match.of,
+    ...(match.turn ? { turn: match.turn } : {}),
   };
   if (!match.sure) return { ...read, reading: { ...read.reading, via: "cards", examples: said } };
   return {

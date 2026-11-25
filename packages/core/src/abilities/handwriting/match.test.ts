@@ -6,6 +6,7 @@ import {
   createExampleMatcher,
   exampleFrom,
   readHandwriting,
+  rotate,
   type ExampleBook,
 } from "./index.ts";
 
@@ -27,7 +28,7 @@ describe("the fast matcher (D118 · D174)", () => {
     expect(matcher.match(writing("first"))).toBeUndefined();
   });
 
-  it("reads your four HELLOs, each taught by the other three: 19 of 20 letters sure, none wrong", () => {
+  it("reads your four HELLOs, each taught by the other three: every letter sure, none wrong", () => {
     const sure: string[] = [];
     for (const held of HELLOS) {
       const book = createExampleBook();
@@ -41,7 +42,8 @@ describe("the fast matcher (D118 · D174)", () => {
       expect(read.map((r) => r.guesses[0]!.char).join("")).toBe("HELLO");
       for (const [i, r] of read.entries()) if (r.sure) sure.push(`${r.label}${"HELLO"[i]}`);
     }
-    expect(sure).toHaveLength(19);
+    // 19 of 20 as drawn; the third HELLO's H is sure turned back 10°.
+    expect(sure).toHaveLength(20);
     expect(sure.every((pair) => pair[0] === pair[1])).toBe(true);
   });
 
@@ -100,7 +102,8 @@ describe("the fast matcher (D118 · D174)", () => {
     const letters = HELLOS.flatMap((n) => readHandwriting(writing(n)).map((l) => l.strokes));
     for (let i = 0; i < 260; i++) {
       const label = String.fromCharCode(65 + (i % 26));
-      // Each a slightly stretched copy of a real letter, so the prefilter lets most through.
+      // Each a slightly stretched copy of a real letter under any label: every letter looks near
+      // and none is sure, the worst case, as the turns are tried too.
       const stretched = letters[i % letters.length]!.map((s) => ({
         ...s,
         points: s.points.map(([x, y, p, dt]): Stroke["points"][number] => [
@@ -118,7 +121,46 @@ describe("the fast matcher (D118 · D174)", () => {
     const start = Date.now();
     for (let i = 0; i < 20; i++) for (const l of word) matcher.match(l.strokes, l.features);
     const each = (Date.now() - start) / (20 * word.length);
-    expect(each).toBeLessThan(10);
+    expect(each).toBeLessThan(15);
+  });
+
+  it("names a sure letter fast: turns are tried only when it isn't sure", () => {
+    const book = createExampleBook();
+    teach(book, ["first", "second", "third"]);
+    const matcher = createExampleMatcher(book);
+    const word = readHandwriting(writing("fourth"));
+    matcher.match(word[0]!.strokes);
+    const start = Date.now();
+    for (let i = 0; i < 50; i++)
+      for (const l of word) expect(matcher.match(l.strokes)!.turn).toBe(undefined);
+    expect((Date.now() - start) / (50 * word.length)).toBeLessThan(10);
+  });
+
+  it("reads a tilted HELLO by turning it back a little (25 Nov)", () => {
+    const book = createExampleBook();
+    teach(book, ["first", "second", "third"]);
+    const matcher = createExampleMatcher(book);
+    const tilted = readHandwriting(writing("fourth")).map((l) => {
+      const xs = l.strokes.flatMap((s) => s.points.map((p) => p[0]));
+      const ys = l.strokes.flatMap((s) => s.points.map((p) => p[1]));
+      const about: [number, number] = [
+        (Math.min(...xs) + Math.max(...xs)) / 2,
+        (Math.min(...ys) + Math.max(...ys)) / 2,
+      ];
+      return l.strokes.map((s) => ({
+        ...s,
+        points: s.points.map(([x, y, p, dt]): Stroke["points"][number] => {
+          const [tx, ty] = rotate([x, y], about, 20);
+          return [tx, ty, p, dt];
+        }),
+      }));
+    });
+    const read = tilted.map((strokes) => matcher.match(strokes)!);
+    // Never wrong; most sure once turned back.
+    for (const [i, r] of read.entries()) if (r.sure) expect(r.label).toBe("HELLO"[i]);
+    const turned = read.filter((r) => r.sure && r.turn !== undefined);
+    expect(turned.length).toBeGreaterThanOrEqual(3);
+    expect(turned.every((r) => r.turn! > 0)).toBe(true);
   });
 });
 

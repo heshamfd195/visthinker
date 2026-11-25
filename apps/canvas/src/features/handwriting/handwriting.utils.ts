@@ -155,7 +155,8 @@ function shownName(r: NonNullable<LetterEventDetail["reading"]>): string {
 /** Who named a letter, in a few characters for the debug view (D174). */
 function namedBy(r: NonNullable<LetterEventDetail["reading"]>): string | undefined {
   const ex = r.examples;
-  if (r.via === "examples" && ex) return `ex ${ex.distance.toFixed(1)} · ${ex.count}×`;
+  if (r.via === "examples" && ex)
+    return `ex ${ex.distance.toFixed(1)} · ${ex.count}×${ex.turn ? ` · turned ${Math.abs(ex.turn)}°` : ""}`;
   if (r.via === "claude") return "taught by Claude";
   if (r.via !== "cards") return undefined;
   const near = ex?.guesses[0];

@@ -667,8 +667,8 @@ describe("grouping (D96 · D97)", () => {
       "H claude E claude L claude L claude O claude",
     );
 
-    // Your third HELLO, written later. With one example each, only its L's are close enough to be
-    // sure; the cards name the rest, and the word still reads HELLO.
+    // Your third HELLO, written later. With one example each, only some letters are close enough
+    // to be sure (its L's, its O turned back 10°); the cards name the rest, and it reads HELLO.
     for (const stroke of hello.third as Stroke[]) replay(stroke);
     clock.advance(SETTLE_MS);
     const next = story
@@ -682,7 +682,7 @@ describe("grouping (D96 · D97)", () => {
     expect(third.label).toBe("HELLO");
     const byExamples = next.filter((r) => r.via === "examples").map((r) => r.label);
     expect(byExamples).toContain("L");
-    expect(byExamples.every((c) => c === "L")).toBe(true);
+    expect(byExamples.every((c) => "HELO".includes(c))).toBe(true);
   });
 
   it("saves nothing when the label doesn't fit the letters, and says why (D175)", () => {
