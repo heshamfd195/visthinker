@@ -4,12 +4,13 @@
 // Each letter tries small turns either way and keeps one only if it reads much better than
 // upright, so an L can't turn itself into a V. Past about 30° nothing is turned: the letter stays
 // unsure and goes to Claude.
-import type {
-  CharacterCard,
-  LetterFeatures,
-  LetterReading,
-  Point2,
-  Stroke,
+import {
+  NOT_A_LETTER,
+  type CharacterCard,
+  type LetterFeatures,
+  type LetterReading,
+  type Point2,
+  type Stroke,
 } from "@visthinker/contract";
 import { CARDS } from "./cards.ts";
 import { letterFeatures } from "./features.ts";
@@ -73,7 +74,13 @@ function nameLetter(read: ReadLetter, examples: ExampleMatcher | undefined): Rea
   // D179: your examples can't name a letter they've never seen. When the cards clearly read one
   // you never taught, they win: an untaught E was a sure B, an H a sure N (25 Nov).
   const cards = read.reading;
-  if (cards.clear && cards.label !== match.label && examples!.count(cards.label) === 0)
+  // …unless you said this mark isn't a letter (D182): then your word stands.
+  if (
+    match.label !== NOT_A_LETTER &&
+    cards.clear &&
+    cards.label !== match.label &&
+    examples!.count(cards.label) === 0
+  )
     return { ...read, reading: { ...cards, via: "cards", examples: said } };
   // When the cards clearly agree, the score shown is the surer of the two (A 100, not A 63).
   const agree = cards.clear && cards.label === match.label;

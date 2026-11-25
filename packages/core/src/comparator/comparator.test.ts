@@ -1,5 +1,6 @@
 import {
   LetterEventDetail,
+  NOT_A_LETTER,
   SceneObject,
   WordReading,
   type LetterReading,
@@ -703,6 +704,39 @@ describe("grouping (D96 · D97)", () => {
     expect(taught.type).toBe("letter");
     expect((taught.detail as LetterEventDetail).turn).toEqual(read.turn);
     expect((taught.detail as LetterEventDetail).features).toEqual(read.features);
+  });
+
+  it("a mark you call not a letter is left out of words from then on (D182)", () => {
+    const examples = createExampleBook();
+    const { clock, scene, story, draw } = setup({ examples });
+    const mark = (x: number) =>
+      draw(
+        along([
+          [x, 0],
+          [x, 100],
+          [x + 55, 100],
+        ]),
+      );
+    // An L the cards read clearly; you say it isn't a letter.
+    mark(0);
+    clock.advance(SETTLE_MS);
+    expect(scene.all()[0]).toMatchObject({ kind: "word", label: "L" });
+    story.append({
+      who: "fastbrain",
+      type: "label",
+      target: scene.all()[0]!.id,
+      detail: { text: "not a letter", by: "claude" },
+    });
+    clock.advance(0);
+    expect(examples.all().map((e) => e.label)).toEqual([NOT_A_LETTER]);
+    // The next one like it is a plain mark, even though the cards read L: your word stands.
+    clock.advance(10_000);
+    mark(400);
+    clock.advance(SETTLE_MS);
+    const next = scene.all().at(-1)!;
+    expect(next.kind).toBe("symbol");
+    const reading = story.all().findLast((e) => e.type === "letter")!.detail as LetterEventDetail;
+    expect(reading.reading).toMatchObject({ label: NOT_A_LETTER, via: "examples" });
   });
 
   it("saves nothing when the label doesn't fit the letters, and says why (D175)", () => {

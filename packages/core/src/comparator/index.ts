@@ -20,6 +20,7 @@ import type {
   Stroke,
   VisEvent,
 } from "@visthinker/contract";
+import { NOT_A_LETTER } from "@visthinker/contract";
 import {
   CARDS,
   createExampleMatcher,
@@ -274,7 +275,10 @@ export function createComparator({
     // lone mark).
     const letters = handwriting ? readHandwriting(drawn, cards, matcher) : [];
     const ids = letters.map((l) => l.strokes.map((s) => s.id));
-    const isWord = letters.length >= 2 || (letters.length === 1 && letters[0]!.reading.clear);
+    // A mark you said isn't a letter (D182) is no part of a word; a lone one is a plain mark.
+    const real = letters.filter((l) => l.reading.label !== NOT_A_LETTER);
+    const isWord =
+      real.length >= 2 || (letters.length === 1 && real.length === 1 && real[0]!.reading.clear);
     // The letter you're still writing waits for its name until you pause or move on.
     const newest = drawn.at(-1)!.id;
     const settled = clock.now() - g.lastEnd >= SETTLE_MS;
@@ -347,7 +351,9 @@ export function createComparator({
       .filter((s): s is Stroke => s !== undefined)
       .sort((a, b) => a.t0 - b.t0);
     if (drawn.length === 0) return;
-    const chars = [...text.replace(/\s+/g, "")];
+    // "not a letter" (or ∅) saves the whole mark as one example of NOT_A_LETTER (D182).
+    const notALetter = /^(not a letter|∅)$/i.test(text.trim());
+    const chars = notALetter ? [NOT_A_LETTER] : [...text.replace(/\s+/g, "")];
     const letters = readHandwriting(drawn, cards);
     // A lone mark Claude names with one character is that character, however it splits.
     const groups = chars.length === 1 ? [drawn] : letters.map((l) => l.strokes);
@@ -406,7 +412,11 @@ export function createComparator({
 
   /** "HELLO", with ? for an unsure letter and … for the one still being written. */
   const wordText = (letters: readonly ReadLetter[], waiting: number) =>
-    letters.map((l, i) => (i === waiting ? "…" : l.reading.label)).join("");
+    letters
+      .map((l, i) =>
+        i === waiting ? "…" : l.reading.label === NOT_A_LETTER ? "" : l.reading.label,
+      )
+      .join("");
 
   /**
    * A `letter` event for each letter that's new, whose strokes changed, or that just got its

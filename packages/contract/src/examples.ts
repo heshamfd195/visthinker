@@ -6,6 +6,12 @@ import { z } from "zod";
 import { Id } from "./common.ts";
 import { StrokePoint } from "./stroke.ts";
 
+/**
+ * D182: the label for a mark you said isn't a letter (noise, a doodle). It's kept like any example,
+ * and a mark that matches it stays a plain mark, outside any word.
+ */
+export const NOT_A_LETTER = "∅";
+
 /** D118: keep about the last 10 examples per letter, so the file stays small. */
 export const EXAMPLES_PER_LABEL = 10;
 
@@ -23,7 +29,7 @@ export const ExampleSource = z.enum(["you", "claude"]);
 
 export const HandwritingExample = z.object({
   id: Id,
-  /** What it is: `A`, `a`, `7`, `?`… one character, or two for a pair a font joins. */
+  /** What it is: `A`, `a`, `7`, `?`… one character, or two for a pair a font joins; `∅` for not a letter. */
   label: z.string().min(1).max(2),
   strokes: z.array(ExampleStroke).min(1).max(16),
   /** Who named it: you (you fixed or confirmed it) or Claude (you moved on and left it, D117). */
