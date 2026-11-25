@@ -17,7 +17,8 @@
     "test": "vitest run",
     "build": "pnpm -r --if-present build",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build",
-    "try:letters": "node scripts/try-letters/index.ts"
+    "try:letters": "node scripts/try-letters/index.ts",
+    "teach:letters": "node scripts/teach-letters/index.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
