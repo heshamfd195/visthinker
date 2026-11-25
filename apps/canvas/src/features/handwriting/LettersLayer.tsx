@@ -1,5 +1,5 @@
 // What the handwriting ability read, over each letter (T51 · D116). Its name under it ("H 92%",
-// "?" when unsure), and in the debug view what was measured: its box and number (#1), each part
+// "B?" with its best guess when unsure), and in the debug view what was measured: its box and number (#1), each part
 // (a line solid, a curve dashed from end to end) with its number, a dot where ends meet, a ring
 // where lines cross or touch, and each loop. All in recognized blue, the colour of what the canvas
 // read, and in screen pixels so it looks the same at any zoom. The debug view also says who named
@@ -14,7 +14,7 @@ export interface LettersLayerProps {
   letters: readonly LetterMarks[];
   /** Stage scale, so lines and labels stay the same size on screen. */
   scale: number;
-  /** Each letter's name under it (D116): "H 92%", or "?" when unsure. */
+  /** Each letter's name under it (D116): "H 92%", or its best guess "B?" when unsure. */
   names: boolean;
   /** Its score beside the name. */
   scores: boolean;
@@ -37,11 +37,11 @@ export function LettersLayer({ letters, scale, names, scores, parts }: LettersLa
   );
 }
 
-/** "H 92%" centred under the letter; "?" when the cards aren't sure (D115 · D116). */
+/** "H 92%" centred under the letter; "B?" when it isn't sure (D115 · D116). */
 function LetterName({ letter, px, score }: { letter: LetterMarks; px: number; score: boolean }) {
   const [x, y, w, h] = letter.box;
   const name = letter.name!;
-  // "…" while you're still writing it; "?" when unsure (D115).
+  // "…" while you're still writing it; its best guess and "?" when unsure (D115).
   const text = name.clear && score ? `${name.label} ${Math.round(name.score)}%` : name.label;
   const width = 120 * px;
   return (

@@ -82,6 +82,28 @@ describe("the handwriting debug view (T51)", () => {
     expect(latestLetters(events, new Set(["y1"])).map((l) => l.detail.features)).toEqual([O]);
   });
 
+  it("shows an unsure letter's best guess, B?, your examples' guess first (D174)", () => {
+    const detail = { index: 1, of: 1, strokes: ["s1"], features: A };
+    const name = (reading: object) =>
+      marksOf("w1-1", 1, { ...detail, reading: reading as never }).name?.label;
+    const unsure = { label: "?", score: 40, clear: false, guesses: [{ char: "E", score: 40 }] };
+    expect(name(unsure)).toBe("E?");
+    const examples = {
+      label: "?",
+      sure: false,
+      score: 60,
+      distance: 1.2,
+      example: "e1",
+      count: 2,
+      guesses: [{ char: "B", score: 60, distance: 1.2 }],
+      compared: 3,
+      of: 3,
+    };
+    expect(name({ ...unsure, examples })).toBe("B?");
+    expect(name({ ...unsure, guesses: [] })).toBe("?");
+    expect(name({ label: "B", score: 80, clear: true, guesses: [] })).toBe("B");
+  });
+
   it("says who named each letter: your examples or the cards (D174)", () => {
     const detail = { index: 1, of: 1, strokes: ["s1"], features: A };
     const examples = {

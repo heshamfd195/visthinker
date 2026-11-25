@@ -18,8 +18,8 @@ export interface LetterMarks {
   /** The box it was measured in, as drawn: four corners, turned with a tilted letter. */
   outline: Point2[];
   /**
-   * What the cards read it as (D116): its name, "?" when unsure, "…" while it's still being
-   * written, or nothing before the cards.
+   * What it was read as (D116): its name, its best guess with a question mark when unsure (`B?`),
+   * "…" while it's still being written, or nothing before the cards.
    */
   name?: { label: string; score: number; clear: boolean };
   /**
@@ -111,7 +111,7 @@ export function marksOf(key: string, index: number, letter: LetterEventDetail): 
   const name = waiting
     ? { label: "…", score: 0, clear: false }
     : reading
-      ? { label: reading.label, score: reading.score, clear: reading.clear }
+      ? { label: shownName(reading), score: reading.score, clear: reading.clear }
       : undefined;
   const by = !reading || waiting ? undefined : namedBy(reading);
   return {
@@ -140,6 +140,16 @@ export function marksOf(key: string, index: number, letter: LetterEventDetail): 
       ry: (l.height * size) / 2,
     })),
   };
+}
+
+/**
+ * An unsure letter shows its best guess with a question mark, `B?`, so you see what it's nearest
+ * to while you teach it: your examples' guess first, else the cards' (D174). A sure one, its name.
+ */
+function shownName(r: NonNullable<LetterEventDetail["reading"]>): string {
+  if (r.clear || r.label !== "?") return r.label;
+  const guess = r.examples?.guesses[0]?.char ?? r.guesses[0]?.char;
+  return guess ? `${guess}?` : "?";
 }
 
 /** Who named a letter, in a few characters for the debug view (D174). */
