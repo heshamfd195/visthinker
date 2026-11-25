@@ -116,6 +116,9 @@ Only this repo's decisions are listed, so the numbers have gaps. When a later de
 | D177 | 🎯 A match with no other letter near enough to compare is sure only when very close: with only a 2 and a B taught, an untaught H came within 1.2 of a B.                                                                                                   |
 | D178 | 📁 An ability keeps its data in the repo, in its own folder: your handwriting examples are `packages/core/src/abilities/handwriting/data/examples.json`, beside the ability's `README.md` and `STRUCTURE.md`, so each letter you teach is a change in git. |
 | D179 | 🃏 The cards win on a letter you never taught: when your examples are sure of one letter but the cards clearly read another with no examples, the cards name it.                                                                                           |
+| D180 | 🔄 A turn can suggest, not decide: a card reading that only wins turned back is a guess (`A?`) for Claude, never clear.                                                                                                                                    |
+| D181 | 🎯 An example is sure only within 1.0: letters you never taught came 0.97–1.18 from a look-alike. When examples and cards agree, the surer score is shown.                                                                                                 |
+| D182 | ∅ Say a mark isn't a letter and Claude labels it `not a letter`: marks like it stay plain marks, outside any word.                                                                                                                                         |
 
 ## 🔌 Bridge & security
 
