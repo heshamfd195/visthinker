@@ -89,14 +89,15 @@ function place([x, y]: Point2): string {
 }
 
 /**
- * Who named a letter, in a few words (D174): "by your examples · nearest H 0.6 · 3 of H", or
- * "by the cards · examples unsure: H 1.4, E 1.9". Empty before the examples.
+ * Who named a letter, in a few words (D174 · D175): "by your examples · nearest H 0.6 · 3 of H",
+ * "by the cards · examples unsure: H 1.4, E 1.9", or named by Claude. Empty before the examples.
  */
 export function namedBy(r: LetterReading): string {
   const ex = r.examples;
   const near = (ex?.guesses ?? []).map((g) => `${g.char} ${g.distance.toFixed(1)}`).join(", ");
   if (r.via === "examples" && ex)
     return `by your examples · nearest ${near} · ${ex.count} of ${ex.label}`;
+  if (r.via === "claude") return "named by Claude, saved as an example";
   if (r.via !== "cards") return "";
   return ex ? `by the cards · examples unsure: ${near}` : "by the cards · no examples yet";
 }

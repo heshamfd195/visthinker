@@ -11,7 +11,9 @@ import type {
   Box,
   CharacterCard,
   LetterEventDetail,
+  LetterReading,
   Pack,
+  TaughtDetail,
   WordReading,
   Point2,
   SceneObject,
@@ -21,6 +23,8 @@ import type {
 import {
   CARDS,
   createExampleMatcher,
+  exampleFrom,
+  letterFeatures,
   readHandwriting,
   type ExampleBook,
   type ReadLetter,
@@ -91,8 +95,13 @@ export interface ComparatorDeps {
   handwriting?: boolean;
   /** The character cards it reads letters with (D112); the built-in ones by default. */
   cards?: readonly CharacterCard[];
-  /** Your handwriting examples (D174), matched before the cards. */
+  /**
+   * Your handwriting examples (D174), matched before the cards. A word or mark Claude labels
+   * (you said "it's A" in the chat, D175) is saved into them, one example per letter.
+   */
   examples?: ExampleBook;
+  /** The time now as an ISO date, for an example's `at`; the core never reads the wall clock. */
+  wallClock?: () => string;
 }
 
 interface Group {
@@ -131,9 +140,18 @@ export function createComparator({
   handwriting = true,
   cards = CARDS,
   examples,
+  wallClock = () => new Date(clock.now()).toISOString(),
 }: ComparatorDeps): Comparator {
   // Your examples name a letter before the cards do (D174).
   const matcher = examples ? createExampleMatcher(examples) : undefined;
+  // A word Claude labels is taught: each of its letters becomes an example (D175). After the
+  // label is in, not during it: `act` may still be applying the rest of its actions.
+  if (examples && handwriting)
+    story.subscribe((e) => {
+      if (e.type !== "label" || e.detail?.["by"] !== "claude" || !e.target) return;
+      const [target, text, cause] = [e.target, String(e.detail["text"] ?? ""), e.seq];
+      clock.after(0, () => teach(examples, target, text, cause));
+    });
   let group: Group | undefined;
   /** The last symbol read, which a late stroke may still rejoin (D110). */
   let recent: Omit<Group, "cancel">[] = [];
@@ -311,6 +329,74 @@ export function createComparator({
     );
     sendLetters(symbol.id, letters, waiting, reading.seq);
     if (waiting >= 0) settleLater(symbol.id, g.lastEnd);
+  };
+
+  /**
+   * Saves each letter of a written word or mark as an example of the label's letter at the same
+   * place ("HELLO" on five letters), and names each letter by Claude. A label that doesn't fit
+   * the letters saves nothing, and the `taught` event says why.
+   */
+  const teach = (book: ExampleBook, target: string, text: string, cause: number) => {
+    const object = scene.get(target);
+    if (!object || (object.kind !== "word" && object.kind !== "symbol")) return;
+    const drawn = (object.strokes ?? [])
+      .map((id) => strokes.get(id))
+      .filter((s): s is Stroke => s !== undefined)
+      .sort((a, b) => a.t0 - b.t0);
+    if (drawn.length === 0) return;
+    const chars = [...text.replace(/\s+/g, "")];
+    const letters = readHandwriting(drawn, cards);
+    // A lone mark Claude names with one character is that character, however it splits.
+    const groups = chars.length === 1 ? [drawn] : letters.map((l) => l.strokes);
+    const skipped =
+      chars.length === 0
+        ? "the label has no letters"
+        : groups.length !== chars.length
+          ? `the word has ${groups.length} letters but "${text}" has ${chars.length}`
+          : chars.some((c) => c === "?")
+            ? `"${text}" has a ? in it`
+            : undefined;
+    const at = wallClock();
+    const saved = skipped
+      ? []
+      : groups.map((ink, i) => {
+          const example = exampleFrom(ink, {
+            id: `${at}-${target}-${i + 1}`,
+            label: chars[i]!,
+            from: "claude",
+            at,
+          });
+          book.add(example);
+          return { id: example.id, label: example.label, strokes: ink.map((s) => s.id) };
+        });
+    const taught = story.append({
+      who: "fastbrain",
+      type: "taught",
+      target,
+      detail: { text, examples: saved, ...(skipped ? { skipped } : {}) } satisfies TaughtDetail,
+      cause,
+    });
+    // Each letter now shows the name Claude gave it (D116).
+    saved.forEach(({ label }, i) => {
+      const ink = groups[i]!;
+      const letter = chars.length === 1 ? undefined : letters[i];
+      const reading: LetterReading = {
+        label,
+        score: 100,
+        clear: true,
+        guesses: [{ char: label, score: 100 }],
+        via: "claude",
+      };
+      const detail: LetterEventDetail = {
+        index: i + 1,
+        of: saved.length,
+        strokes: ink.map((s) => s.id),
+        features: letter?.features ?? letterFeatures(ink),
+        reading,
+        ...(letter?.turn ? { turn: letter.turn } : {}),
+      };
+      story.append({ who: "fastbrain", type: "letter", target, detail, cause: taught.seq });
+    });
   };
 
   /** "HELLO", with ? for an unsure letter and … for the one still being written. */

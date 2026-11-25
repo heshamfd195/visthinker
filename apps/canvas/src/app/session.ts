@@ -136,6 +136,7 @@ export function createSession(options: SessionOptions = {}): Session {
         clock,
         packs: () => registry.active(),
         examples,
+        wallClock: () => new Date().toISOString(),
       }),
     };
   };

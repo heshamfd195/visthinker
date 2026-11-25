@@ -146,6 +146,7 @@ export function marksOf(key: string, index: number, letter: LetterEventDetail): 
 function namedBy(r: NonNullable<LetterEventDetail["reading"]>): string | undefined {
   const ex = r.examples;
   if (r.via === "examples" && ex) return `ex ${ex.distance.toFixed(1)} · ${ex.count}×`;
+  if (r.via === "claude") return "taught by Claude";
   if (r.via !== "cards") return undefined;
   const near = ex?.guesses[0];
   return near ? `cards · ex? ${near.char} ${near.distance.toFixed(1)}` : "cards";

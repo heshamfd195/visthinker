@@ -1,6 +1,11 @@
 // The events box in plain words (D127): every story event and every Claude call as one short
 // line, raw JSON only on a click.
-import { LetterEventDetail, type LetterReading, type VisEvent } from "@visthinker/contract";
+import {
+  LetterEventDetail,
+  TaughtDetail,
+  type LetterReading,
+  type VisEvent,
+} from "@visthinker/contract";
 import {
   examplesBreakdown,
   letterBreakdown,
@@ -94,6 +99,15 @@ export function describe(e: VisEvent): string {
       // Who named it: your examples or the cards (D174).
       const by = reading && namedBy(reading);
       return join(`letter ${index} of ${of}`, name, by, tilted, e.target, letterSummary(features));
+    }
+    case "taught": {
+      // Claude labelled a written word, so its letters were saved as examples (D175).
+      const taught = TaughtDetail.safeParse(d);
+      if (!taught.success) return join("taught", e.target);
+      const { text, examples, skipped } = taught.data;
+      if (skipped) return join(`not taught "${text}"`, e.target, skipped);
+      const n = examples.length;
+      return join(`taught ${text}`, e.target, `${n} example${n === 1 ? "" : "s"} saved`);
     }
     case "place": {
       const kind = str(d["kind"]) ?? "object";
@@ -202,7 +216,7 @@ export function isProblem(row: Row): boolean {
   return d["label"] === "?" || (score !== undefined && score < LOW_CONFIDENCE);
 }
 
-const READ_TYPES = new Set(["recognized", "letter", "place"]);
+const READ_TYPES = new Set(["recognized", "letter", "taught", "place"]);
 
 /** Whether a row shows under a filter chip. */
 export function matches(row: Row, filter: EventsFilter): boolean {

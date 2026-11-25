@@ -4,6 +4,7 @@ import {
   WordReading,
   type LetterReading,
   type Point2,
+  type TaughtDetail,
   type Stroke,
 } from "@visthinker/contract";
 import { describe, expect, it } from "vitest";
@@ -636,6 +637,72 @@ describe("grouping (D96 · D97)", () => {
       ["H", "E", "L", "L", "O"].map((c) => `${c} examples`),
     );
     expect(named.at(-1)!.examples).toMatchObject({ sure: true, count: 3, of: 15 });
+  });
+
+  it("saves each letter of a word Claude labels as an example, then reads the next by it (D175)", () => {
+    const examples = createExampleBook();
+    const { clock, scene, story, replay } = setup({ examples });
+    for (const stroke of hello.first as Stroke[]) replay(stroke);
+    clock.advance(SETTLE_MS);
+    const word = scene.all()[0]!;
+    // You said "it's HELLO" in the chat, and Claude labelled the word (act → label).
+    const label = story.append({
+      who: "fastbrain",
+      type: "label",
+      target: word.id,
+      detail: { text: "HELLO", by: "claude" },
+    });
+    clock.advance(0);
+    expect(examples.all().map((e) => `${e.label} ${e.from}`)).toEqual(
+      ["H", "E", "L", "L", "O"].map((c) => `${c} claude`),
+    );
+    const taught = story.all().find((e) => e.type === "taught")!;
+    expect(taught).toMatchObject({ target: word.id, cause: label.seq });
+    expect((taught.detail as TaughtDetail).examples).toHaveLength(5);
+    const named = story
+      .all()
+      .filter((e) => e.type === "letter" && e.cause === taught.seq)
+      .map((e) => (e.detail as LetterEventDetail).reading!);
+    expect(named.map((r) => `${r.label} ${r.via}`).join(" ")).toBe(
+      "H claude E claude L claude L claude O claude",
+    );
+
+    // Your third HELLO, written later. With one example each, only its L's are close enough to be
+    // sure; the cards name the rest, and the word still reads HELLO.
+    for (const stroke of hello.third as Stroke[]) replay(stroke);
+    clock.advance(SETTLE_MS);
+    const next = story
+      .all()
+      .filter(
+        (e) =>
+          e.type === "letter" && e.target !== word.id && (e.detail as LetterEventDetail).reading,
+      )
+      .map((e) => (e.detail as LetterEventDetail).reading!);
+    const third = scene.all().find((o) => o.id !== word.id)!;
+    expect(third.label).toBe("HELLO");
+    const byExamples = next.filter((r) => r.via === "examples").map((r) => r.label);
+    expect(byExamples).toContain("L");
+    expect(byExamples.every((c) => c === "L")).toBe(true);
+  });
+
+  it("saves nothing when the label doesn't fit the letters, and says why (D175)", () => {
+    const examples = createExampleBook();
+    const { clock, scene, story, replay } = setup({ examples });
+    for (const stroke of hello.first as Stroke[]) replay(stroke);
+    clock.advance(SETTLE_MS);
+    const word = scene.all()[0]!;
+    story.append({
+      who: "fastbrain",
+      type: "label",
+      target: word.id,
+      detail: { text: "HELO", by: "claude" },
+    });
+    clock.advance(0);
+    expect(examples.all()).toHaveLength(0);
+    expect(story.all().at(-1)).toMatchObject({
+      type: "taught",
+      detail: { examples: [], skipped: 'the word has 5 letters but "HELO" has 4' },
+    });
   });
 
   it("a lone letter the cards read clearly is a word; a mark they don't know is a symbol", () => {
