@@ -93,7 +93,7 @@ Only this repo's decisions are listed, so the numbers have gaps. When a later de
 | D96  | ✂️ Strokes are grouped into one symbol before anything is recognized, so an X is one symbol, not two lines.                                                                                                     |
 | D97  | 🔤 Grouping works anywhere on the canvas; a group is read about 0.6 s after its last stroke, and every symbol shows a label with its score (line length changed by D109).                                       |
 | D109 | 📏 A straight stroke of 400+ units is a line at once, for now.                                                                                                                                                  |
-| D110 | ⏱️ A stroke that lands close by within 2 s rejoins the last symbol, and both are read again together.                                                                                                           |
+| D110 | ⏱️ A stroke that lands close by within 2 s rejoins the last symbol, and both are read again together (5 s with handwriting on, D176).                                                                           |
 | D167 | ⏱️ A stroke can join several recent words: every word read in the last 2 s counts, and a stroke that reaches more than one (an H's bar after its legs were read apart) merges them into one word. Extends D110. |
 | D168 | 🔤 A lone letter the cards read clearly is a word (a one-letter `A`); a lone mark no card knows (an X) stays a symbol.                                                                                          |
 | D169 | ⏱️ A written word waits 5 s for its next letter: a stroke beside it (closer than half its height) joins it within 5 s, not D110's 2 s. Writers pause between letters.                                           |
@@ -112,6 +112,8 @@ Only this repo's decisions are listed, so the numbers have gaps. When a later de
 | D118 | 🧬 `$P` also matches your saved examples, keeping about the last 10 per letter.                                                                                                                                                               |
 | D174 | 📊 Your examples live in a folder for the ability, `~/.visthinker/abilities/handwriting/examples.json`: label, raw strokes with their timing, who taught it and when. They name a letter first when one is sure; then the cards, then Claude. |
 | D175 | 💬 You teach it in the chat: say "it's A", Claude labels the letter, and each letter is saved as an example. Handwriting is a core ability with its own storage.                                                                              |
+| D176 | ⏱️ With handwriting on, a lone mark waits 5 s for its next stroke, like a word (D169): a slow H's second leg came 2.4 s after the first. Changes D110 for handwriting.                                                                        |
+| D177 | 🎯 A match with no other letter near enough to compare is sure only when very close: with only a 2 and a B taught, an untaught H came within 1.2 of a B.                                                                                      |
 
 ## 🔌 Bridge & security
 
