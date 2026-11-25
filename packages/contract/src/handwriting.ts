@@ -157,8 +157,9 @@ export const CharacterCard = z
   });
 
 /**
- * What a letter was read as (D113): the best card and its score out of 100, whether that's clear
- * (70 or more, and 15 or more ahead of the next), and the two best guesses.
+ * What a letter was read as (D113 · D174): your nearest example when it's sure, else the best card
+ * and its score out of 100, whether that's clear (70 or more, and 15 or more ahead of the next),
+ * and the two best guesses.
  */
 export const LetterReading = z.object({
   /** The best card's character, or `?` when unsure. */
@@ -166,6 +167,37 @@ export const LetterReading = z.object({
   score: z.number().min(0).max(100),
   clear: z.boolean(),
   guesses: z.array(z.object({ char: z.string().min(1).max(2), score: z.number().min(0).max(100) })),
+  /**
+   * What named it (D174): your examples when one is sure, else the cards; an unsure letter goes on
+   * to Claude (D115), and a letter Claude labelled is named by Claude (D175). Missing from events
+   * made before the examples.
+   */
+  via: z.enum(["examples", "cards", "claude"]).optional(),
+  /** What your examples said, sure or not, for the debug view; missing with no examples yet. */
+  examples: z
+    .object({
+      label: z.string().min(1).max(2),
+      sure: z.boolean(),
+      score: z.number().min(0).max(100),
+      /** The $P distance to the nearest example. */
+      distance: z.number().nonnegative(),
+      /** The nearest example's id, and how many examples its letter has. */
+      example: Id,
+      count: z.number().int().nonnegative(),
+      guesses: z.array(
+        z.object({
+          char: z.string().min(1).max(2),
+          score: z.number().min(0).max(100),
+          distance: z.number().nonnegative(),
+        }),
+      ),
+      /** How many examples the prefilter let through, of how many. */
+      compared: z.number().int().nonnegative(),
+      of: z.number().int().nonnegative(),
+      /** Degrees clockwise it was turned back by to match; missing when matched as drawn. */
+      turn: z.number().min(-45).max(45).optional(),
+    })
+    .optional(),
 });
 
 /**
@@ -211,6 +243,23 @@ export const WordReading = z.object({
   text: z.string().max(200).optional(),
 });
 
+/**
+ * The `detail` of a `taught` event (D174 · D175): Claude labelled a written word or mark (you said
+ * "it's A" in the chat), so the Fast Brain saved each of its letters as an example. Its `target` is
+ * the word, its `cause` the `label` event. When the label doesn't fit the letters (5 letters,
+ * "HELO"), nothing is saved and `skipped` says why.
+ */
+export const TaughtDetail = z.object({
+  /** The label, as Claude gave it. */
+  text: z.string().max(200),
+  /** Each letter saved: the example's id, its label and the strokes it was made from. */
+  examples: z.array(
+    z.object({ id: Id, label: z.string().min(1).max(2), strokes: z.array(Id).min(1) }),
+  ),
+  skipped: z.string().max(200).optional(),
+});
+
+export type TaughtDetail = z.infer<typeof TaughtDetail>;
 export type PartEnd = z.infer<typeof PartEnd>;
 export type LinePart = z.infer<typeof LinePart>;
 export type CurvePart = z.infer<typeof CurvePart>;

@@ -47,9 +47,11 @@ describe("the character cards (D112 · T52)", () => {
 describe("your other letters (24 Nov)", () => {
   const one = (strokes: Stroke[]) => readHandwriting(strokes)[0]!;
 
-  it("an A turned about 20° reads A once turned upright", () => {
+  it("an A turned about 20° is nearest A once turned upright, but only a guess (D180)", () => {
     const a = one(hello.tiltedA as Stroke[]);
-    expect(a.reading).toMatchObject({ label: "A", clear: true });
+    // A turn can suggest, not decide: a K turned 20° read as a clear A.
+    expect(a.reading).toMatchObject({ label: "?", clear: false });
+    expect(a.reading.guesses[0]).toMatchObject({ char: "A" });
     expect(a.turn?.deg).toBe(-20);
   });
 

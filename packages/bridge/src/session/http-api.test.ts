@@ -1,7 +1,8 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { ExampleStore } from "../abilities/examples.ts";
 import { PackStore } from "../packs/store.ts";
 import { createBridge } from "../server.ts";
 import { createHttpApi } from "./http-api.ts";
@@ -16,7 +17,10 @@ async function setup() {
   const home = await mkdtemp(join(tmpdir(), "vt-api-"));
   const session = await Session.start({ extraOrigins: ["http://localhost:5179"] });
   const bridge = createBridge({ canvas: session, packs: new PackStore(home) });
-  session.useApi(createHttpApi(bridge.ctx, home));
+  // A temp folder stands in for the repo's packages/core/src/abilities (D178).
+  const abilities = join(home, "abilities");
+  await mkdir(join(abilities, "handwriting"), { recursive: true });
+  session.useApi(createHttpApi(bridge.ctx, home, abilities));
   cleanups.push(async () => {
     await session.close();
     await rm(home, { recursive: true, force: true });
@@ -30,7 +34,7 @@ async function setup() {
         "Content-Type": "application/json",
       },
     });
-  return { session, api };
+  return { session, api, home };
 }
 
 const snapshot = {
@@ -110,6 +114,50 @@ describe("the canvas's HTTP API (D142 · D143)", () => {
       askClaudeWhenUnsure: false,
       saveStories: true,
     });
+  });
+
+  it("keeps your handwriting examples in the ability's folder in the repo (D178)", async () => {
+    const { api, home } = await setup();
+    expect(await (await api("abilities/handwriting/examples")).json()).toEqual({
+      version: 1,
+      examples: [],
+    });
+    const examples = {
+      version: 1,
+      examples: [
+        {
+          id: "e1",
+          label: "A",
+          strokes: [{ t: 0, points: [[0, 0, 0.5, 0]] }],
+          from: "you",
+          at: "2026-11-25T10:00:00.000Z",
+        },
+      ],
+    };
+    const put = await api("abilities/handwriting/examples", {
+      method: "PUT",
+      body: JSON.stringify(examples),
+    });
+    expect(put.status).toBe(200);
+    expect(await (await api("abilities/handwriting/examples")).json()).toEqual(examples);
+    const file = join(home, "abilities", "handwriting", "data", "examples.json");
+    const text = await readFile(file, "utf8");
+    expect(JSON.parse(text)).toEqual(examples);
+    // One example per line, so git shows each one you teach.
+    expect(text.split("\n").filter((l) => l.includes('"label"'))).toHaveLength(1);
+    const bad = await api("abilities/handwriting/examples", {
+      method: "PUT",
+      body: JSON.stringify({ version: 1, examples: [{ label: "A" }] }),
+    });
+    expect(bad.status).toBe(400);
+  });
+
+  it("saves no examples without the ability's folder: an npm install has no repo (D178)", async () => {
+    const home = await mkdtemp(join(tmpdir(), "vt-noabilities-"));
+    cleanups.push(() => rm(home, { recursive: true, force: true }));
+    const store = new ExampleStore(join(home, "missing"));
+    expect(await store.read()).toEqual({ version: 1, examples: [] });
+    await expect(store.save({ version: 1, examples: [] })).rejects.toThrow(/checkout of the repo/);
   });
 
   it("lists the packs for the packs panel (D122)", async () => {

@@ -1,18 +1,21 @@
-// Reading handwriting end to end (T51–T53): split the strokes into letters (D114), turn a tilted
-// letter upright (the drawing's orientation limit), measure it and read it by the cards (D113).
+// Reading handwriting end to end (T51–T53 · D174): split the strokes into letters (D114), turn a
+// tilted letter upright (the drawing's orientation limit), measure it, and name it: by your nearest
+// example when that's sure, else by the cards (D113); a letter neither is sure of goes to Claude.
 // Each letter tries small turns either way and keeps one only if it reads much better than
 // upright, so an L can't turn itself into a V. Past about 30° nothing is turned: the letter stays
 // unsure and goes to Claude.
-import type {
-  CharacterCard,
-  LetterFeatures,
-  LetterReading,
-  Point2,
-  Stroke,
+import {
+  NOT_A_LETTER,
+  type CharacterCard,
+  type LetterFeatures,
+  type LetterReading,
+  type Point2,
+  type Stroke,
 } from "@visthinker/contract";
 import { CARDS } from "./cards.ts";
 import { letterFeatures } from "./features.ts";
 import { splitLetters } from "./letters.ts";
+import type { ExampleMatcher } from "./match.ts";
 import { readLetter } from "./scoring.ts";
 
 export const TILT = {
@@ -42,8 +45,56 @@ export interface ReadLetter {
 export function readHandwriting(
   strokes: readonly Stroke[],
   cards: readonly CharacterCard[] = CARDS,
+  examples?: ExampleMatcher,
 ): ReadLetter[] {
-  return splitLetters(strokes).map((l) => readLetterTurned(l, cards));
+  return splitLetters(strokes).map((l) => nameLetter(readLetterTurned(l, cards), examples));
+}
+
+/**
+ * The naming order (D174): your examples first, as they're your own writing; the cards when no
+ * example is sure, or when they clearly read a letter you never taught (D179); and a letter
+ * neither is sure of stays `?`, for Claude (D115). What the examples said is kept either way.
+ */
+function nameLetter(read: ReadLetter, examples: ExampleMatcher | undefined): ReadLetter {
+  const match = examples?.match(read.strokes);
+  if (!match) return { ...read, reading: { ...read.reading, via: "cards" } };
+  const said = {
+    label: match.label,
+    sure: match.sure,
+    score: match.score,
+    distance: match.distance,
+    example: match.example,
+    count: match.count,
+    guesses: match.guesses,
+    compared: match.compared,
+    of: match.of,
+    ...(match.turn ? { turn: match.turn } : {}),
+  };
+  if (!match.sure) return { ...read, reading: { ...read.reading, via: "cards", examples: said } };
+  // D179: your examples can't name a letter they've never seen. When the cards clearly read one
+  // you never taught, they win: an untaught E was a sure B, an H a sure N (25 Nov).
+  const cards = read.reading;
+  // …unless you said this mark isn't a letter (D182): then your word stands.
+  if (
+    match.label !== NOT_A_LETTER &&
+    cards.clear &&
+    cards.label !== match.label &&
+    examples!.count(cards.label) === 0
+  )
+    return { ...read, reading: { ...cards, via: "cards", examples: said } };
+  // When the cards clearly agree, the score shown is the surer of the two (A 100, not A 63).
+  const agree = cards.clear && cards.label === match.label;
+  return {
+    ...read,
+    reading: {
+      label: match.label,
+      score: agree ? Math.max(match.score, cards.score) : match.score,
+      clear: true,
+      guesses: match.guesses.map(({ char, score }) => ({ char, score })),
+      via: "examples",
+      examples: said,
+    },
+  };
 }
 
 /** A letter: upright, unless a small turn reads it much better. */
@@ -55,7 +106,11 @@ function readLetterTurned(strokes: Stroke[], cards: readonly CharacterCard[]): R
       const turned = readTurned(strokes, deg, cards);
       if (turned.reading.score > best.reading.score) best = turned;
     }
-  return best.reading.score >= upright.reading.score + TILT.lead ? best : upright;
+  if (best.reading.score < upright.reading.score + TILT.lead) return upright;
+  // D180: a turn can suggest, not decide. A K turned 20° read as a clear A, a letter it isn't,
+  // so a turned reading is never clear: it shows its guess (`A?`) and goes to Claude. Once you
+  // teach the letter, your examples match it tilted with their own small turns.
+  return { ...best, reading: { ...best.reading, label: "?", clear: false } };
 }
 
 /** Reads a letter as if turned back by `deg` (clockwise on the page) about its centre. */

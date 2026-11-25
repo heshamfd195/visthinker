@@ -5,9 +5,12 @@ import { fileURLToPath } from "node:url";
 
 const beside = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
-main({ canvasDir: beside("../canvas/"), starterDir: beside("../packs/") }).catch(
-  (error: unknown) => {
-    process.stderr.write(`[visthinker] failed to start: ${String(error)}\n`);
-    process.exit(1);
-  },
-);
+main({
+  canvasDir: beside("../canvas/"),
+  starterDir: beside("../packs/"),
+  // Run from the repo, an ability's data is saved in its folder there (D178).
+  abilitiesDir: beside("../../core/src/abilities/"),
+}).catch((error: unknown) => {
+  process.stderr.write(`[visthinker] failed to start: ${String(error)}\n`);
+  process.exit(1);
+});

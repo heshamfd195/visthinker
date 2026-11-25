@@ -1,7 +1,7 @@
 // What the handwriting ability measured, in plain words (T51): one line for the events box, and a
 // breakdown for when you open it (and for `pnpm try:letters`). Places are shares of the letter's
 // own box, (0, 0) its top left; parts are numbered from 1, and a and b are each part's ends.
-import type { LetterFeatures, Point2 } from "@visthinker/contract";
+import type { LetterFeatures, LetterReading, Point2 } from "@visthinker/contract";
 
 /** A mark for a line's slant: — flat, | upright, / leaning right, \ leaning left. */
 export function slantMark(angle: number): string {
@@ -86,4 +86,32 @@ function place([x, y]: Point2): string {
   const down = y <= 0.2 ? "top" : y >= 0.8 ? "bottom" : "middle";
   const across = x <= 0.2 ? "left" : x >= 0.8 ? "right" : "centre";
   return `(${fixed(x)}, ${fixed(y)}) ${down} ${across}`;
+}
+
+/**
+ * Who named a letter, in a few words (D174 · D175): "by your examples · nearest H 0.6 · 3 of H",
+ * "by the cards · examples unsure: H 1.4, E 1.9", or named by Claude. Empty before the examples.
+ */
+export function namedBy(r: LetterReading): string {
+  const ex = r.examples;
+  const near = (ex?.guesses ?? []).map((g) => `${g.char} ${g.distance.toFixed(1)}`).join(", ");
+  if (r.via === "examples" && ex)
+    return `by your examples · nearest ${near} · ${ex.count} of ${ex.label}`;
+  if (r.via === "claude") return "named by Claude, saved as an example";
+  if (r.via !== "cards") return "";
+  return ex ? `by the cards · examples unsure: ${near}` : "by the cards · no examples yet";
+}
+
+/** What your examples said about a letter, line by line, for the events box (D174). */
+export function examplesBreakdown(r: LetterReading): string[] {
+  const ex = r.examples;
+  if (!ex) return ["Your examples: none to compare with yet."];
+  return [
+    `Your examples: ${ex.sure ? `sure it's ${ex.label}` : "not sure"} (named by ${r.via === "examples" ? "your examples" : "the cards"})`,
+    ...ex.guesses.map(
+      (g, i) =>
+        `  ${i === 0 ? "nearest" : "next"}: ${g.char}, distance ${g.distance.toFixed(2)}, score ${g.score}`,
+    ),
+    `  compared ${ex.compared} of ${ex.of} examples (the rest differ in strokes, shape or loops)`,
+  ];
 }

@@ -4,6 +4,7 @@ import { describe as group, expect, it } from "vitest";
 import {
   describe,
   describeCall,
+  exampleCounts,
   isProblem,
   matches,
   mergeRows,
@@ -325,5 +326,65 @@ group("letters from the handwriting ability (T51)", () => {
   it("shows under Read, and a broken one still gets a line", () => {
     expect(matches(row(letter), "read")).toBe(true);
     expect(describe({ ...letter, detail: { index: "x" } })).toBe("letter · y3");
+  });
+});
+
+group("your handwriting examples in the events box (D174)", () => {
+  it("counts each letter's examples, capitals first", () => {
+    expect(exampleCounts(new Map())).toBe("Your examples: none yet");
+    expect(
+      exampleCounts(
+        new Map([
+          ["L", 6],
+          ["a", 1],
+          ["H", 3],
+        ]),
+      ),
+    ).toBe("Your examples: H 3 · L 6 · a 1");
+  });
+
+  it("says who named a letter, and opens to what the examples said", () => {
+    const reading = {
+      label: "H",
+      score: 70,
+      clear: true,
+      guesses: [{ char: "H", score: 70 }],
+      via: "examples",
+      examples: {
+        label: "H",
+        sure: true,
+        score: 70,
+        distance: 0.9,
+        example: "e1",
+        count: 3,
+        guesses: [
+          { char: "H", score: 70, distance: 0.9 },
+          { char: "E", score: 38, distance: 1.84 },
+        ],
+        compared: 15,
+        of: 20,
+      },
+    };
+    const features = {
+      strokes: 3,
+      box: [0, 0, 10, 10],
+      aspect: 1,
+      parts: [],
+      meets: [],
+      crossings: [],
+      loops: [],
+    };
+    const event = {
+      seq: 7,
+      t: 7,
+      who: "fastbrain",
+      type: "letter",
+      target: "w1",
+      detail: { index: 1, of: 5, strokes: ["s1"], features, reading },
+    } as VisEvent;
+    expect(describe(event)).toContain("H 70% · by your examples · nearest H 0.9, E 1.8 · 3 of H");
+    const opened = rowDetail({ kind: "event", key: "e7", event } as Row);
+    expect(opened).toContain("Your examples: sure it's H (named by your examples)");
+    expect(opened).toContain("compared 15 of 20 examples");
   });
 });

@@ -18,10 +18,16 @@ export interface LetterMarks {
   /** The box it was measured in, as drawn: four corners, turned with a tilted letter. */
   outline: Point2[];
   /**
-   * What the cards read it as (D116): its name, "?" when unsure, "…" while it's still being
-   * written, or nothing before the cards.
+   * What it was read as (D116): its name, its best guess with a question mark when unsure (`B?`),
+   * "…" while it's still being written, or nothing before the cards.
    */
   name?: { label: string; score: number; clear: boolean };
+  /**
+   * Who named it, for the debug view (D174): "ex 0.6 · 3×" by your examples (distance to the
+   * nearest, how many of that letter), "cards · ex? H 1.4" when they weren't sure, "cards" alone
+   * before any examples.
+   */
+  by?: string;
   /** How far it leans, degrees clockwise, when it was read turned upright. */
   turn?: number;
   parts: { kind: "line" | "curve"; a: Point2; b: Point2; label: string; at: Point2 }[];
@@ -105,14 +111,16 @@ export function marksOf(key: string, index: number, letter: LetterEventDetail): 
   const name = waiting
     ? { label: "…", score: 0, clear: false }
     : reading
-      ? { label: reading.label, score: reading.score, clear: reading.clear }
+      ? { label: shownName(reading), score: reading.score, clear: reading.clear }
       : undefined;
+  const by = !reading || waiting ? undefined : namedBy(reading);
   return {
     key,
     index,
     box,
     outline,
     ...(name ? { name } : {}),
+    ...(by ? { by } : {}),
     ...(turn ? { turn: turn.deg } : {}),
     parts: f.parts.map((p, i) => {
       const [a, b] = [at(p.a), at(p.b)];
@@ -132,6 +140,27 @@ export function marksOf(key: string, index: number, letter: LetterEventDetail): 
       ry: (l.height * size) / 2,
     })),
   };
+}
+
+/**
+ * An unsure letter shows its best guess with a question mark, `B?`, so you see what it's nearest
+ * to while you teach it: your examples' guess first, else the cards' (D174). A sure one, its name.
+ */
+function shownName(r: NonNullable<LetterEventDetail["reading"]>): string {
+  if (r.clear || r.label !== "?") return r.label;
+  const guess = r.examples?.guesses[0]?.char ?? r.guesses[0]?.char;
+  return guess ? `${guess}?` : "?";
+}
+
+/** Who named a letter, in a few characters for the debug view (D174). */
+function namedBy(r: NonNullable<LetterEventDetail["reading"]>): string | undefined {
+  const ex = r.examples;
+  if (r.via === "examples" && ex)
+    return `ex ${ex.distance.toFixed(1)} · ${ex.count}×${ex.turn ? ` · turned ${Math.abs(ex.turn)}°` : ""}`;
+  if (r.via === "claude") return "taught by Claude";
+  if (r.via !== "cards") return undefined;
+  const near = ex?.guesses[0];
+  return near ? `cards · ex? ${near.char} ${near.distance.toFixed(1)}` : "cards";
 }
 
 /** Everything to draw: each word on the canvas, each of its letters. */

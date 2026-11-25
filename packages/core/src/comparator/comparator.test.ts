@@ -1,12 +1,21 @@
 import {
   LetterEventDetail,
+  NOT_A_LETTER,
   SceneObject,
   WordReading,
+  type LetterReading,
   type Point2,
+  type TaughtDetail,
   type Stroke,
 } from "@visthinker/contract";
 import { describe, expect, it } from "vitest";
 import hello from "../abilities/handwriting/fixtures/hello.json" with { type: "json" };
+import {
+  createExampleBook,
+  exampleFrom,
+  readHandwriting,
+  type ExampleBook,
+} from "../abilities/handwriting/index.ts";
 import { STARTER_PACKS } from "../packs/index.ts";
 import { createManualClock } from "../ports/index.ts";
 import { createSceneStore, createStory, createStrokeStore, recordStroke } from "../scene/index.ts";
@@ -15,6 +24,7 @@ import {
   createComparator,
   crossRule,
   fitLine,
+  GROUP_MS,
   INSTANT_LINE_LENGTH,
   SETTLE_MS,
 } from "./index.ts";
@@ -320,7 +330,7 @@ describe("replay (moved from T08)", () => {
 });
 
 describe("grouping (D96 · D97)", () => {
-  function setup(options: { handwriting?: boolean } = {}) {
+  function setup(options: { handwriting?: boolean; examples?: ExampleBook } = {}) {
     const clock = createManualClock();
     const story = createStory(clock);
     const scene = createSceneStore();
@@ -604,6 +614,216 @@ describe("grouping (D96 · D97)", () => {
     expect(scene.all().map((o) => [o.kind, o.label])).toEqual([["word", "HELLO"]]);
   });
 
+  it("names each letter of your fourth HELLO by your examples from the other three (D174)", () => {
+    const examples = createExampleBook();
+    for (const name of ["first", "second", "third"] as const)
+      readHandwriting(hello[name] as Stroke[]).forEach((l, i) =>
+        examples.add(
+          exampleFrom(l.strokes, {
+            id: `${name}-${i}`,
+            label: "HELLO"[i]!,
+            from: "you",
+            at: "now",
+          }),
+        ),
+      );
+    const { clock, scene, story, replay } = setup({ examples });
+    for (const stroke of hello.fourth as Stroke[]) replay(stroke);
+    clock.advance(SETTLE_MS);
+    expect(scene.all().map((o) => [o.kind, o.label])).toEqual([["word", "HELLO"]]);
+    const named = story
+      .all()
+      .filter((e) => e.type === "letter" && e.detail?.["reading"])
+      .map((e) => e.detail!["reading"] as LetterReading);
+    expect(named.slice(-5).map((r) => `${r.label} ${r.via}`)).toEqual(
+      ["H", "E", "L", "L", "O"].map((c) => `${c} examples`),
+    );
+    expect(named.at(-1)!.examples).toMatchObject({ sure: true, count: 3, of: 15 });
+  });
+
+  it("saves each letter of a word Claude labels as an example, then reads the next by it (D175)", () => {
+    const examples = createExampleBook();
+    const { clock, scene, story, replay } = setup({ examples });
+    for (const stroke of hello.first as Stroke[]) replay(stroke);
+    clock.advance(SETTLE_MS);
+    const word = scene.all()[0]!;
+    // You said "it's HELLO" in the chat, and Claude labelled the word (act → label).
+    const label = story.append({
+      who: "fastbrain",
+      type: "label",
+      target: word.id,
+      detail: { text: "HELLO", by: "claude" },
+    });
+    clock.advance(0);
+    expect(examples.all().map((e) => `${e.label} ${e.from}`)).toEqual(
+      ["H", "E", "L", "L", "O"].map((c) => `${c} claude`),
+    );
+    const taught = story.all().find((e) => e.type === "taught")!;
+    expect(taught).toMatchObject({ target: word.id, cause: label.seq });
+    expect((taught.detail as TaughtDetail).examples).toHaveLength(5);
+    const named = story
+      .all()
+      .filter((e) => e.type === "letter" && e.cause === taught.seq)
+      .map((e) => (e.detail as LetterEventDetail).reading!);
+    expect(named.map((r) => `${r.label} ${r.via}`).join(" ")).toBe(
+      "H claude E claude L claude L claude O claude",
+    );
+
+    // Your third HELLO, written later. With one example each, only some letters are close enough
+    // to be sure (its L's, its O turned back 10°); the cards name the rest, and it reads HELLO.
+    for (const stroke of hello.third as Stroke[]) replay(stroke);
+    clock.advance(SETTLE_MS);
+    const next = story
+      .all()
+      .filter(
+        (e) =>
+          e.type === "letter" && e.target !== word.id && (e.detail as LetterEventDetail).reading,
+      )
+      .map((e) => (e.detail as LetterEventDetail).reading!);
+    const third = scene.all().find((o) => o.id !== word.id)!;
+    expect(third.label).toBe("HELLO");
+    const byExamples = next.filter((r) => r.via === "examples").map((r) => r.label);
+    expect(byExamples).toContain("L");
+    expect(byExamples.every((c) => "HELO".includes(c))).toBe(true);
+  });
+
+  it("a tilted lone letter Claude names keeps its turn on the taught letter (D175)", () => {
+    const examples = createExampleBook();
+    const { clock, scene, story, replay } = setup({ examples });
+    for (const stroke of hello.tiltedA as Stroke[]) replay(stroke);
+    clock.advance(SETTLE_MS);
+    const read = story.all().findLast((e) => e.type === "letter")!.detail as LetterEventDetail;
+    expect(read.turn).toBeDefined();
+    story.append({
+      who: "fastbrain",
+      type: "label",
+      target: scene.all()[0]!.id,
+      detail: { text: "A", by: "claude" },
+    });
+    clock.advance(0);
+    const taught = story.all().at(-1)!;
+    expect(taught.type).toBe("letter");
+    expect((taught.detail as LetterEventDetail).turn).toEqual(read.turn);
+    expect((taught.detail as LetterEventDetail).features).toEqual(read.features);
+  });
+
+  it("a mark you call not a letter is left out of words from then on (D182)", () => {
+    const examples = createExampleBook();
+    const { clock, scene, story, draw } = setup({ examples });
+    const mark = (x: number) =>
+      draw(
+        along([
+          [x, 0],
+          [x, 100],
+          [x + 55, 100],
+        ]),
+      );
+    // An L the cards read clearly; you say it isn't a letter.
+    mark(0);
+    clock.advance(SETTLE_MS);
+    expect(scene.all()[0]).toMatchObject({ kind: "word", label: "L" });
+    story.append({
+      who: "fastbrain",
+      type: "label",
+      target: scene.all()[0]!.id,
+      detail: { text: "not a letter", by: "claude" },
+    });
+    clock.advance(0);
+    expect(examples.all().map((e) => e.label)).toEqual([NOT_A_LETTER]);
+    // The next one like it is a plain mark, even though the cards read L: your word stands.
+    clock.advance(10_000);
+    mark(400);
+    clock.advance(SETTLE_MS);
+    const next = scene.all().at(-1)!;
+    expect(next.kind).toBe("symbol");
+    const reading = story.all().findLast((e) => e.type === "letter")!.detail as LetterEventDetail;
+    expect(reading.reading).toMatchObject({ label: NOT_A_LETTER, via: "examples" });
+  });
+
+  it("a Q's tail joins its circle; an arrow drawn up to a circle doesn't (D183)", () => {
+    const { clock, scene, draw } = setup({ examples: createExampleBook() });
+    draw(ellipse(100, 100, 60, 60));
+    clock.advance(GROUP_MS + 200);
+    expect(scene.all().map((o) => o.kind)).toEqual(["circle"]);
+    // The tail, from inside the circle out past its edge, a second later.
+    clock.advance(1_000);
+    draw(
+      along([
+        [120, 120],
+        [175, 175],
+      ]),
+    );
+    clock.advance(SETTLE_MS);
+    expect(scene.all()).toHaveLength(1);
+    expect(scene.all()[0]!.kind).not.toBe("circle");
+    expect(scene.all()[0]!.strokes).toHaveLength(2);
+
+    const other = setup({ examples: createExampleBook() });
+    other.draw(ellipse(100, 100, 60, 60));
+    other.clock.advance(GROUP_MS + 1_000);
+    // An arrow from far away up to the circle's edge: bigger than a tail, and mostly outside it.
+    other.draw(
+      along([
+        [400, 100],
+        [165, 100],
+        [185, 85],
+        [165, 100],
+        [185, 115],
+      ]),
+    );
+    other.clock.advance(SETTLE_MS);
+    expect(other.scene.all().map((o) => o.kind)).toContain("circle");
+    expect(other.scene.all()).toHaveLength(2);
+  });
+
+  it("a circle you call O is taught, and the next round O is a letter, not a circle (D183)", () => {
+    const examples = createExampleBook();
+    const { clock, scene, story, draw } = setup({ examples });
+    draw(ellipse(100, 100, 40, 50));
+    clock.advance(GROUP_MS + 200);
+    const circle = scene.all()[0]!;
+    expect(circle.kind).toBe("circle");
+    story.append({
+      who: "fastbrain",
+      type: "label",
+      target: circle.id,
+      detail: { text: "O", by: "claude" },
+    });
+    clock.advance(0);
+    expect(examples.all().map((e) => e.label)).toEqual(["O"]);
+    expect(scene.get(circle.id)).toMatchObject({ kind: "word", label: "O" });
+    // Later, another round O elsewhere: your example knows it.
+    clock.advance(10_000);
+    draw(ellipse(500, 100, 42, 52));
+    clock.advance(SETTLE_MS);
+    expect(scene.all().at(-1)).toMatchObject({ kind: "word", label: "O" });
+    // A circle much wider than your O is still a circle.
+    clock.advance(10_000);
+    draw(ellipse(900, 100, 120, 40));
+    clock.advance(SETTLE_MS);
+    expect(scene.all().at(-1)!.kind).toBe("circle");
+  });
+
+  it("saves nothing when the label doesn't fit the letters, and says why (D175)", () => {
+    const examples = createExampleBook();
+    const { clock, scene, story, replay } = setup({ examples });
+    for (const stroke of hello.first as Stroke[]) replay(stroke);
+    clock.advance(SETTLE_MS);
+    const word = scene.all()[0]!;
+    story.append({
+      who: "fastbrain",
+      type: "label",
+      target: word.id,
+      detail: { text: "HELO", by: "claude" },
+    });
+    clock.advance(0);
+    expect(examples.all()).toHaveLength(0);
+    expect(story.all().at(-1)).toMatchObject({
+      type: "taught",
+      detail: { examples: [], skipped: 'the word has 5 letters but "HELO" has 4' },
+    });
+  });
+
   it("a lone letter the cards read clearly is a word; a mark they don't know is a symbol", () => {
     const { clock, scene, story, draw } = setup();
     const l = draw(
@@ -718,7 +938,7 @@ describe("grouping (D96 · D97)", () => {
     );
     clock.advance(600);
     expect(scene.all().filter((o) => o.kind === "symbol")).toHaveLength(2);
-    // Past D110's 2 s, a stroke never rejoins: it's a new symbol.
+    // Past D176's 5 s (D110's 2 s without handwriting), a stroke never rejoins: a new symbol.
     const later = setup();
     later.draw(
       along([
@@ -726,7 +946,7 @@ describe("grouping (D96 · D97)", () => {
         [60, 60],
       ]),
     );
-    later.clock.advance(2_100);
+    later.clock.advance(5_100);
     later.draw(
       along([
         [60, 0],
@@ -735,6 +955,42 @@ describe("grouping (D96 · D97)", () => {
     );
     later.clock.advance(600);
     expect(later.scene.all().map((o) => o.label)).not.toContain("X");
+  });
+
+  it("a slow H is one letter: a lone leg waits 5 s for the next (D176)", () => {
+    // Hesham's H on 25 Nov: the right leg came 2.4 s after the left, the bar 1.2 s after that.
+    for (const handwriting of [true, false]) {
+      const { clock, scene, replay } = setup({ handwriting });
+      const leg = (x: number, t0: number, id: string): Stroke => ({
+        ...stroke(
+          along([
+            [x, 300],
+            [x, 520],
+          ]),
+        ),
+        id,
+        t0,
+      });
+      replay(leg(1070, 4395, "h1"));
+      replay(leg(1230, 6796, "h2"));
+      replay({
+        ...stroke(
+          along([
+            [1032, 410],
+            [1250, 410],
+          ]),
+        ),
+        id: "h3",
+        t0: 7971,
+      });
+      clock.advance(SETTLE_MS + 1_000);
+      const groups = scene.all().map((o) => o.strokes);
+      // Without handwriting, D110's 2 s still holds and the first leg stays apart.
+      expect(groups, `handwriting ${handwriting}`).toEqual(
+        handwriting ? [["h1", "h2", "h3"]] : [["h1"], ["h2", "h3"]],
+      );
+      if (handwriting) expect(scene.all()[0]).toMatchObject({ kind: "word", label: "H" });
+    }
   });
 
   it("a grid line ends the open group at once", () => {

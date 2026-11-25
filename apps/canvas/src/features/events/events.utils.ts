@@ -1,7 +1,18 @@
 // The events box in plain words (D127): every story event and every Claude call as one short
 // line, raw JSON only on a click.
-import { LetterEventDetail, type LetterReading, type VisEvent } from "@visthinker/contract";
-import { letterBreakdown, letterSummary, type CallRecord } from "@visthinker/core";
+import {
+  LetterEventDetail,
+  TaughtDetail,
+  type LetterReading,
+  type VisEvent,
+} from "@visthinker/contract";
+import {
+  examplesBreakdown,
+  letterBreakdown,
+  letterSummary,
+  namedBy,
+  type CallRecord,
+} from "@visthinker/core";
 
 export type EventsFilter = "all" | "you" | "claude" | "read" | "problems";
 
@@ -85,7 +96,18 @@ export function describe(e: VisEvent): string {
       const tilted =
         turn &&
         `tilted ${Math.round(Math.abs(turn.deg))}° ${turn.deg > 0 ? "clockwise" : "anticlockwise"}`;
-      return join(`letter ${index} of ${of}`, name, tilted, e.target, letterSummary(features));
+      // Who named it: your examples or the cards (D174).
+      const by = reading && namedBy(reading);
+      return join(`letter ${index} of ${of}`, name, by, tilted, e.target, letterSummary(features));
+    }
+    case "taught": {
+      // Claude labelled a written word, so its letters were saved as examples (D175).
+      const taught = TaughtDetail.safeParse(d);
+      if (!taught.success) return join("taught", e.target);
+      const { text, examples, skipped } = taught.data;
+      if (skipped) return join(`not taught "${text}"`, e.target, skipped);
+      const n = examples.length;
+      return join(`taught ${text}`, e.target, `${n} example${n === 1 ? "" : "s"} saved`);
     }
     case "place": {
       const kind = str(d["kind"]) ?? "object";
@@ -194,7 +216,7 @@ export function isProblem(row: Row): boolean {
   return d["label"] === "?" || (score !== undefined && score < LOW_CONFIDENCE);
 }
 
-const READ_TYPES = new Set(["recognized", "letter", "place"]);
+const READ_TYPES = new Set(["recognized", "letter", "taught", "place"]);
 
 /** Whether a row shows under a filter chip. */
 export function matches(row: Row, filter: EventsFilter): boolean {
@@ -243,8 +265,11 @@ export function rowJson(row: Row): string {
 export function rowDetail(row: Row): string {
   if (row.kind === "event" && row.event.type === "letter") {
     const letter = LetterEventDetail.safeParse(row.event.detail);
-    if (letter.success)
-      return `${letterBreakdown(letter.data.features).join("\n")}\n\n${rowJson(row)}`;
+    if (letter.success) {
+      const { features, reading } = letter.data;
+      const examples = reading ? `${examplesBreakdown(reading).join("\n")}\n\n` : "";
+      return `${examples}${letterBreakdown(features).join("\n")}\n\n${rowJson(row)}`;
+    }
   }
   return rowJson(row);
 }
@@ -269,4 +294,17 @@ export function statusText(s: Status, thinkingFor = 0): string {
   if (s === "thinking") return `Claude is thinking… ${seconds(thinkingFor)}`;
   if (s === "offline") return "Not connected to Claude";
   return s === "listening" ? "Claude is listening" : "Claude is connected, not watching";
+}
+
+/** Capitals, then lowercase, then digits, then marks: the order the alphabet is taught (D171). */
+const kindOf = (label: string) =>
+  /^[A-Z]/.test(label) ? 0 : /^[a-z]/.test(label) ? 1 : /^[0-9]/.test(label) ? 2 : 3;
+
+/** "Your examples: E 3 · H 3 · L 6 · O 3", capitals first (D174). */
+export function exampleCounts(counts: ReadonlyMap<string, number>): string {
+  if (counts.size === 0) return "Your examples: none yet";
+  const byLetter = [...counts].sort(
+    ([a], [b]) => kindOf(a) - kindOf(b) || (a < b ? -1 : a > b ? 1 : 0),
+  );
+  return `Your examples: ${byLetter.map(([label, n]) => `${label} ${n}`).join(" · ")}`;
 }

@@ -4,20 +4,32 @@
 // group, read about 0.6 s after the last one. A group is then a one-stroke box,
 // circle or arrow, or a symbol read by the cross rule and $P against the packs' templates (D97).
 // The handwriting ability splits a group into letters first and reads each by the character
-// cards (D112 · D113): two or more letters, or one clear letter, are a written `word` such as
+// cards (D112 · D113), or by your own examples first when one is sure (D174): two or more letters,
+// or one clear letter, are a written `word` such as
 // "HELLO", not a symbol, and each new or changed letter gets a `letter` event (T51–T53).
 import type {
   Box,
   CharacterCard,
   LetterEventDetail,
+  LetterReading,
   Pack,
+  TaughtDetail,
   WordReading,
   Point2,
   SceneObject,
   Stroke,
   VisEvent,
 } from "@visthinker/contract";
-import { CARDS, readHandwriting, type ReadLetter } from "../abilities/handwriting/index.ts";
+import { NOT_A_LETTER } from "@visthinker/contract";
+import {
+  CARDS,
+  createExampleMatcher,
+  exampleFrom,
+  letterFeatures,
+  readHandwriting,
+  type ExampleBook,
+  type ReadLetter,
+} from "../abilities/handwriting/index.ts";
 import type { Clock } from "../ports/index.ts";
 import { strokeBox } from "../scene/strokes.ts";
 import type { SceneStore } from "../scene/store.ts";
@@ -39,6 +51,10 @@ export const HANDWRITING = "handwriting";
 
 /** D109: a straight stroke at least this long is a line at once (D97 had 160). */
 export const INSTANT_LINE_LENGTH = 400;
+/** One-stroke shapes the comparator reads on its own (T27). */
+const SHAPES: ReadonlySet<string> = new Set(["box", "circle", "arrow"]);
+/** D183: a stroke joining a shape is at most this share of its size (a Q's tail). */
+export const SHAPE_TAIL = 0.75;
 /** D97: a group is read this long after its last stroke. */
 export const GROUP_MS = 600;
 /** A stroke joins the open group if it starts within this long of its last stroke… */
@@ -47,12 +63,14 @@ export const GROUP_GAP_MS = 700;
 export const GROUP_NEAR = 0.5;
 /**
  * D110: a stroke that lands close by within this long of the last symbol's last stroke rejoins
- * it, and both are read again together (an X's second stroke can come late).
+ * it, and both are read again together (an X's second stroke can come late). With handwriting on,
+ * D176 waits longer (WORD_REJOIN_MS).
  */
 export const REJOIN_MS = 2_000;
 /**
  * D169: a written word waits longer for its next letter: a stroke beside it (closer than half its
- * height) joins it within this long. Writers pause between letters (2.4 s after a real H).
+ * height) joins it within this long. Writers pause between letters (2.4 s after a real H). D176:
+ * with handwriting on, a lone mark waits as long, so a slow H's second leg finds its first.
  */
 export const WORD_REJOIN_MS = 5_000;
 /**
@@ -84,6 +102,13 @@ export interface ComparatorDeps {
   handwriting?: boolean;
   /** The character cards it reads letters with (D112); the built-in ones by default. */
   cards?: readonly CharacterCard[];
+  /**
+   * Your handwriting examples (D174), matched before the cards. A word or mark Claude labels
+   * (you said "it's A" in the chat, D175) is saved into them, one example per letter.
+   */
+  examples?: ExampleBook;
+  /** The time now as an ISO date, for an example's `at`; the core never reads the wall clock. */
+  wallClock?: () => string;
 }
 
 interface Group {
@@ -121,7 +146,19 @@ export function createComparator({
   packs,
   handwriting = true,
   cards = CARDS,
+  examples,
+  wallClock = () => new Date(clock.now()).toISOString(),
 }: ComparatorDeps): Comparator {
+  // Your examples name a letter before the cards do (D174).
+  const matcher = examples ? createExampleMatcher(examples) : undefined;
+  // A word Claude labels is taught: each of its letters becomes an example (D175). After the
+  // label is in, not during it: `act` may still be applying the rest of its actions.
+  if (examples && handwriting)
+    story.subscribe((e) => {
+      if (e.type !== "label" || e.detail?.["by"] !== "claude" || !e.target) return;
+      const [target, text, cause] = [e.target, String(e.detail["text"] ?? ""), e.seq];
+      clock.after(0, () => teach(examples, target, text, cause));
+    });
   let group: Group | undefined;
   /** The last symbol read, which a late stroke may still rejoin (D110). */
   let recent: Omit<Group, "cancel">[] = [];
@@ -152,8 +189,17 @@ export function createComparator({
   const rejoins = (last: Omit<Group, "cancel">, stroke: Stroke) => {
     if (!last.symbol || !scene.has(last.symbol)) return false;
     const box = strokeBox(stroke);
-    // A word waits longer, for a stroke beside it on its line (D169).
-    if (scene.get(last.symbol)!.kind === "word")
+    // A shape takes only a smaller stroke that lands on it (a Q's tail), never one beside it: an
+    // arrow drawn up to a circle stays an arrow (D183).
+    if (SHAPES.has(scene.get(last.symbol)!.kind))
+      return (
+        stroke.t0 - last.lastEnd <= WORD_REJOIN_MS &&
+        gap(last.box, box) === 0 &&
+        size(box) <= SHAPE_TAIL * size(last.box)
+      );
+    // A word waits longer, for a stroke beside it on its line (D169), and so does any mark while
+    // handwriting is on: a lone leg no card names yet may be half an H (D176, a 2.4 s pause).
+    if (handwriting || scene.get(last.symbol)!.kind === "word")
       return (
         stroke.t0 - last.lastEnd <= WORD_REJOIN_MS &&
         gap(last.box, box) < GROUP_NEAR * Math.max(last.box[3], box[3])
@@ -219,7 +265,10 @@ export function createComparator({
 
     if (drawn.length === 1) {
       const shape = classifyShape(drawn[0]!);
-      if (shape.kind !== null) {
+      // D183: a round stroke your examples are sure is a letter (an O you taught) is the letter,
+      // not a circle. The cards alone can't say so: the O card reads most round strokes as O.
+      const known = shape.kind !== null && handwriting ? matcher?.match(drawn) : undefined;
+      if (shape.kind !== null && !(known?.sure && known.label !== NOT_A_LETTER)) {
         const object = add({
           id: scene.nextId({ box: "sb", circle: "sc", arrow: "sa" }[shape.kind]),
           kind: shape.kind,
@@ -230,6 +279,13 @@ export function createComparator({
           ...(shape.kind === "arrow" ? { geom: { a: shape.a, b: shape.b } } : {}),
         });
         recognized(object.id, { kind: shape.kind }, g.lastSeq);
+        // With handwriting on, a small stroke landing on it soon after can still join it: a Q's
+        // tail on its circle (D183).
+        if (handwriting)
+          recent = [
+            ...recent,
+            { ...g, absorbed: [], symbol: object.id, strokes: [drawn[0]!.id], box: object.box },
+          ];
         return;
       }
     }
@@ -239,9 +295,12 @@ export function createComparator({
     // reads each by the cards (D114, T51–T53). Two or more letters, or one the cards read
     // clearly, are a written word, never guessed as one symbol ($P against X and O only fits a
     // lone mark).
-    const letters = handwriting ? readHandwriting(drawn, cards) : [];
+    const letters = handwriting ? readHandwriting(drawn, cards, matcher) : [];
     const ids = letters.map((l) => l.strokes.map((s) => s.id));
-    const isWord = letters.length >= 2 || (letters.length === 1 && letters[0]!.reading.clear);
+    // A mark you said isn't a letter (D182) is no part of a word; a lone one is a plain mark.
+    const real = letters.filter((l) => l.reading.label !== NOT_A_LETTER);
+    const isWord =
+      real.length >= 2 || (letters.length === 1 && real.length === 1 && real[0]!.reading.clear);
     // The letter you're still writing waits for its name until you pause or move on.
     const newest = drawn.at(-1)!.id;
     const settled = clock.now() - g.lastEnd >= SETTLE_MS;
@@ -301,9 +360,100 @@ export function createComparator({
     if (waiting >= 0) settleLater(symbol.id, g.lastEnd);
   };
 
+  /**
+   * Saves each letter of a written word or mark as an example of the label's letter at the same
+   * place ("HELLO" on five letters), and names each letter by Claude. A label that doesn't fit
+   * the letters saves nothing, and the `taught` event says why.
+   */
+  const teach = (book: ExampleBook, target: string, text: string, cause: number) => {
+    const object = scene.get(target);
+    if (!object) return;
+    // A one-stroke circle, box or arrow can be taught too: "it's O" (D183).
+    const shape = SHAPES.has(object.kind);
+    if (!shape && object.kind !== "word" && object.kind !== "symbol") return;
+    const drawn = (object.strokes ?? [])
+      .map((id) => strokes.get(id))
+      .filter((s): s is Stroke => s !== undefined)
+      .sort((a, b) => a.t0 - b.t0);
+    if (drawn.length === 0) return;
+    // "not a letter" (or ∅) saves the whole mark as one example of NOT_A_LETTER (D182).
+    const notALetter = /^(not a letter|∅)$/i.test(text.trim());
+    const chars = notALetter ? [NOT_A_LETTER] : [...text.replace(/\s+/g, "")];
+    const letters = readHandwriting(drawn, cards);
+    // A lone mark Claude names with one character is that character, however it splits.
+    const groups = chars.length === 1 ? [drawn] : letters.map((l) => l.strokes);
+    const skipped =
+      chars.length === 0
+        ? "the label has no letters"
+        : groups.length !== chars.length
+          ? `the word has ${groups.length} letters but "${text}" has ${chars.length}`
+          : chars.some((c) => c === "?")
+            ? `"${text}" has a ? in it`
+            : undefined;
+    const at = wallClock();
+    const saved = skipped
+      ? []
+      : groups.map((ink, i) => {
+          const example = exampleFrom(ink, {
+            id: `${at}-${target}-${i + 1}`,
+            label: chars[i]!,
+            from: "claude",
+            at,
+          });
+          book.add(example);
+          return { id: example.id, label: example.label, strokes: ink.map((s) => s.id) };
+        });
+    const taught = story.append({
+      who: "fastbrain",
+      type: "taught",
+      target,
+      detail: { text, examples: saved, ...(skipped ? { skipped } : {}) } satisfies TaughtDetail,
+      cause,
+    });
+    // A shape you named with a letter is now that word (D183), with its letters listed.
+    let because = taught.seq;
+    if (shape && saved.length > 0) {
+      const text = saved.map((e) => e.label).join("");
+      scene.update(target, (o) => ({ ...o, kind: "word", pack: HANDWRITING, label: text }));
+      const ids = groups.map((ink) => ink.map((s) => s.id));
+      because = recognized(
+        target,
+        { kind: "word", letters: ids, text } satisfies WordReading,
+        taught.seq,
+      ).seq;
+    }
+    // Each letter now shows the name Claude gave it (D116).
+    saved.forEach(({ label }, i) => {
+      const ink = groups[i]!;
+      // A lone mark named with one character keeps how it was read, turn and all, when it split
+      // as one letter; else it's measured again as drawn.
+      const letter = chars.length === 1 && letters.length !== 1 ? undefined : letters[i];
+      const reading: LetterReading = {
+        label,
+        score: 100,
+        clear: true,
+        guesses: [{ char: label, score: 100 }],
+        via: "claude",
+      };
+      const detail: LetterEventDetail = {
+        index: i + 1,
+        of: saved.length,
+        strokes: ink.map((s) => s.id),
+        features: letter?.features ?? letterFeatures(ink),
+        reading,
+        ...(letter?.turn ? { turn: letter.turn } : {}),
+      };
+      story.append({ who: "fastbrain", type: "letter", target, detail, cause: because });
+    });
+  };
+
   /** "HELLO", with ? for an unsure letter and … for the one still being written. */
   const wordText = (letters: readonly ReadLetter[], waiting: number) =>
-    letters.map((l, i) => (i === waiting ? "…" : l.reading.label)).join("");
+    letters
+      .map((l, i) =>
+        i === waiting ? "…" : l.reading.label === NOT_A_LETTER ? "" : l.reading.label,
+      )
+      .join("");
 
   /**
    * A `letter` event for each letter that's new, whose strokes changed, or that just got its
@@ -361,7 +511,7 @@ export function createComparator({
       .map((id) => strokes.get(id))
       .filter((s): s is Stroke => s !== undefined)
       .sort((a, b) => a.t0 - b.t0);
-    const letters = readHandwriting(drawn, cards);
+    const letters = readHandwriting(drawn, cards, matcher);
     const ids = letters.map((l) => l.strokes.map((s) => s.id));
     const text = wordText(letters, -1);
     scene.update(word, (o) => ({ ...o, label: text }));
