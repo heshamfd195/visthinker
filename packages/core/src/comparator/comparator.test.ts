@@ -685,6 +685,26 @@ describe("grouping (D96 · D97)", () => {
     expect(byExamples.every((c) => "HELO".includes(c))).toBe(true);
   });
 
+  it("a tilted lone letter Claude names keeps its turn on the taught letter (D175)", () => {
+    const examples = createExampleBook();
+    const { clock, scene, story, replay } = setup({ examples });
+    for (const stroke of hello.tiltedA as Stroke[]) replay(stroke);
+    clock.advance(SETTLE_MS);
+    const read = story.all().findLast((e) => e.type === "letter")!.detail as LetterEventDetail;
+    expect(read.turn).toBeDefined();
+    story.append({
+      who: "fastbrain",
+      type: "label",
+      target: scene.all()[0]!.id,
+      detail: { text: "A", by: "claude" },
+    });
+    clock.advance(0);
+    const taught = story.all().at(-1)!;
+    expect(taught.type).toBe("letter");
+    expect((taught.detail as LetterEventDetail).turn).toEqual(read.turn);
+    expect((taught.detail as LetterEventDetail).features).toEqual(read.features);
+  });
+
   it("saves nothing when the label doesn't fit the letters, and says why (D175)", () => {
     const examples = createExampleBook();
     const { clock, scene, story, replay } = setup({ examples });

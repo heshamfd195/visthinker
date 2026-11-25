@@ -382,7 +382,9 @@ export function createComparator({
     // Each letter now shows the name Claude gave it (D116).
     saved.forEach(({ label }, i) => {
       const ink = groups[i]!;
-      const letter = chars.length === 1 ? undefined : letters[i];
+      // A lone mark named with one character keeps how it was read, turn and all, when it split
+      // as one letter; else it's measured again as drawn.
+      const letter = chars.length === 1 && letters.length !== 1 ? undefined : letters[i];
       const reading: LetterReading = {
         label,
         score: 100,
