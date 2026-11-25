@@ -10,6 +10,7 @@ export const KNOWN_EVENT_TYPES = [
   "recognized",
   "move",
   "transform",
+  "project",
   "place",
   "label",
   "remove",

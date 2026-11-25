@@ -57,6 +57,12 @@ export interface Canvas {
   handler: ToolHandler;
 }
 
+/** Which project the canvas now shows, for the `project` event Claude reads. */
+export interface OpenedProject {
+  id: string;
+  name: string;
+}
+
 export interface Session extends Canvas {
   clock: Clock;
   transport: Transport;
@@ -76,8 +82,12 @@ export interface Session extends Canvas {
   fakes: string[];
   /** The canvas now. */
   canvas(): Canvas;
-  /** Replaces the canvas with a fresh one, or one rebuilt from a saved project. */
-  open(parts?: RestoredParts): Canvas;
+  /**
+   * Replaces the canvas with a fresh one, or one rebuilt from a saved project. With `project`,
+   * Claude is told: a `project` event opens the new story, and any wait still open on the old
+   * canvas ends at once, so Claude's next call reaches this one.
+   */
+  open(parts?: RestoredParts, project?: OpenedProject): Canvas;
   /** Called after `open`. Returns an unsubscribe function. */
   onCanvas(listener: (canvas: Canvas) => void): () => void;
 }
@@ -141,11 +151,27 @@ export function createSession(options: SessionOptions = {}): Session {
     };
   };
 
-  const open = (parts?: RestoredParts): Canvas => {
+  const open = (parts?: RestoredParts, project?: OpenedProject): Canvas => {
+    const previous = current as Canvas | undefined;
     stopServing?.();
     current = build(parts);
     const handler = current.handler;
     stopServing = transport.serve((call: BrowserCall, args: unknown) => handler(call, args));
+    if (project) {
+      // Unread, so it's the first thing Claude reads here; a saved project's own events stay read.
+      current.story.append({
+        who: "user",
+        type: "project",
+        detail: {
+          id: project.id,
+          name: project.name,
+          opened: parts ? "saved" : "new",
+          objects: current.scene.all().length,
+        },
+      });
+    }
+    // A wait still open on the old canvas would never wake: end it, so Claude asks again here.
+    previous?.handler.release();
     for (const listener of [...listeners]) listener(current);
     return current;
   };

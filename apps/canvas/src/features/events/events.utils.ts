@@ -132,6 +132,11 @@ export function describe(e: VisEvent): string {
       );
     case "clear":
       return "cleared the canvas";
+    case "project": {
+      // The canvas moved to another project; Claude reads this first there.
+      const name = str(d["name"]) ?? "a project";
+      return d["opened"] === "new" ? `started a new project “${name}”` : `opened “${name}”`;
+    }
     case "say":
       return `${who} said: ${quote(text ?? "")}`;
     case "ask":

@@ -103,6 +103,12 @@ group("plain words (D127)", () => {
       "mode → playing · by hand",
     );
     expect(describe(e({ seq: 11, type: "clear" }))).toBe("cleared the canvas");
+    expect(
+      describe(e({ seq: 12, type: "project", detail: { name: "Untitled", opened: "new" } })),
+    ).toBe("started a new project “Untitled”");
+    expect(
+      describe(e({ seq: 13, type: "project", detail: { name: "Hello", opened: "saved" } })),
+    ).toBe("opened “Hello”");
   });
 
   it("an unreadable symbol says so", () => {
