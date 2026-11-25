@@ -75,11 +75,13 @@ function nameLetter(read: ReadLetter, examples: ExampleMatcher | undefined): Rea
   const cards = read.reading;
   if (cards.clear && cards.label !== match.label && examples!.count(cards.label) === 0)
     return { ...read, reading: { ...cards, via: "cards", examples: said } };
+  // When the cards clearly agree, the score shown is the surer of the two (A 100, not A 63).
+  const agree = cards.clear && cards.label === match.label;
   return {
     ...read,
     reading: {
       label: match.label,
-      score: match.score,
+      score: agree ? Math.max(match.score, cards.score) : match.score,
       clear: true,
       guesses: match.guesses.map(({ char, score }) => ({ char, score })),
       via: "examples",

@@ -212,6 +212,20 @@ describe("the naming order (D174)", () => {
     expect(again!.reading).toMatchObject({ label: "B", via: "examples" });
   });
 
+  it("shows the surer score when your examples and the cards agree", () => {
+    const book = createExampleBook();
+    teach(book, ["first", "second", "third"]);
+    const matcher = createExampleMatcher(book);
+    const plain = readHandwriting(writing("fourth"));
+    const named = readHandwriting(writing("fourth"), undefined, matcher);
+    const both = named.filter((l, i) => l.reading.via === "examples" && plain[i]!.reading.clear);
+    expect(both.length).toBeGreaterThan(0);
+    for (const l of both) {
+      const cards = plain[named.indexOf(l)]!.reading;
+      expect(l.reading.score).toBe(Math.max(l.reading.examples!.score, cards.score));
+    }
+  });
+
   it("names by the cards alone before you teach anything", () => {
     const [h] = readHandwriting(
       writing("first"),
