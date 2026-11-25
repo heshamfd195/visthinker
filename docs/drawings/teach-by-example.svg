@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1000" width="1500" height="1000">
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8e8e8"/></marker></defs>
+<rect width="1500" height="1000" rx="12" fill="#121212"/>
+<text x="40" y="48.0" font-family="Helvetica, Arial, sans-serif" font-size="26" font-weight="600" text-anchor="start" fill="#e8e8e8">Teach by example: the Fast Brain learns your handwriting</text>
+<text x="40" y="75.0" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#a3a3a3">Grouping stays code. Recognition comes from your own saved examples, not hand-written rules. Marked &#x27;to decide&#x27; = still open.</text>
+<text x="40" y="124.0" font-family="Helvetica, Arial, sans-serif" font-size="19" font-weight="600" text-anchor="start" fill="#e8e8e8">The loop</text>
+<rect x="40" y="145" width="250" height="95" rx="12" fill="#3a3320" stroke="#e8e8e8" stroke-width="2"/>
+<text x="165.0" y="186.7" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="middle" fill="#e8e8e8">1 · You write</text>
+<text x="165.0" y="208.79999999999998" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">strokes on the canvas</text>
+<rect x="340" y="145" width="250" height="95" rx="12" fill="#1b2a38" stroke="#e8e8e8" stroke-width="2"/>
+<text x="465.0" y="176.3" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="middle" fill="#e8e8e8">2 · Group</text>
+<text x="465.0" y="198.4" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">code: strokes close in place</text>
+<text x="465.0" y="216.6" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">and time = one letter</text>
+<rect x="640" y="145" width="250" height="95" rx="12" fill="#1b2a38" stroke="#e8e8e8" stroke-width="2"/>
+<text x="765.0" y="176.3" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="middle" fill="#e8e8e8">3 · Guess</text>
+<text x="765.0" y="198.4" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">$P against your saved</text>
+<text x="765.0" y="216.6" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">examples: nearest wins</text>
+<rect x="940" y="145" width="250" height="95" rx="12" fill="#1b2a38" stroke="#e8e8e8" stroke-width="2"/>
+<text x="1065.0" y="186.7" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="middle" fill="#e8e8e8">4 · Show the guess</text>
+<text x="1065.0" y="208.79999999999998" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">a label: A 82%, or ?</text>
+<rect x="940" y="300" width="250" height="95" rx="12" fill="#3a3320" stroke="#e8e8e8" stroke-width="2"/>
+<text x="1065.0" y="331.3" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="middle" fill="#e8e8e8">5 · You correct it</text>
+<text x="1065.0" y="353.40000000000003" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">&quot;it&#x27;s A&quot;: tap the label,</text>
+<text x="1065.0" y="371.6" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">pick or type (to decide)</text>
+<rect x="640" y="300" width="250" height="95" rx="12" fill="#1c3122" stroke="#e8e8e8" stroke-width="2"/>
+<text x="765.0" y="331.3" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="middle" fill="#e8e8e8">6 · Save the example</text>
+<text x="765.0" y="353.40000000000003" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">its geometry + the label</text>
+<text x="765.0" y="371.6" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">= one more A</text>
+<path d="M290,192.5 L340,192.5" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<path d="M590,192.5 L640,192.5" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<path d="M890,192.5 L940,192.5" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<path d="M1065.0,240 L1065.0,300" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<text x="1075.0" y="274.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="start" fill="#a3a3a3">wrong?</text>
+<path d="M940,347 L890,347" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<text x="893" y="336.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="start" fill="#a3a3a3">saved</text>
+<path d="M765,300 L765,240" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<text x="775" y="276.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="start" fill="#a3a3a3">next time</text>
+<text x="1205" y="204.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="start" fill="#a3a3a3">right? you leave it,</text>
+<text x="1205" y="222.2" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="start" fill="#a3a3a3">and it can be saved too</text>
+<rect x="40" y="300" width="550" height="95" rx="12" fill="#29243d" stroke="#e8e8e8" stroke-width="2"/>
+<text x="315.0" y="331.3" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="middle" fill="#e8e8e8">When no example is close: Claude</text>
+<text x="315.0" y="353.40000000000003" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">Claude guesses with the word around it (HEL?O → L);</text>
+<text x="315.0" y="371.6" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">you confirm, and its answer becomes an example too</text>
+<path d="M640,210 L615,210 L615,347 L590,347" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" stroke-dasharray="8 6" marker-end="url(#head)"/>
+<text x="560" y="250.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="start" fill="#a3a3a3">unsure</text>
+<text x="40" y="459.0" font-family="Helvetica, Arial, sans-serif" font-size="19" font-weight="600" text-anchor="start" fill="#e8e8e8">What gets saved</text>
+<rect x="40" y="480" width="440" height="250" rx="12" fill="#1b2a38" stroke="#e8e8e8" stroke-width="2"/>
+<text x="260.0" y="609.6" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="middle" fill="#e8e8e8"></text>
+<text x="64" y="515.0" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#e8e8e8">{</text>
+<text x="64" y="534.5" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#e8e8e8">  &quot;label&quot;: &quot;A&quot;,</text>
+<text x="64" y="554.0" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#e8e8e8">  &quot;strokes&quot;: [[x, y, pressure, t], ...],</text>
+<text x="64" y="573.5" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#e8e8e8">  &quot;from&quot;: &quot;you&quot; or &quot;claude&quot;,</text>
+<text x="64" y="593.0" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#e8e8e8">  &quot;at&quot;: &quot;2026-11-24&quot;</text>
+<text x="64" y="612.5" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#e8e8e8">}</text>
+<text x="64" y="664.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="start" fill="#a3a3a3">in your own pack copy, on disk</text>
+<text x="64" y="682.2" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="start" fill="#a3a3a3">(~/.visthinker/packs, D62 · D93)</text>
+<text x="64" y="700.4" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="start" fill="#a3a3a3">keep the last ~10 per letter (D118)</text>
+<text x="520" y="459.0" font-family="Helvetica, Arial, sans-serif" font-size="19" font-weight="600" text-anchor="start" fill="#e8e8e8">How a match works ($P)</text>
+<rect x="520" y="480" width="440" height="58" rx="12" fill="#1b2a38" stroke="#e8e8e8" stroke-width="2"/>
+<text x="740.0" y="503.2" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="middle" fill="#e8e8e8">1 · Resample</text>
+<text x="740.0" y="525.3" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">32 evenly spaced points</text>
+<rect x="520" y="544" width="440" height="58" rx="12" fill="#1b2a38" stroke="#e8e8e8" stroke-width="2"/>
+<text x="740.0" y="567.2" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="middle" fill="#e8e8e8">2 · Scale and centre</text>
+<text x="740.0" y="589.3000000000001" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">size and place stop mattering</text>
+<rect x="520" y="608" width="440" height="58" rx="12" fill="#1b2a38" stroke="#e8e8e8" stroke-width="2"/>
+<text x="740.0" y="631.2" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="middle" fill="#e8e8e8">3 · Compare clouds</text>
+<text x="740.0" y="653.3000000000001" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">each point to its nearest; order never counts</text>
+<rect x="520" y="672" width="440" height="58" rx="12" fill="#1b2a38" stroke="#e8e8e8" stroke-width="2"/>
+<text x="740.0" y="695.2" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="middle" fill="#e8e8e8">4 · Score</text>
+<text x="740.0" y="717.3000000000001" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">1 / (1 + distance); the best example&#x27;s letter wins</text>
+<text x="1000" y="459.0" font-family="Helvetica, Arial, sans-serif" font-size="19" font-weight="600" text-anchor="start" fill="#e8e8e8">Sure or unsure (to decide)</text>
+<rect x="1000" y="480" width="460" height="100" rx="12" fill="#1c3122" stroke="#e8e8e8" stroke-width="2"/>
+<text x="1230.0" y="513.8" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="middle" fill="#e8e8e8">Sure</text>
+<text x="1230.0" y="535.9" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">the best example is close, and clearly</text>
+<text x="1230.0" y="554.1" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">closer than any other letter&#x27;s: label it</text>
+<rect x="1000" y="600" width="460" height="130" rx="12" fill="#29243d" stroke="#e8e8e8" stroke-width="2"/>
+<text x="1230.0" y="638.4" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="middle" fill="#e8e8e8">Unsure</text>
+<text x="1230.0" y="660.5" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">nothing close, or two letters near tied:</text>
+<text x="1230.0" y="678.7" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">show ? at once and ask Claude</text>
+<text x="1230.0" y="696.9" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">(D115), then save the answer</text>
+<text x="40" y="789.0" font-family="Helvetica, Arial, sans-serif" font-size="19" font-weight="600" text-anchor="start" fill="#e8e8e8">Getting started, and what comes next</text>
+<rect x="40" y="810" width="460" height="150" rx="12" fill="#3a2a1a" stroke="#e8e8e8" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="270.0" y="858.4" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="middle" fill="#e8e8e8">Cold start</text>
+<text x="270.0" y="880.5" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">with no examples, it knows nothing:</text>
+<text x="270.0" y="898.7" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">teach each letter 3–5 times first,</text>
+<text x="270.0" y="916.9" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">or start from Claude&#x27;s answers (to decide)</text>
+<rect x="520" y="810" width="460" height="150" rx="12" fill="#3a2a1a" stroke="#e8e8e8" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="750.0" y="858.4" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="middle" fill="#e8e8e8">Combine with the rules</text>
+<text x="750.0" y="880.5" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">the measured parts (legs, bars, loops)</text>
+<text x="750.0" y="898.7" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">tell look-alikes apart: O and 0, l and 1,</text>
+<text x="750.0" y="916.9" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">when two examples are near tied</text>
+<rect x="1000" y="810" width="460" height="150" rx="12" fill="#3a2a1a" stroke="#e8e8e8" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="1230.0" y="858.4" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="middle" fill="#e8e8e8">Share later (D170)</text>
+<text x="1230.0" y="880.5" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">your examples are data, so they can</text>
+<text x="1230.0" y="898.7" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">become a contribution: push and fetch</text>
+<text x="1230.0" y="916.9" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#a3a3a3">handwriting packs on the cloud server</text>
+</svg>

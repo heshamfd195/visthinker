@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1560 680" width="1560" height="680">
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8e8e8"/></marker></defs>
+<rect width="1560" height="680" rx="12" fill="#121212"/>
+<rect x="40" y="40" width="260" height="230" rx="12" fill="#181818" stroke="#a3a3a3" stroke-width="1"/>
+<text x="52" y="62.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" text-anchor="start" fill="#a3a3a3">1</text>
+<path d="M112.0,235.0 L170.0,95.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<rect x="340" y="40" width="260" height="230" rx="12" fill="#181818" stroke="#a3a3a3" stroke-width="1"/>
+<text x="352" y="62.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" text-anchor="start" fill="#a3a3a3">2</text>
+<path d="M412.0,235.0 L470.0,95.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M470.0,95.0 L530.0,232.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<rect x="640" y="40" width="260" height="230" rx="12" fill="#181818" stroke="#a3a3a3" stroke-width="1"/>
+<text x="652" y="62.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" text-anchor="start" fill="#a3a3a3">3</text>
+<path d="M712.0,235.0 L770.0,95.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M770.0,95.0 L830.0,232.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M735.0,178.0 L806.0,176.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<rect x="940" y="40" width="260" height="230" rx="12" fill="#181818" stroke="#a3a3a3" stroke-width="1"/>
+<text x="952" y="62.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" text-anchor="start" fill="#a3a3a3">4</text>
+<path d="M1012.0,235.0 L1070.0,95.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M1070.0,95.0 L1130.0,232.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M1035.0,178.0 L1106.0,176.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<rect x="1090" y="58" width="72" height="30" rx="8" fill="#1b2a38" stroke="#4dabf7" stroke-width="2"/>
+<text x="1126.0" y="79.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="#4dabf7">⚡ X ?</text>
+<rect x="1240" y="40" width="260" height="230" rx="12" fill="#181818" stroke="#a3a3a3" stroke-width="1"/>
+<text x="1252" y="62.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" text-anchor="start" fill="#a3a3a3">5</text>
+<path d="M1312.0,235.0 L1370.0,95.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M1370.0,95.0 L1430.0,232.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M1335.0,178.0 L1406.0,176.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<rect x="1390" y="58" width="72" height="30" rx="8" fill="#1b2a38" stroke="#4dabf7" stroke-width="2"/>
+<text x="1426.0" y="79.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="#4dabf7">⚡ X ?</text>
+<path d="M1386,73 L1470,73" fill="none" stroke="#ffa94d" stroke-width="3" stroke-linecap="round"/>
+<rect x="1390" y="96" width="52" height="30" rx="8" fill="#3a3320" stroke="#ffa94d" stroke-width="2"/>
+<text x="1416.0" y="117.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="#ffa94d">✍ A</text>
+<path d="M300,155.0 L340,155.0" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<path d="M600,155.0 L640,155.0" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<path d="M900,155.0 L940,155.0" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<path d="M1200,155.0 L1240,155.0" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<rect x="40" y="400" width="260" height="230" rx="12" fill="#181818" stroke="#a3a3a3" stroke-width="1"/>
+<text x="52" y="422.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" text-anchor="start" fill="#a3a3a3">6</text>
+<path d="M116.8,553.0 L140.0,497.0" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M140.0,497.0 L164.0,551.8" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M126.0,530.2 L154.4,529.4" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<rect x="110" y="586" width="120" height="30" rx="8" fill="#1c3122" stroke="#69db7c" stroke-width="2"/>
+<text x="170.0" y="607.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="#69db7c">A × 1</text>
+<rect x="340" y="400" width="260" height="230" rx="12" fill="#181818" stroke="#a3a3a3" stroke-width="1"/>
+<text x="352" y="422.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" text-anchor="start" fill="#a3a3a3">7</text>
+<path d="M404.0,595.0 L470.0,455.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M470.0,455.0 L538.0,592.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M435.0,546.0 L506.0,536.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<rect x="480" y="418" width="92" height="30" rx="8" fill="#1c3122" stroke="#69db7c" stroke-width="2"/>
+<text x="526.0" y="439.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="#69db7c">⚡ A 94%</text>
+<rect x="640" y="400" width="260" height="230" rx="12" fill="#181818" stroke="#a3a3a3" stroke-width="1"/>
+<text x="652" y="422.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" text-anchor="start" fill="#a3a3a3">8</text>
+<path d="M737.8,605.2 L754.6,477.5" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M754.6,477.5 L834.0,576.8" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M744.1,553.4 L802.0,536.1" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<rect x="780" y="418" width="92" height="30" rx="8" fill="#1c3122" stroke="#69db7c" stroke-width="2"/>
+<text x="826.0" y="439.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="#69db7c">⚡ A 81%</text>
+<rect x="940" y="400" width="260" height="230" rx="12" fill="#181818" stroke="#a3a3a3" stroke-width="1"/>
+<text x="952" y="422.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" text-anchor="start" fill="#a3a3a3">9</text>
+<path d="M999.1,588.8 L1068.9,508.3" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M1068.9,508.3 L1065.3,613.2" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M1025.8,547.6 L1071.1,572.1" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<rect x="1090" y="418" width="52" height="30" rx="8" fill="#1b2a38" stroke="#4dabf7" stroke-width="2"/>
+<text x="1116.0" y="439.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="#4dabf7">⚡ ?</text>
+<rect x="1060" y="456" width="112" height="30" rx="8" fill="#29243d" stroke="#b197fc" stroke-width="2"/>
+<text x="1116.0" y="477.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="#b197fc">Claude: A</text>
+<rect x="1240" y="400" width="260" height="230" rx="12" fill="#181818" stroke="#a3a3a3" stroke-width="1"/>
+<text x="1252" y="422.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" text-anchor="start" fill="#a3a3a3">10</text>
+<path d="M1316.8,553.0 L1340.0,497.0" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M1340.0,497.0 L1364.0,551.8" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M1326.0,530.2 L1354.4,529.4" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M1396.6,549.7 L1406.8,489.0" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M1406.8,489.0 L1446.5,535.1" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M1402.5,527.0 L1429.1,516.6" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M1448.2,554.1 L1481.0,503.8" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M1481.0,503.8 L1491.5,562.1" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M1460.7,531.8 L1488.3,538.5" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<rect x="1310" y="586" width="120" height="30" rx="8" fill="#1c3122" stroke="#69db7c" stroke-width="2"/>
+<text x="1370.0" y="607.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="#69db7c">A × 3</text>
+<path d="M1370.0,270 L1370.0,310 L170.0,310 L170.0,400" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<path d="M300,515.0 L340,515.0" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<path d="M600,515.0 L640,515.0" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<path d="M900,515.0 L940,515.0" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<path d="M1200,515.0 L1240,515.0" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+</svg>
