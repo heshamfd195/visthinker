@@ -119,6 +119,7 @@ Only this repo's decisions are listed, so the numbers have gaps. When a later de
 | D180 | 🔄 A turn can suggest, not decide: a card reading that only wins turned back is a guess (`A?`) for Claude, never clear.                                                                                                                                    |
 | D181 | 🎯 An example is sure only within 1.0: letters you never taught came 0.97–1.18 from a look-alike. When examples and cards agree, the surer score is shown.                                                                                                 |
 | D182 | ∅ Say a mark isn't a letter and Claude labels it `not a letter`: marks like it stay plain marks, outside any word.                                                                                                                                         |
+| D183 | ⭕ A round stroke can be a letter: a Q's tail joins its circle, a circle Claude names with a letter is taught, and a round stroke your examples know is that letter.                                                                                       |
 
 ## 🔌 Bridge & security
 

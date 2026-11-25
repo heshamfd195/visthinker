@@ -32,6 +32,7 @@ You write on the canvas and the Fast Brain reads it, letter by letter. When it i
 
 - 🔢 Teach each letter about **3 times**, and each way you write it (a round B and an angular B are as far apart as two letters).
 - 🧹 Only the newest **10 per letter** are kept (D118).
+- ⭕ A circle is a shape until you teach an O like it: then round strokes like your O are letters, and a Q's tail joins its circle (D183).
 - ∅ Say "that's not a letter" and Claude labels it `not a letter`: marks like it stay plain marks, outside any word (D182).
 - 🌍 The repo is public, so your examples are too (D178).
 
