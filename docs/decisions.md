@@ -114,6 +114,7 @@ Only this repo's decisions are listed, so the numbers have gaps. When a later de
 | D175 | 💬 You teach it in the chat: say "it's A", Claude labels the letter, and each letter is saved as an example. Handwriting is a core ability with its own storage.                                                                              |
 | D176 | ⏱️ With handwriting on, a lone mark waits 5 s for its next stroke, like a word (D169): a slow H's second leg came 2.4 s after the first. Changes D110 for handwriting.                                                                        |
 | D177 | 🎯 A match with no other letter near enough to compare is sure only when very close: with only a 2 and a B taught, an untaught H came within 1.2 of a B.                                                                                      |
+| D179 | 🃏 The cards win on a letter you never taught: when your examples are sure of one letter but the cards clearly read another with no examples, the cards name it.                                                                              |
 
 ## 🔌 Bridge & security
 
