@@ -2,11 +2,18 @@ import {
   LetterEventDetail,
   SceneObject,
   WordReading,
+  type LetterReading,
   type Point2,
   type Stroke,
 } from "@visthinker/contract";
 import { describe, expect, it } from "vitest";
 import hello from "../abilities/handwriting/fixtures/hello.json" with { type: "json" };
+import {
+  createExampleBook,
+  exampleFrom,
+  readHandwriting,
+  type ExampleBook,
+} from "../abilities/handwriting/index.ts";
 import { STARTER_PACKS } from "../packs/index.ts";
 import { createManualClock } from "../ports/index.ts";
 import { createSceneStore, createStory, createStrokeStore, recordStroke } from "../scene/index.ts";
@@ -320,7 +327,7 @@ describe("replay (moved from T08)", () => {
 });
 
 describe("grouping (D96 · D97)", () => {
-  function setup(options: { handwriting?: boolean } = {}) {
+  function setup(options: { handwriting?: boolean; examples?: ExampleBook } = {}) {
     const clock = createManualClock();
     const story = createStory(clock);
     const scene = createSceneStore();
@@ -602,6 +609,33 @@ describe("grouping (D96 · D97)", () => {
     for (const stroke of hello.fourth as Stroke[]) replay(stroke);
     clock.advance(SETTLE_MS);
     expect(scene.all().map((o) => [o.kind, o.label])).toEqual([["word", "HELLO"]]);
+  });
+
+  it("names each letter of your fourth HELLO by your examples from the other three (D174)", () => {
+    const examples = createExampleBook();
+    for (const name of ["first", "second", "third"] as const)
+      readHandwriting(hello[name] as Stroke[]).forEach((l, i) =>
+        examples.add(
+          exampleFrom(l.strokes, {
+            id: `${name}-${i}`,
+            label: "HELLO"[i]!,
+            from: "you",
+            at: "now",
+          }),
+        ),
+      );
+    const { clock, scene, story, replay } = setup({ examples });
+    for (const stroke of hello.fourth as Stroke[]) replay(stroke);
+    clock.advance(SETTLE_MS);
+    expect(scene.all().map((o) => [o.kind, o.label])).toEqual([["word", "HELLO"]]);
+    const named = story
+      .all()
+      .filter((e) => e.type === "letter" && e.detail?.["reading"])
+      .map((e) => e.detail!["reading"] as LetterReading);
+    expect(named.slice(-5).map((r) => `${r.label} ${r.via}`)).toEqual(
+      ["H", "E", "L", "L", "O"].map((c) => `${c} examples`),
+    );
+    expect(named.at(-1)!.examples).toMatchObject({ sure: true, count: 3, of: 15 });
   });
 
   it("a lone letter the cards read clearly is a word; a mark they don't know is a symbol", () => {

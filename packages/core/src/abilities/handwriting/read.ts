@@ -1,5 +1,6 @@
-// Reading handwriting end to end (T51–T53): split the strokes into letters (D114), turn a tilted
-// letter upright (the drawing's orientation limit), measure it and read it by the cards (D113).
+// Reading handwriting end to end (T51–T53 · D174): split the strokes into letters (D114), turn a
+// tilted letter upright (the drawing's orientation limit), measure it, and name it: by your nearest
+// example when that's sure, else by the cards (D113); a letter neither is sure of goes to Claude.
 // Each letter tries small turns either way and keeps one only if it reads much better than
 // upright, so an L can't turn itself into a V. Past about 30° nothing is turned: the letter stays
 // unsure and goes to Claude.
@@ -13,6 +14,7 @@ import type {
 import { CARDS } from "./cards.ts";
 import { letterFeatures } from "./features.ts";
 import { splitLetters } from "./letters.ts";
+import type { ExampleMatcher } from "./match.ts";
 import { readLetter } from "./scoring.ts";
 
 export const TILT = {
@@ -42,8 +44,42 @@ export interface ReadLetter {
 export function readHandwriting(
   strokes: readonly Stroke[],
   cards: readonly CharacterCard[] = CARDS,
+  examples?: ExampleMatcher,
 ): ReadLetter[] {
-  return splitLetters(strokes).map((l) => readLetterTurned(l, cards));
+  return splitLetters(strokes).map((l) => nameLetter(readLetterTurned(l, cards), examples));
+}
+
+/**
+ * The naming order (D174): your examples first, as they're your own writing; the cards when no
+ * example is sure; and a letter neither is sure of stays `?`, for Claude (D115). What the examples
+ * said is kept either way, for the debug view.
+ */
+function nameLetter(read: ReadLetter, examples: ExampleMatcher | undefined): ReadLetter {
+  const match = examples?.match(read.strokes);
+  if (!match) return { ...read, reading: { ...read.reading, via: "cards" } };
+  const said = {
+    label: match.label,
+    sure: match.sure,
+    score: match.score,
+    distance: match.distance,
+    example: match.example,
+    count: match.count,
+    guesses: match.guesses,
+    compared: match.compared,
+    of: match.of,
+  };
+  if (!match.sure) return { ...read, reading: { ...read.reading, via: "cards", examples: said } };
+  return {
+    ...read,
+    reading: {
+      label: match.label,
+      score: match.score,
+      clear: true,
+      guesses: match.guesses.map(({ char, score }) => ({ char, score })),
+      via: "examples",
+      examples: said,
+    },
+  };
 }
 
 /** A letter: upright, unless a small turn reads it much better. */

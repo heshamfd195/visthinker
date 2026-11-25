@@ -104,3 +104,27 @@ describe("the fast matcher (D118 · D174)", () => {
     expect(each).toBeLessThan(10);
   });
 });
+
+describe("the naming order (D174)", () => {
+  it("names by your examples when one is sure, else by the cards, keeping what both said", () => {
+    const book = createExampleBook();
+    const [round] = readHandwriting(writing("roundB"));
+    book.add(exampleFrom(round!.strokes, { id: "b", label: "B", from: "you", at }));
+    const matcher = createExampleMatcher(book);
+    const [b] = readHandwriting(writing("angularB"), undefined, matcher);
+    expect(b!.reading).toMatchObject({ label: "B", clear: true, via: "examples" });
+    // No E taught: the examples aren't sure, so the cards name it, and the examples' guess stays.
+    const [, e] = readHandwriting(writing("first"), undefined, matcher);
+    expect(e!.reading).toMatchObject({ label: "E", via: "cards", examples: { sure: false } });
+  });
+
+  it("names by the cards alone before you teach anything", () => {
+    const [h] = readHandwriting(
+      writing("first"),
+      undefined,
+      createExampleMatcher(createExampleBook()),
+    );
+    expect(h!.reading).toMatchObject({ label: "H", via: "cards" });
+    expect(h!.reading.examples).toBeUndefined();
+  });
+});

@@ -4,7 +4,8 @@
 // group, read about 0.6 s after the last one. A group is then a one-stroke box,
 // circle or arrow, or a symbol read by the cross rule and $P against the packs' templates (D97).
 // The handwriting ability splits a group into letters first and reads each by the character
-// cards (D112 · D113): two or more letters, or one clear letter, are a written `word` such as
+// cards (D112 · D113), or by your own examples first when one is sure (D174): two or more letters,
+// or one clear letter, are a written `word` such as
 // "HELLO", not a symbol, and each new or changed letter gets a `letter` event (T51–T53).
 import type {
   Box,
@@ -19,6 +20,7 @@ import type {
 } from "@visthinker/contract";
 import {
   CARDS,
+  createExampleMatcher,
   readHandwriting,
   type ExampleBook,
   type ReadLetter,
@@ -128,7 +130,10 @@ export function createComparator({
   packs,
   handwriting = true,
   cards = CARDS,
+  examples,
 }: ComparatorDeps): Comparator {
+  // Your examples name a letter before the cards do (D174).
+  const matcher = examples ? createExampleMatcher(examples) : undefined;
   let group: Group | undefined;
   /** The last symbol read, which a late stroke may still rejoin (D110). */
   let recent: Omit<Group, "cancel">[] = [];
@@ -246,7 +251,7 @@ export function createComparator({
     // reads each by the cards (D114, T51–T53). Two or more letters, or one the cards read
     // clearly, are a written word, never guessed as one symbol ($P against X and O only fits a
     // lone mark).
-    const letters = handwriting ? readHandwriting(drawn, cards) : [];
+    const letters = handwriting ? readHandwriting(drawn, cards, matcher) : [];
     const ids = letters.map((l) => l.strokes.map((s) => s.id));
     const isWord = letters.length >= 2 || (letters.length === 1 && letters[0]!.reading.clear);
     // The letter you're still writing waits for its name until you pause or move on.
@@ -368,7 +373,7 @@ export function createComparator({
       .map((id) => strokes.get(id))
       .filter((s): s is Stroke => s !== undefined)
       .sort((a, b) => a.t0 - b.t0);
-    const letters = readHandwriting(drawn, cards);
+    const letters = readHandwriting(drawn, cards, matcher);
     const ids = letters.map((l) => l.strokes.map((s) => s.id));
     const text = wordText(letters, -1);
     scene.update(word, (o) => ({ ...o, label: text }));

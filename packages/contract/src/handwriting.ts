@@ -157,8 +157,9 @@ export const CharacterCard = z
   });
 
 /**
- * What a letter was read as (D113): the best card and its score out of 100, whether that's clear
- * (70 or more, and 15 or more ahead of the next), and the two best guesses.
+ * What a letter was read as (D113 · D174): your nearest example when it's sure, else the best card
+ * and its score out of 100, whether that's clear (70 or more, and 15 or more ahead of the next),
+ * and the two best guesses.
  */
 export const LetterReading = z.object({
   /** The best card's character, or `?` when unsure. */
@@ -166,6 +167,34 @@ export const LetterReading = z.object({
   score: z.number().min(0).max(100),
   clear: z.boolean(),
   guesses: z.array(z.object({ char: z.string().min(1).max(2), score: z.number().min(0).max(100) })),
+  /**
+   * What named it (D174): your examples when one is sure, else the cards; an unsure letter goes on
+   * to Claude (D115). Missing from events made before the examples.
+   */
+  via: z.enum(["examples", "cards"]).optional(),
+  /** What your examples said, sure or not, for the debug view; missing with no examples yet. */
+  examples: z
+    .object({
+      label: z.string().min(1).max(2),
+      sure: z.boolean(),
+      score: z.number().min(0).max(100),
+      /** The $P distance to the nearest example. */
+      distance: z.number().nonnegative(),
+      /** The nearest example's id, and how many examples its letter has. */
+      example: Id,
+      count: z.number().int().nonnegative(),
+      guesses: z.array(
+        z.object({
+          char: z.string().min(1).max(2),
+          score: z.number().min(0).max(100),
+          distance: z.number().nonnegative(),
+        }),
+      ),
+      /** How many examples the prefilter let through, of how many. */
+      compared: z.number().int().nonnegative(),
+      of: z.number().int().nonnegative(),
+    })
+    .optional(),
 });
 
 /**

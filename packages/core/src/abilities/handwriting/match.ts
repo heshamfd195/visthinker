@@ -25,6 +25,8 @@ export const MATCH = {
   aspect: 2,
   /** …and closed loops by this many. */
   loops: 1,
+  /** A distance this far scores 0; nearer scores up to 100 (the sure limit scores 60). */
+  far: 3,
 } as const;
 
 /** What your examples say a letter is. */
@@ -32,7 +34,7 @@ export interface ExampleMatch {
   /** The nearest example's letter when sure, else `?`. */
   label: string;
   sure: boolean;
-  /** 0–100, from the nearest distance: 100 / (1 + d), like the symbols' score. */
+  /** 0–100 from the nearest distance: 100 at 0, falling to 0 at `MATCH.far`. */
   score: number;
   /** The $P distance to the nearest example. */
   distance: number;
@@ -60,7 +62,7 @@ interface Entry {
   loops: number;
 }
 
-const toScore = (d: number) => Math.round(100 / (1 + d));
+const toScore = (d: number) => Math.round(100 * Math.max(0, 1 - d / MATCH.far));
 
 /** Height over width, kept off zero so a flat dash still compares. */
 function aspectOf(points: readonly (readonly number[])[]): number {
