@@ -24,6 +24,7 @@ import {
   createComparator,
   crossRule,
   fitLine,
+  GROUP_MS,
   INSTANT_LINE_LENGTH,
   SETTLE_MS,
 } from "./index.ts";
@@ -737,6 +738,70 @@ describe("grouping (D96 · D97)", () => {
     expect(next.kind).toBe("symbol");
     const reading = story.all().findLast((e) => e.type === "letter")!.detail as LetterEventDetail;
     expect(reading.reading).toMatchObject({ label: NOT_A_LETTER, via: "examples" });
+  });
+
+  it("a Q's tail joins its circle; an arrow drawn up to a circle doesn't (D183)", () => {
+    const { clock, scene, draw } = setup({ examples: createExampleBook() });
+    draw(ellipse(100, 100, 60, 60));
+    clock.advance(GROUP_MS + 200);
+    expect(scene.all().map((o) => o.kind)).toEqual(["circle"]);
+    // The tail, from inside the circle out past its edge, a second later.
+    clock.advance(1_000);
+    draw(
+      along([
+        [120, 120],
+        [175, 175],
+      ]),
+    );
+    clock.advance(SETTLE_MS);
+    expect(scene.all()).toHaveLength(1);
+    expect(scene.all()[0]!.kind).not.toBe("circle");
+    expect(scene.all()[0]!.strokes).toHaveLength(2);
+
+    const other = setup({ examples: createExampleBook() });
+    other.draw(ellipse(100, 100, 60, 60));
+    other.clock.advance(GROUP_MS + 1_000);
+    // An arrow from far away up to the circle's edge: bigger than a tail, and mostly outside it.
+    other.draw(
+      along([
+        [400, 100],
+        [165, 100],
+        [185, 85],
+        [165, 100],
+        [185, 115],
+      ]),
+    );
+    other.clock.advance(SETTLE_MS);
+    expect(other.scene.all().map((o) => o.kind)).toContain("circle");
+    expect(other.scene.all()).toHaveLength(2);
+  });
+
+  it("a circle you call O is taught, and the next round O is a letter, not a circle (D183)", () => {
+    const examples = createExampleBook();
+    const { clock, scene, story, draw } = setup({ examples });
+    draw(ellipse(100, 100, 40, 50));
+    clock.advance(GROUP_MS + 200);
+    const circle = scene.all()[0]!;
+    expect(circle.kind).toBe("circle");
+    story.append({
+      who: "fastbrain",
+      type: "label",
+      target: circle.id,
+      detail: { text: "O", by: "claude" },
+    });
+    clock.advance(0);
+    expect(examples.all().map((e) => e.label)).toEqual(["O"]);
+    expect(scene.get(circle.id)).toMatchObject({ kind: "word", label: "O" });
+    // Later, another round O elsewhere: your example knows it.
+    clock.advance(10_000);
+    draw(ellipse(500, 100, 42, 52));
+    clock.advance(SETTLE_MS);
+    expect(scene.all().at(-1)).toMatchObject({ kind: "word", label: "O" });
+    // A circle much wider than your O is still a circle.
+    clock.advance(10_000);
+    draw(ellipse(900, 100, 120, 40));
+    clock.advance(SETTLE_MS);
+    expect(scene.all().at(-1)!.kind).toBe("circle");
   });
 
   it("saves nothing when the label doesn't fit the letters, and says why (D175)", () => {

@@ -51,6 +51,10 @@ export const HANDWRITING = "handwriting";
 
 /** D109: a straight stroke at least this long is a line at once (D97 had 160). */
 export const INSTANT_LINE_LENGTH = 400;
+/** One-stroke shapes the comparator reads on its own (T27). */
+const SHAPES: ReadonlySet<string> = new Set(["box", "circle", "arrow"]);
+/** D183: a stroke joining a shape is at most this share of its size (a Q's tail). */
+export const SHAPE_TAIL = 0.75;
 /** D97: a group is read this long after its last stroke. */
 export const GROUP_MS = 600;
 /** A stroke joins the open group if it starts within this long of its last stroke… */
@@ -185,6 +189,14 @@ export function createComparator({
   const rejoins = (last: Omit<Group, "cancel">, stroke: Stroke) => {
     if (!last.symbol || !scene.has(last.symbol)) return false;
     const box = strokeBox(stroke);
+    // A shape takes only a smaller stroke that lands on it (a Q's tail), never one beside it: an
+    // arrow drawn up to a circle stays an arrow (D183).
+    if (SHAPES.has(scene.get(last.symbol)!.kind))
+      return (
+        stroke.t0 - last.lastEnd <= WORD_REJOIN_MS &&
+        gap(last.box, box) === 0 &&
+        size(box) <= SHAPE_TAIL * size(last.box)
+      );
     // A word waits longer, for a stroke beside it on its line (D169), and so does any mark while
     // handwriting is on: a lone leg no card names yet may be half an H (D176, a 2.4 s pause).
     if (handwriting || scene.get(last.symbol)!.kind === "word")
@@ -253,7 +265,10 @@ export function createComparator({
 
     if (drawn.length === 1) {
       const shape = classifyShape(drawn[0]!);
-      if (shape.kind !== null) {
+      // D183: a round stroke your examples are sure is a letter (an O you taught) is the letter,
+      // not a circle. The cards alone can't say so: the O card reads most round strokes as O.
+      const known = shape.kind !== null && handwriting ? matcher?.match(drawn) : undefined;
+      if (shape.kind !== null && !(known?.sure && known.label !== NOT_A_LETTER)) {
         const object = add({
           id: scene.nextId({ box: "sb", circle: "sc", arrow: "sa" }[shape.kind]),
           kind: shape.kind,
@@ -264,6 +279,13 @@ export function createComparator({
           ...(shape.kind === "arrow" ? { geom: { a: shape.a, b: shape.b } } : {}),
         });
         recognized(object.id, { kind: shape.kind }, g.lastSeq);
+        // With handwriting on, a small stroke landing on it soon after can still join it: a Q's
+        // tail on its circle (D183).
+        if (handwriting)
+          recent = [
+            ...recent,
+            { ...g, absorbed: [], symbol: object.id, strokes: [drawn[0]!.id], box: object.box },
+          ];
         return;
       }
     }
@@ -345,7 +367,10 @@ export function createComparator({
    */
   const teach = (book: ExampleBook, target: string, text: string, cause: number) => {
     const object = scene.get(target);
-    if (!object || (object.kind !== "word" && object.kind !== "symbol")) return;
+    if (!object) return;
+    // A one-stroke circle, box or arrow can be taught too: "it's O" (D183).
+    const shape = SHAPES.has(object.kind);
+    if (!shape && object.kind !== "word" && object.kind !== "symbol") return;
     const drawn = (object.strokes ?? [])
       .map((id) => strokes.get(id))
       .filter((s): s is Stroke => s !== undefined)
@@ -385,6 +410,18 @@ export function createComparator({
       detail: { text, examples: saved, ...(skipped ? { skipped } : {}) } satisfies TaughtDetail,
       cause,
     });
+    // A shape you named with a letter is now that word (D183), with its letters listed.
+    let because = taught.seq;
+    if (shape && saved.length > 0) {
+      const text = saved.map((e) => e.label).join("");
+      scene.update(target, (o) => ({ ...o, kind: "word", pack: HANDWRITING, label: text }));
+      const ids = groups.map((ink) => ink.map((s) => s.id));
+      because = recognized(
+        target,
+        { kind: "word", letters: ids, text } satisfies WordReading,
+        taught.seq,
+      ).seq;
+    }
     // Each letter now shows the name Claude gave it (D116).
     saved.forEach(({ label }, i) => {
       const ink = groups[i]!;
@@ -406,7 +443,7 @@ export function createComparator({
         reading,
         ...(letter?.turn ? { turn: letter.turn } : {}),
       };
-      story.append({ who: "fastbrain", type: "letter", target, detail, cause: taught.seq });
+      story.append({ who: "fastbrain", type: "letter", target, detail, cause: because });
     });
   };
 
