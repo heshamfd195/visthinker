@@ -96,7 +96,7 @@ export function useProjects(
     async (id: string) => {
       if (!http) return;
       const p = await http.readProject(id);
-      session.open(readSnapshot(p.snapshot));
+      session.open(readSnapshot(p.snapshot), { id: p.meta.id, name: p.meta.name });
       setCurrent(p.meta);
       setChat(p.meta.chats.at(-1)?.id ?? "main");
     },
@@ -144,7 +144,7 @@ export function useProjects(
     async create() {
       await save();
       const next = newProjectMeta("Untitled", Date.now());
-      session.open();
+      session.open(undefined, { id: next.id, name: next.name });
       setCurrent(next);
       meta.current = next;
       setChat("main");
@@ -171,12 +171,12 @@ export function useProjects(
         const raw = JSON.parse(await file.text()) as Project;
         const parts = readSnapshot(raw.snapshot);
         await save();
-        session.open(parts);
         const next = {
           ...newProjectMeta(raw.meta?.name ?? file.name, Date.now()),
           chats: raw.meta?.chats ?? [],
         };
         if (!next.chats.length) next.chats = newProjectMeta("x", Date.now()).chats;
+        session.open(parts, { id: next.id, name: next.name });
         setCurrent(next);
         meta.current = next;
         setChat(next.chats.at(-1)!.id);

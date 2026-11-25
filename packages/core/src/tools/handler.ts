@@ -49,6 +49,11 @@ export interface ToolHandler extends CallHandler {
   listening(): boolean;
   /** Called when Claude starts or stops listening, and after each call it makes (D127). */
   onActivity(listener: (record: CallRecord | undefined) => void): () => void;
+  /**
+   * Ends every open wait at once, as if it had timed out. The canvas calls it when it moves to
+   * another project, so Claude's next call reaches the new one instead of waiting on the old.
+   */
+  release(): void;
 }
 
 export function createToolHandler({
@@ -74,6 +79,8 @@ export function createToolHandler({
   // Waiters wake once the whole change is in the story, not halfway through it: a stroke and
   // what the Fast Brain makes of it arrive in the same read.
   const waiters = new Set<() => void>();
+  /** One per open wait: ends it at once (`release`), e.g. when the canvas moves to another project. */
+  const releasers = new Set<() => void>();
   let wakeQueued = false;
   story.subscribe(() => {
     if (wakeQueued) return;
@@ -100,19 +107,24 @@ export function createToolHandler({
             .unread()
             .some((e) => (!types || types.includes(e.type)) && (!who || who.includes(e.who)));
         if (matches()) return resolve({ events: story.read(), timedOut: false });
+        const done = (timedOut: boolean) => {
+          waiters.delete(wake);
+          releasers.delete(release);
+          tell();
+          resolve({ events: story.read(), timedOut });
+        };
         const wake = () => {
           if (!matches()) return;
           cancel();
-          waiters.delete(wake);
-          tell();
-          resolve({ events: story.read(), timedOut: false });
+          done(false);
         };
-        const cancel = clock.after(timeoutMs, () => {
-          waiters.delete(wake);
-          tell();
-          resolve({ events: story.read(), timedOut: true });
-        });
+        const release = () => {
+          cancel();
+          done(true);
+        };
+        const cancel = clock.after(timeoutMs, () => done(true));
         waiters.add(wake);
+        releasers.add(release);
         tell();
       }),
 
@@ -197,6 +209,9 @@ export function createToolHandler({
     actor,
     history,
     listening: () => waiters.size > 0,
+    release() {
+      for (const end of [...releasers]) end();
+    },
     onActivity(listener: (record: CallRecord | undefined) => void) {
       activity.add(listener);
       return () => {
