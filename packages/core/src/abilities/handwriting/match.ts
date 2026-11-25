@@ -19,6 +19,12 @@ export const MATCH = {
   sure: 1.2,
   /** …and the next letter's nearest is at least this many times farther (the least was 1.35). */
   lead: 1.25,
+  /**
+   * D177: with no other letter to compare against (only one letter taught, or the prefilter left
+   * one), the lead says nothing, so a match must be this close to be sure. With only a 2 and two
+   * Bs taught (25 Nov), an untaught H came within 1.2 of a B; a B of the same style, within 1.0.
+   */
+  alone: 1.0,
   /** The prefilter: stroke counts may differ by this much (an E in 1 to 4 strokes)… */
   strokes: 2,
   /** …height over width by this factor at most (an L is tall, a dash is wide)… */
@@ -124,7 +130,7 @@ export function createExampleMatcher(book: ExampleBook): ExampleMatcher {
       const [top, next] = ranked;
       if (!top) return undefined;
       const [char, { d, id }] = top;
-      const sure = d <= MATCH.sure && (next === undefined || next[1].d >= MATCH.lead * d);
+      const sure = next ? d <= MATCH.sure && next[1].d >= MATCH.lead * d : d <= MATCH.alone;
       const round2 = (n: number) => Math.round(n * 100) / 100;
       return {
         label: sure ? char : "?",

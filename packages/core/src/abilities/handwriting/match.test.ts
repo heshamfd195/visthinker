@@ -69,6 +69,23 @@ describe("the fast matcher (D118 · D174)", () => {
     expect(read.count).toBe(1);
   });
 
+  it("is stricter when it has no other letter to compare with: only a B taught (D177)", () => {
+    const book = createExampleBook();
+    const [round] = readHandwriting(writing("roundB"));
+    book.add(exampleFrom(round!.strokes, { id: "b", label: "B", from: "you", at }));
+    const matcher = createExampleMatcher(book);
+    let compared = 0;
+    for (const name of HELLOS)
+      for (const l of readHandwriting(writing(name))) {
+        const read = matcher.match(l.strokes, l.features);
+        if (!read) continue; // the prefilter let no B through
+        compared++;
+        expect(read.guesses).toHaveLength(1);
+        expect(read.sure, `${name}: ${read.distance}`).toBe(false);
+      }
+    expect(compared).toBeGreaterThan(10);
+  });
+
   it("compares only the examples the prefilter lets through", () => {
     const book = createExampleBook();
     teach(book, HELLOS);
