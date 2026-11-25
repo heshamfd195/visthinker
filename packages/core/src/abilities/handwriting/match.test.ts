@@ -177,6 +177,28 @@ describe("the naming order (D174)", () => {
     expect(e!.reading).toMatchObject({ label: "E", via: "cards", examples: { sure: false } });
   });
 
+  it("lets the cards win on a letter you never taught (D179)", () => {
+    // Your E's saved as B's: the examples are sure a new E is a B, but no E was ever taught, and
+    // the cards clearly read an E.
+    const book = createExampleBook();
+    for (const name of ["first", "second", "third"] as const) {
+      const [, e] = readHandwriting(writing(name));
+      book.add(exampleFrom(e!.strokes, { id: `${name}-e`, label: "B", from: "you", at }));
+    }
+    const matcher = createExampleMatcher(book);
+    const [, e] = readHandwriting(writing("fourth"), undefined, matcher);
+    expect(e!.reading).toMatchObject({
+      label: "E",
+      via: "cards",
+      examples: { label: "B", sure: true },
+    });
+    // Once you've taught an E (here, oddly, from an L), its examples lead again.
+    const [, , l] = readHandwriting(writing("first"));
+    book.add(exampleFrom(l!.strokes, { id: "l-as-e", label: "E", from: "you", at }));
+    const [, again] = readHandwriting(writing("fourth"), undefined, matcher);
+    expect(again!.reading).toMatchObject({ label: "B", via: "examples" });
+  });
+
   it("names by the cards alone before you teach anything", () => {
     const [h] = readHandwriting(
       writing("first"),

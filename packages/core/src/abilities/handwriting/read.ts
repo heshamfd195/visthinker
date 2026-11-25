@@ -51,8 +51,8 @@ export function readHandwriting(
 
 /**
  * The naming order (D174): your examples first, as they're your own writing; the cards when no
- * example is sure; and a letter neither is sure of stays `?`, for Claude (D115). What the examples
- * said is kept either way, for the debug view.
+ * example is sure, or when they clearly read a letter you never taught (D179); and a letter
+ * neither is sure of stays `?`, for Claude (D115). What the examples said is kept either way.
  */
 function nameLetter(read: ReadLetter, examples: ExampleMatcher | undefined): ReadLetter {
   const match = examples?.match(read.strokes);
@@ -70,6 +70,11 @@ function nameLetter(read: ReadLetter, examples: ExampleMatcher | undefined): Rea
     ...(match.turn ? { turn: match.turn } : {}),
   };
   if (!match.sure) return { ...read, reading: { ...read.reading, via: "cards", examples: said } };
+  // D179: your examples can't name a letter they've never seen. When the cards clearly read one
+  // you never taught, they win: an untaught E was a sure B, an H a sure N (25 Nov).
+  const cards = read.reading;
+  if (cards.clear && cards.label !== match.label && examples!.count(cards.label) === 0)
+    return { ...read, reading: { ...cards, via: "cards", examples: said } };
   return {
     ...read,
     reading: {

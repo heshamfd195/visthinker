@@ -69,6 +69,8 @@ export interface ExampleMatch {
 export interface ExampleMatcher {
   /** Undefined when there are no examples yet, or none passes the prefilter. */
   match(strokes: readonly Stroke[], features?: LetterFeatures): ExampleMatch | undefined;
+  /** How many examples a letter has (0 for a letter you never taught). */
+  count(label: string): number;
 }
 
 interface Entry {
@@ -216,6 +218,10 @@ export function createExampleMatcher(book: ExampleBook): ExampleMatcher {
       const way = tryTurn(mid) <= tryTurn(-mid) ? 1 : -1;
       for (const deg of side) tryTurn(way * deg);
       return best?.match;
+    },
+    count(label) {
+      rebuild();
+      return counts.get(label) ?? 0;
     },
   };
 }
