@@ -97,7 +97,11 @@ function readLetterTurned(strokes: Stroke[], cards: readonly CharacterCard[]): R
       const turned = readTurned(strokes, deg, cards);
       if (turned.reading.score > best.reading.score) best = turned;
     }
-  return best.reading.score >= upright.reading.score + TILT.lead ? best : upright;
+  if (best.reading.score < upright.reading.score + TILT.lead) return upright;
+  // D180: a turn can suggest, not decide. A K turned 20° read as a clear A, a letter it isn't,
+  // so a turned reading is never clear: it shows its guess (`A?`) and goes to Claude. Once you
+  // teach the letter, your examples match it tilted with their own small turns.
+  return { ...best, reading: { ...best.reading, label: "?", clear: false } };
 }
 
 /** Reads a letter as if turned back by `deg` (clockwise on the page) about its centre. */
