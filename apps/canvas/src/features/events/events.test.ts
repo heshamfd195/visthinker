@@ -4,10 +4,12 @@ import { describe as group, expect, it } from "vitest";
 import {
   describe,
   describeCall,
+  exampleCounts,
   isProblem,
   matches,
   mergeRows,
   mmss,
+  rowDetail,
   rowTarget,
   status,
   statusText,
@@ -196,5 +198,199 @@ group("time", () => {
     expect(statusText(status(false, undefined))).toBe("Claude is connected, not watching");
     expect(statusText(status(false, undefined, false))).toBe("Not connected to Claude");
     expect(statusText(status(true, 1000, false))).toBe("Not connected to Claude");
+  });
+});
+
+group("letters from the handwriting ability (T51)", () => {
+  const letter = e({
+    seq: 9,
+    type: "letter",
+    who: "fastbrain",
+    target: "y3",
+    cause: 8,
+    detail: {
+      index: 1,
+      of: 5,
+      strokes: ["s1", "s2", "s3"],
+      features: {
+        strokes: 3,
+        box: [0, 0, 60, 80],
+        aspect: 1.33,
+        parts: [
+          { kind: "line", stroke: 0, a: [0, 0], b: [0, 1], length: 1, angle: 90 },
+          { kind: "line", stroke: 1, a: [1, 0], b: [1, 1], length: 1, angle: 90 },
+          { kind: "line", stroke: 2, a: [0, 0.5], b: [1, 0.5], length: 0.75, angle: 0 },
+        ],
+        meets: [],
+        crossings: [
+          { parts: [0, 2], t: 0.5, u: 0, at: [0, 0.5], angle: 90 },
+          { parts: [1, 2], t: 0.5, u: 1, at: [1, 0.5], angle: 90 },
+        ],
+        loops: [],
+      },
+    },
+  });
+
+  it("says which letter of the word it is and what was measured, in one line", () => {
+    expect(describe(letter)).toBe(
+      "letter 1 of 5 · y3 · 3 lines | | — · no meets · 2 crossings · no loops",
+    );
+  });
+
+  it("opens to the full breakdown, then the raw event", () => {
+    const text = rowDetail(row(letter));
+    expect(text).toContain("parts      1  line  | 90°");
+    expect(text).toContain("crossings  1 and 3 touch at (0.00, 0.50) middle left");
+    expect(text).toContain('"type": "letter"');
+  });
+
+  it("a written word says how many letters it has, and isn't a problem", () => {
+    const word = e({
+      seq: 3,
+      type: "recognized",
+      who: "fastbrain",
+      target: "w1",
+      detail: { kind: "word", letters: [["s1"], ["s2"], ["s3"]] },
+    });
+    expect(describe(word)).toBe("read a word · w1 · 3 letters");
+    expect(isProblem(row(word))).toBe(false);
+  });
+
+  it("a named letter says its name and score; an unsure one its two best guesses, under Problems", () => {
+    const named = {
+      ...letter,
+      detail: {
+        ...letter.detail,
+        reading: {
+          label: "H",
+          score: 100,
+          clear: true,
+          guesses: [
+            { char: "H", score: 100 },
+            { char: "A", score: 50 },
+          ],
+        },
+      },
+    };
+    expect(describe(named)).toBe(
+      "letter 1 of 5 · H 100% · y3 · 3 lines | | — · no meets · 2 crossings · no loops",
+    );
+    expect(isProblem(row(named))).toBe(false);
+    const unsure = {
+      ...letter,
+      detail: {
+        ...letter.detail,
+        reading: {
+          label: "?",
+          score: 60,
+          clear: false,
+          guesses: [
+            { char: "L", score: 60 },
+            { char: "E", score: 41 },
+          ],
+        },
+      },
+    };
+    expect(describe(unsure)).toContain("letter 1 of 5 · ? (L 60 · E 41) · y3");
+    expect(isProblem(row(unsure))).toBe(true);
+  });
+
+  it("a letter still being written says so; a tilted one says how far it was turned", () => {
+    const waiting = { ...letter, detail: { ...letter.detail, waiting: true } };
+    expect(describe(waiting)).toContain("letter 1 of 5 · … still writing · y3");
+    expect(isProblem(row(waiting))).toBe(false);
+    const reading = { label: "A", score: 100, clear: true, guesses: [{ char: "A", score: 100 }] };
+    const tilted = {
+      ...letter,
+      detail: { ...letter.detail, reading, turn: { deg: -20, about: [0, 0] } },
+    };
+    expect(describe(tilted)).toContain("letter 1 of 5 · A 100% · tilted 20° anticlockwise · y3");
+  });
+
+  it("a word read by its letters says the word; one with an unsure letter is a problem", () => {
+    const word = (text: string) =>
+      e({
+        seq: 3,
+        type: "recognized",
+        who: "fastbrain",
+        target: "w1",
+        detail: { kind: "word", letters: [["s1"], ["s2"]], text },
+      });
+    expect(describe(word("HELLO"))).toBe("read HELLO · w1");
+    expect(isProblem(row(word("HELLO")))).toBe(false);
+    expect(isProblem(row(word("HE?LO")))).toBe(true);
+  });
+
+  it("two words joined by a later stroke read as a merge", () => {
+    expect(
+      describe(
+        e({ seq: 4, type: "remove", who: "fastbrain", target: "y2", detail: { into: "y1" } }),
+      ),
+    ).toBe("merged y2 into y1");
+  });
+
+  it("shows under Read, and a broken one still gets a line", () => {
+    expect(matches(row(letter), "read")).toBe(true);
+    expect(describe({ ...letter, detail: { index: "x" } })).toBe("letter · y3");
+  });
+});
+
+group("your handwriting examples in the events box (D174)", () => {
+  it("counts each letter's examples, capitals first", () => {
+    expect(exampleCounts(new Map())).toBe("Your examples: none yet");
+    expect(
+      exampleCounts(
+        new Map([
+          ["L", 6],
+          ["a", 1],
+          ["H", 3],
+        ]),
+      ),
+    ).toBe("Your examples: H 3 · L 6 · a 1");
+  });
+
+  it("says who named a letter, and opens to what the examples said", () => {
+    const reading = {
+      label: "H",
+      score: 70,
+      clear: true,
+      guesses: [{ char: "H", score: 70 }],
+      via: "examples",
+      examples: {
+        label: "H",
+        sure: true,
+        score: 70,
+        distance: 0.9,
+        example: "e1",
+        count: 3,
+        guesses: [
+          { char: "H", score: 70, distance: 0.9 },
+          { char: "E", score: 38, distance: 1.84 },
+        ],
+        compared: 15,
+        of: 20,
+      },
+    };
+    const features = {
+      strokes: 3,
+      box: [0, 0, 10, 10],
+      aspect: 1,
+      parts: [],
+      meets: [],
+      crossings: [],
+      loops: [],
+    };
+    const event = {
+      seq: 7,
+      t: 7,
+      who: "fastbrain",
+      type: "letter",
+      target: "w1",
+      detail: { index: 1, of: 5, strokes: ["s1"], features, reading },
+    } as VisEvent;
+    expect(describe(event)).toContain("H 70% · by your examples · nearest H 0.9, E 1.8 · 3 of H");
+    const opened = rowDetail({ kind: "event", key: "e7", event } as Row);
+    expect(opened).toContain("Your examples: sure it's H (named by your examples)");
+    expect(opened).toContain("compared 15 of 20 examples");
   });
 });

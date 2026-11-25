@@ -1,7 +1,18 @@
 // The events box in plain words (D127): every story event and every Claude call as one short
 // line, raw JSON only on a click.
-import type { VisEvent } from "@visthinker/contract";
-import type { CallRecord } from "@visthinker/core";
+import {
+  LetterEventDetail,
+  TaughtDetail,
+  type LetterReading,
+  type VisEvent,
+} from "@visthinker/contract";
+import {
+  examplesBreakdown,
+  letterBreakdown,
+  letterSummary,
+  namedBy,
+  type CallRecord,
+} from "@visthinker/core";
 
 export type EventsFilter = "all" | "you" | "claude" | "read" | "problems";
 
@@ -47,6 +58,12 @@ const join = (...bits: (string | undefined | false)[]) => bits.filter(Boolean).j
 /** Claude's change, made directly or through `act` (the Fast Brain applies it, naming Claude in `by`). */
 const byClaude = (e: VisEvent) => e.who === "claude" || e.detail?.["by"] === "claude";
 
+/** "H 92%", or "? (L 60 · E 41)" with its two best guesses when unsure (D115). */
+function named(r: LetterReading): string {
+  if (r.clear) return `${r.label} ${Math.round(r.score)}%`;
+  return `? (${r.guesses.map((g) => `${g.char} ${Math.round(g.score)}`).join(" · ")})`;
+}
+
 /** What an event says, in plain words: "stroke s14", "read X · y3 · 92%", "you said: …". */
 export function describe(e: VisEvent): string {
   const d = e.detail ?? {};
@@ -57,11 +74,40 @@ export function describe(e: VisEvent): string {
       return `stroke ${e.target ?? ""}`.trim();
     case "recognized": {
       const kind = str(d["kind"]) ?? "something";
+      if (kind === "word") {
+        const letters = Array.isArray(d["letters"]) ? d["letters"].length : 0;
+        const text = str(d["text"]);
+        if (text) return join(`read ${text}`, e.target);
+        return join("read a word", e.target, `${letters} letters`);
+      }
       if (kind !== "symbol") return join(`read ${kind}`, e.target);
       const label = str(d["label"]);
       const score = num(d["score"]);
       if (!label || label === "?") return join("couldn't read", e.target);
       return join(`read ${label}`, e.target, score !== undefined && pct(score));
+    }
+    case "letter": {
+      // One letter of a word, with what the handwriting ability measured (T51).
+      const letter = LetterEventDetail.safeParse(d);
+      if (!letter.success) return join("letter", e.target);
+      const { index, of, features, reading, waiting, turn } = letter.data;
+      // A letter still being written gets its name when you pause or move on.
+      const name = waiting ? "… still writing" : reading && named(reading);
+      const tilted =
+        turn &&
+        `tilted ${Math.round(Math.abs(turn.deg))}° ${turn.deg > 0 ? "clockwise" : "anticlockwise"}`;
+      // Who named it: your examples or the cards (D174).
+      const by = reading && namedBy(reading);
+      return join(`letter ${index} of ${of}`, name, by, tilted, e.target, letterSummary(features));
+    }
+    case "taught": {
+      // Claude labelled a written word, so its letters were saved as examples (D175).
+      const taught = TaughtDetail.safeParse(d);
+      if (!taught.success) return join("taught", e.target);
+      const { text, examples, skipped } = taught.data;
+      if (skipped) return join(`not taught "${text}"`, e.target, skipped);
+      const n = examples.length;
+      return join(`taught ${text}`, e.target, `${n} example${n === 1 ? "" : "s"} saved`);
     }
     case "place": {
       const kind = str(d["kind"]) ?? "object";
@@ -71,8 +117,12 @@ export function describe(e: VisEvent): string {
       return join(`moved ${e.target ?? ""}`.trim(), where(d), byClaude(e) && "by Claude");
     case "label":
       return join(`labelled ${e.target ?? ""}`.trim(), text && `“${quote(text)}”`);
-    case "remove":
+    case "remove": {
+      // Two words the Fast Brain read apart, joined by a later stroke (D110).
+      const into = str(d["into"]);
+      if (into && e.who === "fastbrain") return `merged ${e.target ?? ""} into ${into}`;
       return join(`removed ${e.target ?? ""}`.trim(), e.who !== "user" && `by ${who}`);
+    }
     case "undo":
     case "redo":
       return join(
@@ -159,12 +209,19 @@ export function isProblem(row: Row): boolean {
   if (row.kind === "call") return !row.call.ok;
   const d = row.event.detail ?? {};
   if (d["error"] !== undefined) return true;
+  // A letter the cards weren't sure of, or a word with one (D113).
+  if (row.event.type === "letter")
+    return (
+      d["reading"] !== undefined && LetterEventDetail.safeParse(d).data?.reading?.clear === false
+    );
+  if (row.event.type === "recognized" && d["kind"] === "word")
+    return String(d["text"] ?? "").includes("?");
   if (row.event.type !== "recognized") return false;
   const score = num(d["score"]);
   return d["label"] === "?" || (score !== undefined && score < LOW_CONFIDENCE);
 }
 
-const READ_TYPES = new Set(["recognized", "place"]);
+const READ_TYPES = new Set(["recognized", "letter", "taught", "place"]);
 
 /** Whether a row shows under a filter chip. */
 export function matches(row: Row, filter: EventsFilter): boolean {
@@ -209,6 +266,19 @@ export function rowJson(row: Row): string {
   return JSON.stringify(row.kind === "call" ? row.call : row.event, null, 2);
 }
 
+/** What a clicked row opens to: a letter's measurements in plain words, then the raw JSON. */
+export function rowDetail(row: Row): string {
+  if (row.kind === "event" && row.event.type === "letter") {
+    const letter = LetterEventDetail.safeParse(row.event.detail);
+    if (letter.success) {
+      const { features, reading } = letter.data;
+      const examples = reading ? `${examplesBreakdown(reading).join("\n")}\n\n` : "";
+      return `${examples}${letterBreakdown(features).join("\n")}\n\n${rowJson(row)}`;
+    }
+  }
+  return rowJson(row);
+}
+
 /**
  * What Claude is doing, for the pill and the header. "away": connected, but not waiting on the
  * canvas right now (Claude Code works in turns); "offline": no bridge at all.
@@ -229,4 +299,17 @@ export function statusText(s: Status, thinkingFor = 0): string {
   if (s === "thinking") return `Claude is thinking… ${seconds(thinkingFor)}`;
   if (s === "offline") return "Not connected to Claude";
   return s === "listening" ? "Claude is listening" : "Claude is connected, not watching";
+}
+
+/** Capitals, then lowercase, then digits, then marks: the order the alphabet is taught (D171). */
+const kindOf = (label: string) =>
+  /^[A-Z]/.test(label) ? 0 : /^[a-z]/.test(label) ? 1 : /^[0-9]/.test(label) ? 2 : 3;
+
+/** "Your examples: E 3 · H 3 · L 6 · O 3", capitals first (D174). */
+export function exampleCounts(counts: ReadonlyMap<string, number>): string {
+  if (counts.size === 0) return "Your examples: none yet";
+  const byLetter = [...counts].sort(
+    ([a], [b]) => kindOf(a) - kindOf(b) || (a < b ? -1 : a > b ? 1 : 0),
+  );
+  return `Your examples: ${byLetter.map(([label, n]) => `${label} ${n}`).join(" · ")}`;
 }

@@ -79,13 +79,30 @@ The app now has four layers, kept apart ([D160](decisions.md#-what-it-is)):
 
 Handwriting is the next ability ([D161](decisions.md#-what-it-is)), and it works two ways:
 
-| way                        | how                                                                                                                                                                                                                                      |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ✍️ you write, Claude reads | the Fast Brain reads clear letters by their structure, and hands unsure ones to Claude with its best guesses ([D111](decisions.md#-handwriting-ability-next-not-built-yet)–[D118](decisions.md#-handwriting-ability-next-not-built-yet)) |
-| 🖊️ Claude writes back      | so written words and some maths can go both ways; how it looks is still being designed                                                                                                                                                   |
+| way                        | how                                                                                                                                                                                                                        |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✍️ you write, Claude reads | the Fast Brain reads clear letters by their structure, and hands unsure ones to Claude with its best guesses ([D111](decisions.md#-handwriting-ability-being-built)–[D118](decisions.md#-handwriting-ability-being-built)) |
+| 🖊️ Claude writes back      | so written words and some maths can go both ways; how it looks is still being designed                                                                                                                                     |
+
+## ✍️ Teaching it your handwriting (PR #103)
+
+The first cut read letters only by built-in character cards. Real handwriting broke it often: a slow H split in two, a round O became a circle, an F was read as P.
+
+So the ability learns from you instead ([D174](decisions.md#-handwriting-ability-being-built)–[D183](decisions.md#-handwriting-ability-being-built)):
+
+| step                 | what changed                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 💬 teach in the chat | you say "it's K", Claude labels the letter, and its raw strokes are saved as your example                                       |
+| 🔎 examples first    | a letter is named by your nearest example when one is sure, then by the cards, then by Claude                                   |
+| 📁 in the repo       | the examples live with the ability, so teaching is a change in git                                                              |
+| 🧪 tested live       | one sitting taught all capitals but Q and the digits 0–9: 60 examples. Most letters were read alone after one to three examples |
+
+![The canvas after the teaching session](images/teach-by-example.jpg)
+
+What the live test turned up, and fixed: a tilt guess no longer decides a letter (D180), "sure" needs a closer match (D181), a mark can be "not a letter" (D182), and a Q's tail joins its circle (D183).
 
 ## 🔜 What's next
 
-- ✍️ The handwriting ability: write "hello" end to end, with Claude filling in the letters the Fast Brain isn't sure of.
+- ✍️ Lowercase, then sentences with basic punctuation; then Claude writes back by replaying your examples through the Fast Brain (D171, D172).
 - 🧹 UI polish and bugs from the first draft (issues #85–#97).
 - 🚀 Later: end-to-end tests and the first release, `v0.1.0`.

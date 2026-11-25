@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1620 760" width="1620" height="760">
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8e8e8"/></marker></defs>
+<rect width="1620" height="760" rx="12" fill="#121212"/>
+<text x="40" y="36.0" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="600" text-anchor="start" fill="#e8e8e8">Handwriting: code measures, data names, Claude fills the gaps</text>
+<text x="40" y="61.0" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#a3a3a3">⚡ Fast Brain (code)      📊 your examples (data)      🃏 cards (code, to start)      🤖 Claude (slow brain)</text>
+<rect x="40" y="90" width="280" height="290" rx="12" fill="#181818" stroke="#a3a3a3" stroke-width="1.5"/>
+<text x="56" y="119.0" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="start" fill="#e8e8e8">1 · You write</text>
+<path d="M70,170 L70,275.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M122.5,170 L122.5,275.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M70,222.5 L122.5,222.5" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M150,170 L150,275.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M150,170.0 L195.0,170.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M150,222.5 L186.0,222.5" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M150,275.0 L195.0,275.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M225.0,275.0 L225.0,170.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M225.0,170.0 L266.2,170.0 L279.0,183.5 L279.0,209.0 L266.2,222.5 L225.0,222.5" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M241.5,222.5 L282.0,275.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<rect x="360" y="90" width="280" height="290" rx="12" fill="#181818" stroke="#a3a3a3" stroke-width="1.5"/>
+<text x="376" y="119.0" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="start" fill="#e8e8e8">2 · Group + split  ⚡</text>
+<path d="M390,170 L390,275.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M442.5,170 L442.5,275.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M390,222.5 L442.5,222.5" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<rect x="380" y="160" width="73" height="125" rx="6" fill="none" stroke="#4dabf7" stroke-width="1.5" stroke-dasharray="6 5"/>
+<path d="M470,170 L470,275.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M470,170.0 L515.0,170.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M470,222.5 L506.0,222.5" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M470,275.0 L515.0,275.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<rect x="460" y="160" width="65" height="125" rx="6" fill="none" stroke="#4dabf7" stroke-width="1.5" stroke-dasharray="6 5"/>
+<path d="M545.0,275.0 L545.0,170.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M545.0,170.0 L586.2,170.0 L599.0,183.5 L599.0,209.0 L586.2,222.5 L545.0,222.5" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<path d="M561.5,222.5 L602.0,275.0" fill="none" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+<rect x="535" y="160" width="75" height="125" rx="6" fill="none" stroke="#4dabf7" stroke-width="1.5" stroke-dasharray="6 5"/>
+<rect x="430" y="316" width="120" height="30" rx="8" fill="#1b2a38" stroke="#4dabf7" stroke-width="2"/>
+<text x="490.0" y="337.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="#4dabf7">3 letters</text>
+<rect x="680" y="90" width="280" height="290" rx="12" fill="#181818" stroke="#a3a3a3" stroke-width="1.5"/>
+<text x="696" y="119.0" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="start" fill="#e8e8e8">3 · Measure  ⚡</text>
+<path d="M770.0,290.0 L770.0,150.0" fill="none" stroke="#4dabf7" stroke-width="6" stroke-linecap="round"/>
+<path d="M770.0,150.0 L825.0,150.0 L842.0,168.0 L842.0,202.0 L825.0,220.0 L770.0,220.0" fill="none" stroke="#ffa94d" stroke-width="6" stroke-linecap="round"/>
+<path d="M792.0,220.0 L846.0,290.0" fill="none" stroke="#69db7c" stroke-width="6" stroke-linecap="round"/>
+<circle cx="770" cy="150" r="9" fill="none" stroke="#b197fc" stroke-width="3"/>
+<circle cx="770" cy="220" r="9" fill="none" stroke="#b197fc" stroke-width="3"/>
+<circle cx="792" cy="220" r="7" fill="none" stroke="#b197fc" stroke-width="3"/>
+<rect x="730" y="316" width="200" height="30" rx="8" fill="#1b2a38" stroke="#a3a3a3" stroke-width="2"/>
+<text x="830.0" y="337.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="#a3a3a3">upright · bump · leg</text>
+<rect x="1000" y="90" width="580" height="440" rx="12" fill="#181818" stroke="#a3a3a3" stroke-width="1.5"/>
+<text x="1016" y="119.0" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="start" fill="#e8e8e8">4 · Name</text>
+<rect x="1016" y="140" width="548" height="112" rx="10" fill="#1c3122" stroke="#69db7c" stroke-width="1.5"/>
+<text x="1032" y="166.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="start" fill="#69db7c">📊  your examples</text>
+<rect x="1016" y="270" width="548" height="112" rx="10" fill="#1b2a38" stroke="#4dabf7" stroke-width="1.5"/>
+<text x="1032" y="296.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="start" fill="#4dabf7">🃏  cards</text>
+<rect x="1016" y="400" width="548" height="112" rx="10" fill="#29243d" stroke="#b197fc" stroke-width="1.5"/>
+<text x="1032" y="426.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="start" fill="#b197fc">🤖  Claude</text>
+<path d="M1060.0,235.2 L1060.0,182.0" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M1060.0,182.0 L1080.9,182.0 L1087.4,188.8 L1087.4,201.8 L1080.9,208.6 L1060.0,208.6" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M1068.4,208.6 L1088.9,235.2" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M1133.2,234.4 L1124.0,182.0" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M1124.0,182.0 L1144.6,178.4 L1152.1,184.0 L1154.4,196.7 L1149.2,204.6 L1128.6,208.2" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M1136.9,206.7 L1161.7,229.4" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M1180.6,234.7 L1188.0,182.0" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M1188.0,182.0 L1208.7,184.9 L1214.1,192.6 L1212.3,205.4 L1205.0,211.2 L1184.3,208.3" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M1192.6,209.5 L1209.2,238.7" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M1270,210 L1350,210" fill="none" stroke="#69db7c" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<rect x="1366" y="194" width="120" height="30" rx="8" fill="#1c3122" stroke="#69db7c" stroke-width="2"/>
+<text x="1426.0" y="215.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="#69db7c">⚡ R 91%</text>
+<text x="1040" y="328.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="start" fill="#a3a3a3">upright + bump at top</text>
+<text x="1040" y="346.2" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="start" fill="#a3a3a3">+ leg from the middle</text>
+<path d="M1270,340 L1350,340" fill="none" stroke="#4dabf7" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<rect x="1366" y="324" width="120" height="30" rx="8" fill="#1b2a38" stroke="#4dabf7" stroke-width="2"/>
+<text x="1426.0" y="345.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="#4dabf7">⚡ R 60 ?</text>
+<text x="1040" y="458.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="start" fill="#a3a3a3">the parts + the word</text>
+<text x="1040" y="476.2" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="start" fill="#a3a3a3">around it: &quot;HE?&quot;</text>
+<path d="M1270,470 L1350,470" fill="none" stroke="#b197fc" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<rect x="1366" y="454" width="120" height="30" rx="8" fill="#29243d" stroke="#b197fc" stroke-width="2"/>
+<text x="1426.0" y="475.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="#b197fc">Claude: R</text>
+<path d="M1290,252 L1290,270" fill="none" stroke="#a3a3a3" stroke-width="2" stroke-linecap="round" stroke-dasharray="8 6" marker-end="url(#head)"/>
+<path d="M1290,382 L1290,400" fill="none" stroke="#a3a3a3" stroke-width="2" stroke-linecap="round" stroke-dasharray="8 6" marker-end="url(#head)"/>
+<text x="1298" y="265.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#a3a3a3">no example close</text>
+<text x="1298" y="395.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="400" text-anchor="start" fill="#a3a3a3">not sure</text>
+<rect x="40" y="420" width="920" height="300" rx="12" fill="#181818" stroke="#a3a3a3" stroke-width="1.5"/>
+<text x="56" y="449.0" font-family="Helvetica, Arial, sans-serif" font-size="17" font-weight="600" text-anchor="start" fill="#e8e8e8">5 · Learn  📊   (you confirm, or fix, the name)</text>
+<rect x="70" y="476" width="70" height="30" rx="8" fill="#3a3320" stroke="#ffa94d" stroke-width="2"/>
+<text x="105.0" y="497.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="#ffa94d">✓ R</text>
+<path d="M150,491 L230,491" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<rect x="250" y="466" width="420" height="220" rx="10" fill="#1c3122" stroke="#69db7c" stroke-width="1.5"/>
+<text x="266" y="491.0" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="600" text-anchor="start" fill="#69db7c">your examples</text>
+<path d="M290.0,604.0 L290.0,520.0" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M290.0,520.0 L323.0,520.0 L333.2,530.8 L333.2,551.2 L323.0,562.0 L290.0,562.0" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M303.2,562.0 L335.6,604.0" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M399.5,602.2 L382.0,520.0" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M382.0,520.0 L414.3,513.1 L426.5,521.6 L430.7,541.5 L423.0,554.2 L390.7,561.1" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M403.6,558.3 L444.1,592.7" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M460.9,603.0 L474.0,520.0" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M474.0,520.0 L506.6,525.2 L515.0,537.4 L511.8,557.6 L500.0,566.6 L467.4,561.5" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M480.5,563.5 L505.9,610.1" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M571.9,603.8 L566.0,520.0" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M566.0,520.0 L598.9,517.7 L609.8,527.8 L611.3,548.1 L601.8,559.6 L568.9,561.9" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<path d="M582.1,561.0 L617.3,600.6" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linecap="round"/>
+<rect x="400" y="640" width="110" height="30" rx="8" fill="#1c3122" stroke="#69db7c" stroke-width="2"/>
+<text x="455.0" y="661.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="#69db7c">R × 4</text>
+<text x="700" y="535.0" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#a3a3a3">every confirmed letter</text>
+<text x="700" y="554.5" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#a3a3a3">is one more example:</text>
+<text x="700" y="574.0" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#a3a3a3">it gets better with use,</text>
+<text x="700" y="593.5" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#a3a3a3">no code change</text>
+<path d="M670,650 L985,650 L985,196 L1016,196" fill="none" stroke="#69db7c" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<text x="880" y="640.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="600" text-anchor="start" fill="#69db7c">next time</text>
+<path d="M320,235.0 L360,235.0" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<path d="M640,235.0 L680,235.0" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<path d="M960,235 L1000,235" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+<path d="M1290,530 L1290,740 L480,740 L480,720" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" marker-end="url(#head)"/>
+</svg>

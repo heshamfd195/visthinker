@@ -1,7 +1,9 @@
-import { createManualClock, placeObject } from "@visthinker/core";
+import type { HandwritingExample, HandwritingExamples } from "@visthinker/contract";
+import { createExampleBook, createManualClock, placeObject } from "@visthinker/core";
 import { describe, expect, it } from "vitest";
+import type { BridgeHttp } from "../adapters/bridge-http/index.ts";
 import { createSystemClock } from "../adapters/system-clock/index.ts";
-import { createSession } from "./session.ts";
+import { createSession, keepExamples, SAVE_EXAMPLES_MS } from "./session.ts";
 
 describe("composition root (D83)", () => {
   it("wires the core to a port for each need; on its own, only the transport is a fake", () => {
@@ -102,6 +104,34 @@ describe("projects (D142)", () => {
       search: "?ws=4321&token=abc",
     });
     expect(session.http).toBeDefined();
+  });
+});
+
+describe("your handwriting examples (D174)", () => {
+  const example = (id: string): HandwritingExample => ({
+    id,
+    label: "A",
+    strokes: [{ t: 0, points: [[0, 0, 0.5, 0]] }],
+    from: "you",
+    at: "2026-11-25T10:00:00.000Z",
+  });
+
+  it("are loaded from the bridge, and saved once a moment after a burst of teaching", async () => {
+    const clock = createManualClock();
+    const saved: HandwritingExamples[] = [];
+    const http = {
+      readExamples: async () => ({ version: 1 as const, examples: [example("old")] }),
+      saveExamples: async (e: HandwritingExamples) => void saved.push(e),
+    } as unknown as BridgeHttp;
+    const book = createExampleBook();
+    keepExamples(book, http, clock);
+    await Promise.resolve();
+    expect(book.all().map((e) => e.id)).toEqual(["old"]);
+    book.add(example("a"));
+    book.add(example("b"));
+    expect(saved).toHaveLength(0);
+    clock.advance(SAVE_EXAMPLES_MS);
+    expect(saved.map((s) => s.examples.map((e) => e.id))).toEqual([["old", "a", "b"]]);
   });
 });
 

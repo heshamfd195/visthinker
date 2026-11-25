@@ -127,7 +127,8 @@ function Muted({ children }: { children: ReactNode }) {
 
 // How things look, kept in this browser (D143).
 function Appearance() {
-  const { theme, canvas, textSize, claudeSerif, showRead, showScore, set } = useUi();
+  const { theme, canvas, textSize, claudeSerif, showRead, showScore, showLetterParts, set } =
+    useUi();
   return (
     <div>
       <Row label="Theme">
@@ -199,6 +200,13 @@ function Appearance() {
           aria-label="Show the score"
           checked={showScore}
           onCheckedChange={(on) => set({ showScore: on })}
+        />
+      </Row>
+      <Row label="Show what handwriting measured">
+        <Switch
+          aria-label="Show what handwriting measured"
+          checked={showLetterParts}
+          onCheckedChange={(on) => set({ showLetterParts: on })}
         />
       </Row>
     </div>

@@ -33,6 +33,7 @@ import { Stage } from "react-konva";
 import { bridgeUrlFromPage } from "../adapters/ws-transport/index.ts";
 import { ChatPanel, ReplyDots } from "../features/chat/index.ts";
 import { EventsBox } from "../features/events/index.ts";
+import { letterMarks, LettersLayer } from "../features/handwriting/index.ts";
 import { canSnap, GuidesControl, GuidesLayer, snapPoint } from "../features/guides/index.ts";
 import {
   InkLayer,
@@ -81,6 +82,15 @@ function useCanvas(session: Session): Canvas {
     useCallback((notify) => session.onCanvas(notify), [session]),
     () => session.canvas(),
   );
+}
+
+/** How many handwriting examples each letter has, kept current (D174). */
+function useExampleCounts(session: Session): ReadonlyMap<string, number> {
+  const version = useSyncExternalStore(
+    useCallback((notify) => session.examples.subscribe(notify), [session]),
+    () => session.examples.version(),
+  );
+  return useMemo(() => session.examples.counts(), [session, version]);
 }
 
 /** Whether Claude waits for events, each call it made, and since when it has been thinking. */
@@ -153,6 +163,7 @@ function Workspace({
   picture: RefObject<() => string | undefined>;
 }) {
   const link = useLinkStatus(session.transport);
+  const exampleCounts = useExampleCounts(session);
   // Only the real bridge counts: on its own the page runs on a fake transport that is always ready.
   const connected = !!session.bridge && link === "ready";
 
@@ -251,6 +262,14 @@ function Workspace({
   const strokes = useMemo(() => canvas.strokes.all(), [canvas, version]);
   const colors = useMemo(() => colorsFromStory(events), [events]);
   const tags = useMemo(() => (ui.showRead ? symbolTags(events) : new Map()), [events, ui.showRead]);
+  // What the handwriting ability read in each letter still on the canvas (T51 · D116).
+  const letters = useMemo(
+    () =>
+      ui.showRead || ui.showLetterParts
+        ? letterMarks(events, new Set(objects.map((o) => o.id)))
+        : [],
+    [events, objects, ui.showRead, ui.showLetterParts],
+  );
 
   const snap = useCallback(
     (p: Point2): Point2 => (canSnap(ui.guides) ? snapPoint(p, ui.guides.size) : p),
@@ -543,6 +562,13 @@ function Workspace({
                 });
             }}
           />
+          <LettersLayer
+            letters={letters}
+            scale={zoom}
+            names={ui.showRead}
+            scores={ui.showScore}
+            parts={ui.showLetterParts}
+          />
           <ReplyDots events={events} objects={objects} />
           {tool === "select" && (
             <TransformLayer
@@ -740,6 +766,7 @@ function Workspace({
                 connected={connected}
                 thinkingSince={claude.thinkingSince}
                 now={now}
+                examples={exampleCounts}
               />
             </div>
 

@@ -9,3 +9,5 @@ export * from "./modes.ts";
 export * from "./project.ts";
 export * from "./tools.ts";
 export * from "./bridge.ts";
+export * from "./handwriting.ts";
+export * from "./examples.ts";

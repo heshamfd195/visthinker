@@ -4,4 +4,5 @@ export * from "./scene/index.ts";
 export * from "./tools/index.ts";
 export * from "./packs/index.ts";
 export * from "./comparator/index.ts";
+export * from "./abilities/index.ts";
 export * from "./modes/index.ts";

@@ -13,11 +13,12 @@ import {
   matches,
   mergeRows,
   mmss,
-  rowJson,
+  rowDetail,
   rowTarget,
   rowText,
   status,
   statusText,
+  exampleCounts,
   type EventsFilter,
   type Row,
   type Status,
@@ -33,6 +34,8 @@ export interface EventsBoxProps {
   thinkingSince: number | undefined;
   /** The session clock, in ms. */
   now: () => number;
+  /** How many handwriting examples each letter has (D174), shown above the list. */
+  examples?: ReadonlyMap<string, number>;
 }
 
 /** Re-renders every `ms` while `on`, so the thinking seconds and the clock stay live. */
@@ -77,6 +80,7 @@ export function EventsBox({
   connected,
   thinkingSince,
   now,
+  examples,
 }: EventsBoxProps) {
   const eventsOpen = useUi((s) => s.eventsOpen);
   const layout = useUi((s) => s.layout);
@@ -182,6 +186,12 @@ export function EventsBox({
         ))}
       </div>
 
+      {examples && (
+        <p className="shrink-0 truncate border-b px-3 pb-1.5 font-mono text-[11px] text-muted-foreground">
+          {exampleCounts(examples)}
+        </p>
+      )}
+
       <ol className="min-h-0 flex-1 overflow-y-auto py-1 font-mono text-[11px]">
         {rows.length === 0 && (
           <li className="px-3 py-2 text-muted-foreground">
@@ -215,7 +225,7 @@ export function EventsBox({
               </button>
               {expanded && (
                 <pre className="mx-3 mb-1 overflow-x-auto rounded-md bg-muted p-2 text-[10px] leading-snug text-muted-foreground">
-                  {rowJson(row)}
+                  {rowDetail(row)}
                 </pre>
               )}
             </li>

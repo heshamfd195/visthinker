@@ -22,13 +22,20 @@ export const CLAUDE_COLOR = "#7048e8";
 
 /**
  * What each symbol was read as, from its recognized event (D97): "X 87%", "?", and the runner-up
- * when it came close, e.g. "O 61% · 0?".
+ * when it came close, e.g. "O 61% · 0?". A written word shows the word, e.g. "HELLO".
  */
 export function symbolTags(events: readonly VisEvent[]): Map<string, string> {
   const tags = new Map<string, string>();
   for (const e of events) {
     const d = e.detail;
-    if (e.type !== "recognized" || d?.["kind"] !== "symbol" || !e.target) continue;
+    if (e.type !== "recognized" || !e.target) continue;
+    // A written word: the word as read, once above it (D116), e.g. "HELLO" or "HE?LO".
+    if (d?.["kind"] === "word" && Array.isArray(d["letters"])) {
+      const text = typeof d["text"] === "string" ? d["text"] : undefined;
+      tags.set(e.target, text ?? `${d["letters"].length} letters`);
+      continue;
+    }
+    if (d?.["kind"] !== "symbol") continue;
     const label = String(d["label"]);
     const score = typeof d["score"] === "number" ? d["score"] : 0;
     const pct = (n: number) => `${Math.round(n * 100)}%`;

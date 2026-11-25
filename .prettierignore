@@ -7,3 +7,7 @@ test-results
 packages/visthinker/canvas
 packages/visthinker/packs
 packages/visthinker/LICENSE
+# saved drawings, kept byte for byte as test fixtures
+**/fixtures/*.json
+# your handwriting examples, written by the bridge one example per line (D178)
+packages/core/src/abilities/handwriting/data/

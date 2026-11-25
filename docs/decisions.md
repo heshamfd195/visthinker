@@ -19,6 +19,7 @@ Only this repo's decisions are listed, so the numbers have gaps. When a later de
 | D160 | 🧱 Four layers stay apart: the **project** (what you're doing) picks which **knowledge packs** are in play, the **library** holds things you put on the canvas, and **abilities** handle your input; a pack may suggest itself but never starts on its own. |
 | D161 | ✋ Abilities are how the canvas reads your input (handwriting, smart selection): built in, on by default, each can be switched off, and you can build your own.                                                                                             |
 | D162 | 🧹 Tic-tac-toe is removed for now, to be rebuilt later around projects; the modes, the pack format, the `$P` reader and the reading of lines, crossings and shapes stay.                                                                                    |
+| D170 | 🌐 The handwriting ability is built in today's structure; how anyone builds and shares their own abilities, packs and plugins (an open contribution layer on a cloud server) comes in the next version.                                                     |
 | D52  | 🏷️ The code and package name is `visthinker` (the public name changed by D163).                                                                                                                                                                             |
 | D163 | 🏷️ The repo is `visual-thinker` and the README title is Visual Thinker; the npm package, the install command and the code's package names stay `visthinker`.                                                                                                |
 | D164 | 📖 This repo documents itself only: README, CLAUDE.md, and `docs/` with architecture, decisions, journey, design system, user stories, changes, drawings and images.                                                                                        |
@@ -83,30 +84,45 @@ Only this repo's decisions are listed, so the numbers have gaps. When a later de
 
 ## ⚡ Fast Brain & comparator
 
-| ID   | decision                                                                                                                                                                  |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D23  | ⚡ The Fast Brain is code, not an LLM.                                                                                                                                    |
-| D60  | ⚡ The Fast Brain draws, listens, sends events, and asks Claude only when it must think.                                                                                  |
-| D63  | 🌐 The Fast Brain lives in the browser.                                                                                                                                   |
-| D24  | 🧭 Claude decides what to do; the Fast Brain works out the exact placement.                                                                                               |
-| D64  | 🧭 The comparator is the generic core of the Fast Brain: it recognizes what is drawn and keeps a scene description Claude reads.                                          |
-| D96  | ✂️ Strokes are grouped into one symbol before anything is recognized, so an X is one symbol, not two lines.                                                               |
-| D97  | 🔤 Grouping works anywhere on the canvas; a group is read about 0.6 s after its last stroke, and every symbol shows a label with its score (line length changed by D109). |
-| D109 | 📏 A straight stroke of 400+ units is a line at once, for now.                                                                                                            |
-| D110 | ⏱️ A stroke that lands close by within 2 s rejoins the last symbol, and both are read again together.                                                                     |
+| ID   | decision                                                                                                                                                                                                        |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D23  | ⚡ The Fast Brain is code, not an LLM.                                                                                                                                                                          |
+| D60  | ⚡ The Fast Brain draws, listens, sends events, and asks Claude only when it must think.                                                                                                                        |
+| D63  | 🌐 The Fast Brain lives in the browser.                                                                                                                                                                         |
+| D24  | 🧭 Claude decides what to do; the Fast Brain works out the exact placement.                                                                                                                                     |
+| D64  | 🧭 The comparator is the generic core of the Fast Brain: it recognizes what is drawn and keeps a scene description Claude reads.                                                                                |
+| D96  | ✂️ Strokes are grouped into one symbol before anything is recognized, so an X is one symbol, not two lines.                                                                                                     |
+| D97  | 🔤 Grouping works anywhere on the canvas; a group is read about 0.6 s after its last stroke, and every symbol shows a label with its score (line length changed by D109).                                       |
+| D109 | 📏 A straight stroke of 400+ units is a line at once, for now.                                                                                                                                                  |
+| D110 | ⏱️ A stroke that lands close by within 2 s rejoins the last symbol, and both are read again together (5 s with handwriting on, D176).                                                                           |
+| D167 | ⏱️ A stroke can join several recent words: every word read in the last 2 s counts, and a stroke that reaches more than one (an H's bar after its legs were read apart) merges them into one word. Extends D110. |
+| D168 | 🔤 A lone letter the cards read clearly is a word (a one-letter `A`); a lone mark no card knows (an X) stays a symbol.                                                                                          |
+| D169 | ⏱️ A written word waits 5 s for its next letter: a stroke beside it (closer than half its height) joins it within 5 s, not D110's 2 s. Writers pause between letters.                                           |
 
-## ✍️ Handwriting ability (next, not built yet)
+## ✍️ Handwriting ability (being built)
 
-| ID   | decision                                                                                                                                                                            |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D111 | ✍️ Handwriting reads each character by its structure (strokes, crossings, corners, loops), block capitals A–Z and digits 0–9 first; it is an ability, not a pack (changed by D161). |
-| D112 | 🃏 A character card lists what a computer can check: stroke count, where lines meet or cross, angles, and closed loops.                                                             |
-| D113 | 🏆 Each passing check on a card earns points, the best card wins with its score, and a low or near-tied score goes to Claude.                                                       |
-| D114 | 📝 Word first, then letters: strokes close together form a word, and a clear gap starts the next letter.                                                                            |
-| D115 | 🐢 When unsure, the Fast Brain shows `?` at once and sends Claude an event with its two best guesses and the word around it; Claude's answer replaces the label.                    |
-| D116 | 🖼️ Each letter gets a small label with its score, the word shows once above it, and you can tap a label to fix it.                                                                  |
-| D117 | 🔁 A letter you fix, or one Claude read that you leave, is saved as your own example, so the Fast Brain learns your writing.                                                        |
-| D118 | 🧬 `$P` also matches your saved examples, keeping about the last 10 per letter.                                                                                                     |
+| ID   | decision                                                                                                                                                                                                                                                   |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D111 | ✍️ Handwriting reads each character by its structure (strokes, crossings, corners, loops), block capitals A–Z and digits 0–9 first; it is an ability, not a pack (changed by D161).                                                                        |
+| D112 | 🃏 A character card lists what a computer can check: stroke count, where lines meet or cross, angles, and closed loops.                                                                                                                                    |
+| D113 | 🏆 Each passing check on a card earns points, the best card wins with its score, and a low or near-tied score goes to Claude.                                                                                                                              |
+| D114 | 📝 Word first, then letters: strokes close together form a word, and a clear gap starts the next letter.                                                                                                                                                   |
+| D115 | 🐢 When unsure, the Fast Brain shows `?` at once and sends Claude an event with its two best guesses and the word around it; Claude's answer replaces the label.                                                                                           |
+| D116 | 🖼️ Each letter gets a small label with its score, the word shows once above it, and you can tap a label to fix it.                                                                                                                                         |
+| D117 | 🔁 A letter you fix, or one Claude read that you leave, is saved as your own example, so the Fast Brain learns your writing.                                                                                                                               |
+| D118 | 🧬 `$P` also matches your saved examples, keeping about the last 10 per letter.                                                                                                                                                                            |
+| D171 | ✍️ English handwriting goes step by step: capitals A–Z, then lowercase a–z, then digits 0–9, then sentences (words, spaces, lines) with basic punctuation. No cursive for now; basic maths is a separate ability later.                                    |
+| D172 | 🔁 Claude writes back only through the Fast Brain, never painting on the canvas: it says what to write, and the handwriting ability runs in reverse, placing your saved examples on a line and replaying them with their real timing. Adds to D136.        |
+| D174 | 📊 Your examples live in a folder for the ability (moved into the repo by D178): label, raw strokes with their timing, who taught it and when. They name a letter first when one is sure; then the cards, then Claude.                                     |
+| D175 | 💬 You teach it in the chat: say "it's A", Claude labels the letter, and each letter is saved as an example. Handwriting is a core ability with its own storage.                                                                                           |
+| D176 | ⏱️ With handwriting on, a lone mark waits 5 s for its next stroke, like a word (D169): a slow H's second leg came 2.4 s after the first. Changes D110 for handwriting.                                                                                     |
+| D177 | 🎯 A match with no other letter near enough to compare is sure only when very close: with only a 2 and a B taught, an untaught H came within 1.2 of a B.                                                                                                   |
+| D178 | 📁 An ability keeps its data in the repo, in its own folder: your handwriting examples are `packages/core/src/abilities/handwriting/data/examples.json`, beside the ability's `README.md` and `STRUCTURE.md`, so each letter you teach is a change in git. |
+| D179 | 🃏 The cards win on a letter you never taught: when your examples are sure of one letter but the cards clearly read another with no examples, the cards name it.                                                                                           |
+| D180 | 🔄 A turn can suggest, not decide: a card reading that only wins turned back is a guess (`A?`) for Claude, never clear.                                                                                                                                    |
+| D181 | 🎯 An example is sure only within 1.0: letters you never taught came 0.97–1.18 from a look-alike. When examples and cards agree, the surer score is shown.                                                                                                 |
+| D182 | ∅ Say a mark isn't a letter and Claude labels it `not a letter`: marks like it stay plain marks, outside any word.                                                                                                                                         |
+| D183 | ⭕ A round stroke can be a letter: a Q's tail joins its circle, a circle Claude names with a letter is taught, and a round stroke your examples know is that letter.                                                                                       |
 
 ## 🔌 Bridge & security
 
@@ -157,6 +173,8 @@ Only this repo's decisions are listed, so the numbers have gaps. When a later de
 | D42  | 🛡️ `main` is protected: changes only through pull requests with passing tests, no force-push or delete.                                                                                                 |
 | D99  | 🌿 A branch per task, named `type/short-name`; a release is a tag, not a branch.                                                                                                                        |
 | D147 | 🌿 The first UI (T37–T50) went in one branch and one PR, a commit per task, as an exception to D99.                                                                                                     |
+| D166 | 🌿 The handwriting ability is built and tested locally, a commit per step, and goes in as one PR only once it works end to end; an exception to D99, like D147.                                         |
+| D173 | 🧑‍💻 Not fully vibe-coded: Hesham writes core feature blocks himself and Claude assists. Coding rules, a testing layer and a review pipeline come after handwriting.                                      |
 | D100 | ✍️ Conventional Commits, squash merge only, and the PR title checked in CI.                                                                                                                             |
 | D101 | 🤖 Commits keep Claude's `Co-Authored-By` line.                                                                                                                                                         |
 | D102 | 🔀 Each PR follows a template (What, Why, How tested, Screenshot or GIF) and merges with passing CI after the diff is read.                                                                             |
