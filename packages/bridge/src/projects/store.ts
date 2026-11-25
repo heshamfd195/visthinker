@@ -8,7 +8,7 @@ import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { log } from "../log.ts";
 
-async function readJson(path: string): Promise<unknown | undefined> {
+export async function readJson(path: string): Promise<unknown | undefined> {
   let text: string;
   try {
     text = await readFile(path, "utf8");
@@ -23,7 +23,7 @@ async function readJson(path: string): Promise<unknown | undefined> {
   }
 }
 
-async function writeJson(path: string, value: unknown): Promise<void> {
+export async function writeJson(path: string, value: unknown): Promise<void> {
   const temp = `${path}.tmp-${randomBytes(4).toString("hex")}`;
   await writeFile(temp, `${JSON.stringify(value)}\n`);
   await rename(temp, path);

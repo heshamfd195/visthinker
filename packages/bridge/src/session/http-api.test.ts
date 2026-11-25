@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -30,7 +30,7 @@ async function setup() {
         "Content-Type": "application/json",
       },
     });
-  return { session, api };
+  return { session, api, home };
 }
 
 const snapshot = {
@@ -110,6 +110,39 @@ describe("the canvas's HTTP API (D142 · D143)", () => {
       askClaudeWhenUnsure: false,
       saveStories: true,
     });
+  });
+
+  it("keeps your handwriting examples in the ability's own folder (D174)", async () => {
+    const { api, home } = await setup();
+    expect(await (await api("abilities/handwriting/examples")).json()).toEqual({
+      version: 1,
+      examples: [],
+    });
+    const examples = {
+      version: 1,
+      examples: [
+        {
+          id: "e1",
+          label: "A",
+          strokes: [{ t: 0, points: [[0, 0, 0.5, 0]] }],
+          from: "you",
+          at: "2026-11-25T10:00:00.000Z",
+        },
+      ],
+    };
+    const put = await api("abilities/handwriting/examples", {
+      method: "PUT",
+      body: JSON.stringify(examples),
+    });
+    expect(put.status).toBe(200);
+    expect(await (await api("abilities/handwriting/examples")).json()).toEqual(examples);
+    const file = join(home, "abilities", "handwriting", "examples.json");
+    expect(JSON.parse(await readFile(file, "utf8"))).toEqual(examples);
+    const bad = await api("abilities/handwriting/examples", {
+      method: "PUT",
+      body: JSON.stringify({ version: 1, examples: [{ label: "A" }] }),
+    });
+    expect(bad.status).toBe(400);
   });
 
   it("lists the packs for the packs panel (D122)", async () => {

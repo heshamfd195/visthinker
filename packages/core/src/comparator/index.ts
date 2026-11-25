@@ -17,7 +17,12 @@ import type {
   Stroke,
   VisEvent,
 } from "@visthinker/contract";
-import { CARDS, readHandwriting, type ReadLetter } from "../abilities/handwriting/index.ts";
+import {
+  CARDS,
+  readHandwriting,
+  type ExampleBook,
+  type ReadLetter,
+} from "../abilities/handwriting/index.ts";
 import type { Clock } from "../ports/index.ts";
 import { strokeBox } from "../scene/strokes.ts";
 import type { SceneStore } from "../scene/store.ts";
@@ -84,6 +89,8 @@ export interface ComparatorDeps {
   handwriting?: boolean;
   /** The character cards it reads letters with (D112); the built-in ones by default. */
   cards?: readonly CharacterCard[];
+  /** Your handwriting examples (D174), matched before the cards. */
+  examples?: ExampleBook;
 }
 
 interface Group {

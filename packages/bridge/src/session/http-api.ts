@@ -1,8 +1,9 @@
-// The canvas's own small HTTP API on the bridge (D142 · D143 · D122): projects and behaviour
-// settings on disk, and the packs panel's list and install. The WebSocket stays answer-only
+// The canvas's own small HTTP API on the bridge (D142 · D143 · D122 · D174): projects, behaviour
+// settings and your handwriting examples on disk, and the packs panel's list and install. The WebSocket stays answer-only
 // (D90); the page asks for these with the session's token, from an allowed Origin only.
 import { ContractError } from "@visthinker/contract";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { ExampleStore } from "../abilities/examples.ts";
 import { ProjectStore } from "../projects/store.ts";
 import { installPack } from "../tools/install_pack.ts";
 import { listPacks } from "../tools/list_packs.ts";
@@ -45,6 +46,7 @@ async function readBody(req: IncomingMessage): Promise<unknown> {
 
 export function createHttpApi(ctx: BridgeContext, home: string): ApiHandler {
   const projects = new ProjectStore(home);
+  const examples = new ExampleStore(home);
   return async (req, res) => {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
     const parts = url.pathname.split("/").filter(Boolean).slice(1); // after "api"
@@ -67,6 +69,11 @@ export function createHttpApi(ctx: BridgeContext, home: string): ApiHandler {
       }
       if (area === "settings" && method === "PUT") {
         return send(res, 200, await projects.saveSettings(await readBody(req)));
+      }
+      // Your handwriting examples (D174).
+      if (area === "abilities" && name === "handwriting" && action === "examples") {
+        if (method === "GET") return send(res, 200, await examples.read());
+        if (method === "PUT") return send(res, 200, await examples.save(await readBody(req)));
       }
       if (area === "packs" && !name && method === "GET") {
         return send(res, 200, await listPacks.run({}, ctx));

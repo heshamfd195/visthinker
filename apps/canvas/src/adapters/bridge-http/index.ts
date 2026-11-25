@@ -1,6 +1,13 @@
-// The bridge's small HTTP API (D142 · D143 · D122): projects and settings on disk, packs.
+// The bridge's small HTTP API (D142 · D143 · D122 · D174): projects, settings and your
+// handwriting examples on disk, packs.
 // Same session token as the WebSocket (D82), sent as a Bearer header, never in the URL.
-import { BehaviourSettings, Pack, Project, ProjectMeta } from "@visthinker/contract";
+import {
+  BehaviourSettings,
+  HandwritingExamples,
+  Pack,
+  Project,
+  ProjectMeta,
+} from "@visthinker/contract";
 
 export interface PackListing {
   name: string;
@@ -17,6 +24,9 @@ export interface BridgeHttp {
   listPacks(): Promise<PackListing[]>;
   readPack(name: string): Promise<Pack>;
   installPack(name: string): Promise<void>;
+  /** Your handwriting examples (D174). */
+  readExamples(): Promise<HandwritingExamples>;
+  saveExamples(examples: HandwritingExamples): Promise<void>;
 }
 
 /** Reads `?ws=<port>&token=<token>`: the bridge's HTTP base and token, or null without a bridge. */
@@ -37,6 +47,8 @@ export class BridgeHttpError extends Error {
     this.code = code;
   }
 }
+
+const EXAMPLES = "abilities/handwriting/examples";
 
 const SOURCES = new Set(["starter", "local", "api"]);
 
@@ -93,6 +105,10 @@ export function createBridgeHttp(
       Pack.parse(((await call(`packs/${encodeURIComponent(name)}`)) as { pack?: unknown }).pack),
     async installPack(name) {
       await call(`packs/${encodeURIComponent(name)}/install`, { method: "POST" });
+    },
+    readExamples: async () => HandwritingExamples.parse(await call(EXAMPLES)),
+    async saveExamples(examples) {
+      await call(EXAMPLES, { method: "PUT", body: JSON.stringify(examples) });
     },
   };
 }

@@ -8,6 +8,7 @@
 import type { BrowserCall } from "@visthinker/contract";
 import {
   createComparator,
+  createExampleBook,
   createMemoryPackSource,
   createMemoryTransport,
   createPackRegistry,
@@ -20,6 +21,7 @@ import {
   type CallRecord,
   type Clock,
   type Comparator,
+  type ExampleBook,
   type History,
   type PackRegistry,
   type PackSource,
@@ -65,6 +67,11 @@ export interface Session extends Canvas {
   packs: PackSource;
   /** The packs loaded now: the starter packs (D74), and any Claude writes or you install. */
   registry: PackRegistry;
+  /**
+   * Your handwriting examples (D174), for every canvas: loaded from the bridge on start and saved
+   * a moment after each change. Opened on its own, they live only in this tab.
+   */
+  examples: ExampleBook;
   /** Which ports still run on fakes, shown on the canvas until they're real. */
   fakes: string[];
   /** The canvas now. */
@@ -90,6 +97,8 @@ export function createSession(options: SessionOptions = {}): Session {
   const link = options.bridgeUrl && options.search ? bridgeHttpFromPage(options.search) : null;
   const http = link ? createBridgeHttp(link) : undefined;
   const registry = createPackRegistry(STARTER_PACKS);
+  const examples = createExampleBook();
+  if (http) keepExamples(examples, http, clock);
   const listeners = new Set<(canvas: Canvas) => void>();
 
   let current: Canvas;
@@ -126,6 +135,7 @@ export function createSession(options: SessionOptions = {}): Session {
         strokes,
         clock,
         packs: () => registry.active(),
+        examples,
       }),
     };
   };
@@ -147,6 +157,7 @@ export function createSession(options: SessionOptions = {}): Session {
     http,
     packs: createMemoryPackSource(),
     registry,
+    examples,
     fakes: bridge ? [] : ["transport"],
     canvas: () => current,
     open,
@@ -181,6 +192,26 @@ export function createSession(options: SessionOptions = {}): Session {
       return current.handler;
     },
   };
+}
+
+/** How long after a change your examples are saved, so a burst of teaching is one write. */
+export const SAVE_EXAMPLES_MS = 500;
+
+/** Loads your examples from the bridge, and saves them a moment after each change (D174). */
+export function keepExamples(book: ExampleBook, http: BridgeHttp, clock: Clock): void {
+  http
+    .readExamples()
+    .then((saved) => book.load(saved.examples))
+    .catch((error: unknown) => console.warn("Couldn't load your handwriting examples", error));
+  let cancel: (() => void) | undefined;
+  book.subscribe(() => {
+    cancel?.();
+    cancel = clock.after(SAVE_EXAMPLES_MS, () => {
+      http
+        .saveExamples({ version: 1, examples: [...book.all()] })
+        .catch((error: unknown) => console.warn("Couldn't save your handwriting examples", error));
+    });
+  });
 }
 
 export type { CallRecord };
