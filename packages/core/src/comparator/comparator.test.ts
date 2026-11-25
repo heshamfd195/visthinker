@@ -819,7 +819,7 @@ describe("grouping (D96 · D97)", () => {
     );
     clock.advance(600);
     expect(scene.all().filter((o) => o.kind === "symbol")).toHaveLength(2);
-    // Past D110's 2 s, a stroke never rejoins: it's a new symbol.
+    // Past D176's 5 s (D110's 2 s without handwriting), a stroke never rejoins: a new symbol.
     const later = setup();
     later.draw(
       along([
@@ -827,7 +827,7 @@ describe("grouping (D96 · D97)", () => {
         [60, 60],
       ]),
     );
-    later.clock.advance(2_100);
+    later.clock.advance(5_100);
     later.draw(
       along([
         [60, 0],
@@ -836,6 +836,42 @@ describe("grouping (D96 · D97)", () => {
     );
     later.clock.advance(600);
     expect(later.scene.all().map((o) => o.label)).not.toContain("X");
+  });
+
+  it("a slow H is one letter: a lone leg waits 5 s for the next (D176)", () => {
+    // Hesham's H on 25 Nov: the right leg came 2.4 s after the left, the bar 1.2 s after that.
+    for (const handwriting of [true, false]) {
+      const { clock, scene, replay } = setup({ handwriting });
+      const leg = (x: number, t0: number, id: string): Stroke => ({
+        ...stroke(
+          along([
+            [x, 300],
+            [x, 520],
+          ]),
+        ),
+        id,
+        t0,
+      });
+      replay(leg(1070, 4395, "h1"));
+      replay(leg(1230, 6796, "h2"));
+      replay({
+        ...stroke(
+          along([
+            [1032, 410],
+            [1250, 410],
+          ]),
+        ),
+        id: "h3",
+        t0: 7971,
+      });
+      clock.advance(SETTLE_MS + 1_000);
+      const groups = scene.all().map((o) => o.strokes);
+      // Without handwriting, D110's 2 s still holds and the first leg stays apart.
+      expect(groups, `handwriting ${handwriting}`).toEqual(
+        handwriting ? [["h1", "h2", "h3"]] : [["h1"], ["h2", "h3"]],
+      );
+      if (handwriting) expect(scene.all()[0]).toMatchObject({ kind: "word", label: "H" });
+    }
   });
 
   it("a grid line ends the open group at once", () => {

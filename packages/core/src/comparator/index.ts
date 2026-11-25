@@ -58,12 +58,14 @@ export const GROUP_GAP_MS = 700;
 export const GROUP_NEAR = 0.5;
 /**
  * D110: a stroke that lands close by within this long of the last symbol's last stroke rejoins
- * it, and both are read again together (an X's second stroke can come late).
+ * it, and both are read again together (an X's second stroke can come late). With handwriting on,
+ * D176 waits longer (WORD_REJOIN_MS).
  */
 export const REJOIN_MS = 2_000;
 /**
  * D169: a written word waits longer for its next letter: a stroke beside it (closer than half its
- * height) joins it within this long. Writers pause between letters (2.4 s after a real H).
+ * height) joins it within this long. Writers pause between letters (2.4 s after a real H). D176:
+ * with handwriting on, a lone mark waits as long, so a slow H's second leg finds its first.
  */
 export const WORD_REJOIN_MS = 5_000;
 /**
@@ -182,8 +184,9 @@ export function createComparator({
   const rejoins = (last: Omit<Group, "cancel">, stroke: Stroke) => {
     if (!last.symbol || !scene.has(last.symbol)) return false;
     const box = strokeBox(stroke);
-    // A word waits longer, for a stroke beside it on its line (D169).
-    if (scene.get(last.symbol)!.kind === "word")
+    // A word waits longer, for a stroke beside it on its line (D169), and so does any mark while
+    // handwriting is on: a lone leg no card names yet may be half an H (D176, a 2.4 s pause).
+    if (handwriting || scene.get(last.symbol)!.kind === "word")
       return (
         stroke.t0 - last.lastEnd <= WORD_REJOIN_MS &&
         gap(last.box, box) < GROUP_NEAR * Math.max(last.box[3], box[3])
