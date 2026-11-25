@@ -201,7 +201,12 @@ function translateToOrigin(points: CloudPoint[]): CloudPoint[] {
   return points.map((p) => ({ x: p.x - cx, y: p.y - cy, stroke: p.stroke }));
 }
 
-function greedyCloudMatch(points: CloudPoint[], template: CloudPoint[], best: number): number {
+/** The $P distance between two normalized clouds of the same size; stops early past `best`. */
+export function greedyCloudMatch(
+  points: CloudPoint[],
+  template: CloudPoint[],
+  best: number,
+): number {
   const n = points.length;
   const step = Math.floor(Math.sqrt(n)); // n^(1 − ε) with ε = 0.5
   let min = Infinity;
@@ -225,7 +230,10 @@ function cloudDistance(a: CloudPoint[], b: CloudPoint[], start: number, cutoff: 
     let min = Infinity;
     for (let j = 0; j < n; j++) {
       if (matched[j]) continue;
-      const d = Math.hypot(a[i]!.x - b[j]!.x, a[i]!.y - b[j]!.y);
+      // Not Math.hypot: it's several times slower, and this runs n² times per match (D174).
+      const dx = a[i]!.x - b[j]!.x;
+      const dy = a[i]!.y - b[j]!.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
       if (d < min) {
         min = d;
         index = j;
