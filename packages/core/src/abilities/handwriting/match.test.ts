@@ -39,7 +39,7 @@ describe("the fast matcher (D118 · D174)", () => {
     expect(matcher.match(writing("first"))).toBeUndefined();
   });
 
-  it("reads your four HELLOs, each taught by the other three: every letter sure, none wrong", () => {
+  it("reads your four HELLOs, each taught by the other three: 17 of 20 sure, none wrong", () => {
     const sure: string[] = [];
     for (const held of HELLOS) {
       const book = createExampleBook();
@@ -53,8 +53,8 @@ describe("the fast matcher (D118 · D174)", () => {
       expect(read.map((r) => r.guesses[0]!.char).join("")).toBe("HELLO");
       for (const [i, r] of read.entries()) if (r.sure) sure.push(`${r.label}${"HELLO"[i]}`);
     }
-    // 19 of 20 as drawn; the third HELLO's H is sure turned back 10°.
-    expect(sure).toHaveLength(20);
+    // D181's stricter limit (1.0) leaves 3 to the cards and Claude, and keeps none wrong.
+    expect(sure).toHaveLength(17);
     expect(sure.every((pair) => pair[0] === pair[1])).toBe(true);
   });
 
@@ -139,10 +139,12 @@ describe("the fast matcher (D118 · D174)", () => {
     const book = createExampleBook();
     teach(book, ["first", "second", "third"]);
     const matcher = createExampleMatcher(book);
-    const word = readHandwriting(writing("fourth"));
-    matcher.match(word[0]!.strokes);
-    for (const l of word) expect(matcher.match(l.strokes)!.turn).toBe(undefined);
-    expect(fastest(() => word.forEach((l) => matcher.match(l.strokes)), word.length)).toBeLessThan(
+    const sure = readHandwriting(writing("fourth")).filter((l) => {
+      const read = matcher.match(l.strokes)!;
+      return read.sure && read.turn === undefined;
+    });
+    expect(sure.length).toBeGreaterThanOrEqual(3);
+    expect(fastest(() => sure.forEach((l) => matcher.match(l.strokes)), sure.length)).toBeLessThan(
       10,
     );
   });

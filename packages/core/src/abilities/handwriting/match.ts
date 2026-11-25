@@ -13,11 +13,12 @@ export const MATCH = {
   points: 32,
   /**
    * Sure: the nearest example is at most this far ($P distance)… On your four HELLOs (24 Nov),
-   * each read against the other three, the right letter was within 1.33 (19 of 20 within 1.1),
-   * but letters never taught came as close as 1.25 (a B to an E) and 1.42 (an A to an H). A wrong
-   * sure costs more than a missed one, which only goes on to the cards and Claude.
+   * each read against the other three, the right letter was within 1.33, most within 1.1. D181:
+   * with 17 letters taught (25 Nov), letters you never taught came 0.97–1.18 from a look-alike
+   * (O as D, H as K, E as B): 7 of 23 were sure and wrong at 1.2, none at 1.0, for one taught
+   * letter fewer sure. A wrong sure costs more than a missed one, which goes on to Claude.
    */
-  sure: 1.2,
+  sure: 1.0,
   /** …and the next letter's nearest is at least this many times farther (the least was 1.35). */
   lead: 1.25,
   /**
