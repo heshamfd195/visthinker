@@ -22,11 +22,11 @@ function teach(book: ExampleBook, names: readonly (keyof typeof hello)[]) {
     );
 }
 
-/** Shared CI machines run these timings about 2–3× slower than a laptop, so CI gets 3× the budget. */
+/** Shared CI machines run these timings 2–4× slower than a laptop (and vary a lot), so CI gets 5× the budget. */
 const ON_CI = Boolean(
   (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.CI,
 );
-const budget = (ms: number): number => (ON_CI ? ms * 3 : ms);
+const budget = (ms: number): number => (ON_CI ? ms * 5 : ms);
 
 /** Milliseconds per letter: the fastest of five batches of ten runs of `run`, which reads `letters`. */
 function fastest(run: () => void, letters: number): number {
@@ -139,7 +139,7 @@ describe("the fast matcher (D118 · D174)", () => {
     expect(
       fastest(() => word.forEach((l) => matcher.match(l.strokes, l.features)), word.length),
     ).toBeLessThan(budget(15));
-  });
+  }, 30_000); // 260 examples × 50 runs: ~3 s here, ~9 s on a CI machine
 
   it("names a sure letter fast: turns are tried only when it isn't sure", () => {
     const book = createExampleBook();
