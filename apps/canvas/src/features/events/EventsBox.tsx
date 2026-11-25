@@ -18,6 +18,7 @@ import {
   rowText,
   status,
   statusText,
+  exampleCounts,
   type EventsFilter,
   type Row,
   type Status,
@@ -33,6 +34,8 @@ export interface EventsBoxProps {
   thinkingSince: number | undefined;
   /** The session clock, in ms. */
   now: () => number;
+  /** How many handwriting examples each letter has (D174), shown above the list. */
+  examples?: ReadonlyMap<string, number>;
 }
 
 /** Re-renders every `ms` while `on`, so the thinking seconds and the clock stay live. */
@@ -77,6 +80,7 @@ export function EventsBox({
   connected,
   thinkingSince,
   now,
+  examples,
 }: EventsBoxProps) {
   const eventsOpen = useUi((s) => s.eventsOpen);
   const layout = useUi((s) => s.layout);
@@ -181,6 +185,12 @@ export function EventsBox({
           </button>
         ))}
       </div>
+
+      {examples && (
+        <p className="shrink-0 truncate border-b px-3 pb-1.5 font-mono text-[11px] text-muted-foreground">
+          {exampleCounts(examples)}
+        </p>
+      )}
 
       <ol className="min-h-0 flex-1 overflow-y-auto py-1 font-mono text-[11px]">
         {rows.length === 0 && (

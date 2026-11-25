@@ -204,7 +204,8 @@ export function keepExamples(book: ExampleBook, http: BridgeHttp, clock: Clock):
     .then((saved) => book.load(saved.examples))
     .catch((error: unknown) => console.warn("Couldn't load your handwriting examples", error));
   let cancel: (() => void) | undefined;
-  book.subscribe(() => {
+  book.subscribe((_, why) => {
+    if (why === "load") return; // it came from disk
     cancel?.();
     cancel = clock.after(SAVE_EXAMPLES_MS, () => {
       http

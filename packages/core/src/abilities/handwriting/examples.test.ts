@@ -25,13 +25,13 @@ describe("your examples (D118 · D174)", () => {
     expect(kept.at(-1)!.id).toBe("b0");
   });
 
-  it("tells listeners about a new example, not about ones loaded from disk", () => {
+  it("tells listeners about each change, and whether it was loaded or added", () => {
     const book = createExampleBook();
-    const heard: number[] = [];
-    book.subscribe((all) => heard.push(all.length));
+    const heard: string[] = [];
+    book.subscribe((all, why) => heard.push(`${why} ${all.length}`));
     book.load([example("e1", "A")]);
     book.add(example("e2", "A"));
-    expect(heard).toEqual([2]);
+    expect(heard).toEqual(["load 1", "add 2"]);
     expect(book.counts()).toEqual(new Map([["A", 2]]));
   });
 

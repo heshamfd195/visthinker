@@ -82,6 +82,34 @@ describe("the handwriting debug view (T51)", () => {
     expect(latestLetters(events, new Set(["y1"])).map((l) => l.detail.features)).toEqual([O]);
   });
 
+  it("says who named each letter: your examples or the cards (D174)", () => {
+    const detail = { index: 1, of: 1, strokes: ["s1"], features: A };
+    const examples = {
+      label: "A",
+      sure: true,
+      score: 80,
+      distance: 0.62,
+      example: "e1",
+      count: 3,
+      guesses: [{ char: "A", score: 80, distance: 0.62 }],
+      compared: 4,
+      of: 9,
+    };
+    const base = { label: "A", score: 80, clear: true, guesses: [] };
+    const by = (reading: object) =>
+      marksOf("w1-1", 1, { ...detail, reading: { ...base, ...reading } }).by;
+    expect(by({ via: "examples", examples })).toBe("ex 0.6 · 3×");
+    const unsure = {
+      ...examples,
+      sure: false,
+      label: "?",
+      guesses: [{ char: "H", score: 52, distance: 1.42 }],
+    };
+    expect(by({ via: "cards", examples: unsure })).toBe("cards · ex? H 1.4");
+    expect(by({ via: "cards" })).toBe("cards");
+    expect(by({})).toBeUndefined();
+  });
+
   it("carries each letter's name and score for the label under it (D116)", () => {
     const reading = { label: "A", score: 100, clear: true, guesses: [{ char: "A", score: 100 }] };
     const detail = (features = A) => ({ index: 1, of: 1, strokes: ["s1"], features });

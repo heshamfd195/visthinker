@@ -2,7 +2,8 @@
 // "?" when unsure), and in the debug view what was measured: its box and number (#1), each part
 // (a line solid, a curve dashed from end to end) with its number, a dot where ends meet, a ring
 // where lines cross or touch, and each loop. All in recognized blue, the colour of what the canvas
-// read, and in screen pixels so it looks the same at any zoom. Never listening.
+// read, and in screen pixels so it looks the same at any zoom. The debug view also says who named
+// each letter, your examples or the cards (D174). Never listening.
 import { Fragment } from "react";
 import { Circle, Ellipse, Layer, Line, Text } from "react-konva";
 import type { LetterMarks } from "./handwriting.utils.ts";
@@ -29,6 +30,7 @@ export function LettersLayer({ letters, scale, names, scores, parts }: LettersLa
         <Fragment key={l.key}>
           {parts && <LetterParts letter={l} px={px} />}
           {names && l.name && <LetterName letter={l} px={px} score={scores} />}
+          {parts && l.by && <LetterNamedBy letter={l} px={px} />}
         </Fragment>
       ))}
     </Layer>
@@ -53,6 +55,24 @@ function LetterName({ letter, px, score }: { letter: LetterMarks; px: number; sc
       fontStyle="bold"
       fill={SEEN}
       opacity={name.clear ? 1 : 0.7}
+    />
+  );
+}
+
+/** In the debug view, who named it, under its name: your examples or the cards (D174). */
+function LetterNamedBy({ letter, px }: { letter: LetterMarks; px: number }) {
+  const [x, y, w, h] = letter.box;
+  const width = 160 * px;
+  return (
+    <Text
+      x={x + w / 2 - width / 2}
+      y={y + h + 22 * px}
+      width={width}
+      align="center"
+      text={letter.by}
+      fontSize={10 * px}
+      fill={SEEN}
+      opacity={0.8}
     />
   );
 }

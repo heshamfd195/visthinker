@@ -16,15 +16,17 @@ export interface ExampleBook {
   counts(): Map<string, number>;
   /** Adds one, dropping the oldest of its label past the limit; tells listeners. */
   add(example: HandwritingExample): void;
-  /**
-   * Puts examples loaded from disk before the ones added since, then trims. Listeners aren't told:
-   * nothing new needs saving.
-   */
+  /** Puts examples loaded from disk before the ones added since, then trims. */
   load(examples: readonly HandwritingExample[]): void;
   /** Goes up with every change, so a matcher knows when to rebuild its cache. */
   version(): number;
-  /** Called after each `add`. Returns an unsubscribe function. */
-  subscribe(listener: (examples: readonly HandwritingExample[]) => void): () => void;
+  /**
+   * Called after each change, saying why: an `add` needs saving, a `load` came from disk.
+   * Returns an unsubscribe function.
+   */
+  subscribe(
+    listener: (examples: readonly HandwritingExample[], why: "add" | "load") => void,
+  ): () => void;
 }
 
 /** Keeps the newest `limit` examples of each label, in their order. */
@@ -47,7 +49,12 @@ export function keepNewest(
 export function createExampleBook(initial: readonly HandwritingExample[] = []): ExampleBook {
   let examples = keepNewest(initial);
   let version = 0;
-  const listeners = new Set<(examples: readonly HandwritingExample[]) => void>();
+  const listeners = new Set<
+    (examples: readonly HandwritingExample[], why: "add" | "load") => void
+  >();
+  const tell = (why: "add" | "load") => {
+    for (const listener of [...listeners]) listener(examples, why);
+  };
   return {
     all: () => examples,
     counts() {
@@ -58,12 +65,13 @@ export function createExampleBook(initial: readonly HandwritingExample[] = []): 
     add(example) {
       examples = keepNewest([...examples.filter((e) => e.id !== example.id), example]);
       version++;
-      for (const listener of [...listeners]) listener(examples);
+      tell("add");
     },
     load(loaded) {
       const ids = new Set(examples.map((e) => e.id));
       examples = keepNewest([...loaded.filter((e) => !ids.has(e.id)), ...examples]);
       version++;
+      tell("load");
     },
     version: () => version,
     subscribe(listener) {

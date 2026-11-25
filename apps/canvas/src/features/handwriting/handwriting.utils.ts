@@ -22,6 +22,12 @@ export interface LetterMarks {
    * written, or nothing before the cards.
    */
   name?: { label: string; score: number; clear: boolean };
+  /**
+   * Who named it, for the debug view (D174): "ex 0.6 · 3×" by your examples (distance to the
+   * nearest, how many of that letter), "cards · ex? H 1.4" when they weren't sure, "cards" alone
+   * before any examples.
+   */
+  by?: string;
   /** How far it leans, degrees clockwise, when it was read turned upright. */
   turn?: number;
   parts: { kind: "line" | "curve"; a: Point2; b: Point2; label: string; at: Point2 }[];
@@ -107,12 +113,14 @@ export function marksOf(key: string, index: number, letter: LetterEventDetail): 
     : reading
       ? { label: reading.label, score: reading.score, clear: reading.clear }
       : undefined;
+  const by = !reading || waiting ? undefined : namedBy(reading);
   return {
     key,
     index,
     box,
     outline,
     ...(name ? { name } : {}),
+    ...(by ? { by } : {}),
     ...(turn ? { turn: turn.deg } : {}),
     parts: f.parts.map((p, i) => {
       const [a, b] = [at(p.a), at(p.b)];
@@ -132,6 +140,15 @@ export function marksOf(key: string, index: number, letter: LetterEventDetail): 
       ry: (l.height * size) / 2,
     })),
   };
+}
+
+/** Who named a letter, in a few characters for the debug view (D174). */
+function namedBy(r: NonNullable<LetterEventDetail["reading"]>): string | undefined {
+  const ex = r.examples;
+  if (r.via === "examples" && ex) return `ex ${ex.distance.toFixed(1)} · ${ex.count}×`;
+  if (r.via !== "cards") return undefined;
+  const near = ex?.guesses[0];
+  return near ? `cards · ex? ${near.char} ${near.distance.toFixed(1)}` : "cards";
 }
 
 /** Everything to draw: each word on the canvas, each of its letters. */
