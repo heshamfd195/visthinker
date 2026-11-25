@@ -14,11 +14,11 @@ You write on the canvas and the Fast Brain reads it, letter by letter. When it i
 
 ## 🏷️ Who names a letter
 
-| order | who                  | when                                                                                                                    |
-| ----- | -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| 1     | 📊 **your examples** | your nearest saved example is close and well ahead of the next letter (D174, D177), tilted letters turned back a little |
-| 2     | 🃏 **the cards**     | no example is sure; or the cards clearly read a letter you never taught (D179)                                          |
-| 3     | 🤖 **Claude**        | neither is sure: the letter shows `?`, and Claude reads it with the word around it (D115)                               |
+| order | who                  | when                                                                                                                                   |
+| ----- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | 📊 **your examples** | your nearest saved example is within 1.0 and well ahead of the next letter (D174, D177, D181); tilted letters are turned back a little |
+| 2     | 🃏 **the cards**     | no example is sure; or the cards clearly read a letter you never taught (D179). A reading that only wins turned is a guess (D180)      |
+| 3     | 🤖 **Claude**        | neither is sure: the letter shows `?`, and Claude reads it with the word around it (D115)                                              |
 
 ## 💬 How you teach it
 
@@ -32,6 +32,7 @@ You write on the canvas and the Fast Brain reads it, letter by letter. When it i
 
 - 🔢 Teach each letter about **3 times**, and each way you write it (a round B and an angular B are as far apart as two letters).
 - 🧹 Only the newest **10 per letter** are kept (D118).
+- ∅ Say "that's not a letter" and Claude labels it `not a letter`: marks like it stay plain marks, outside any word (D182).
 - 🌍 The repo is public, so your examples are too (D178).
 
 ## 🛠️ Try it
